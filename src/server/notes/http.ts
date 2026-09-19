@@ -20,6 +20,11 @@ import {
   readAttachmentFile,
   storeAttachmentFile,
 } from "./attachment-storage";
+import { judgmentsForCapture } from "./capture-enrichment";
+import {
+  JudgmentFailedError,
+  TypesafeMisconfiguredError,
+} from "@/server/typesafe/runtime";
 
 function json(body: unknown, status: number): Response {
   const headers = new Headers({ "content-type": "application/json; charset=utf-8" });
@@ -240,13 +245,35 @@ export async function handleCapture(request: Request): Promise<Response> {
   }
 
   const store = await getNotesStore();
+  let judgments;
+  try {
+    judgments = await judgmentsForCapture(store, title.value, finalBody);
+  } catch (error) {
+    if (error instanceof TypesafeMisconfiguredError) {
+      return json(noteErrorBody("typesafe_misconfigured"), 503);
+    }
+    if (error instanceof JudgmentFailedError) {
+      return json(noteErrorBody("judgment_failed"), 502);
+    }
+    throw error;
+  }
+
   if (target === "note") {
     const note = await store.createNote({
       title: title.value,
       body: finalBody,
       status: "draft",
     });
-    return json({ ok: true, target: "note", note }, 201);
+    return json(
+      {
+        ok: true,
+        target: "note",
+        note,
+        suggestions: judgments.suggestions,
+        duplicateHint: judgments.duplicateHint,
+      },
+      201,
+    );
   }
   const inboxItem = await store.createInboxItem({
     title: title.value,
@@ -254,7 +281,16 @@ export async function handleCapture(request: Request): Promise<Response> {
     source: url ? "url" : "api",
     url,
   });
-  return json({ ok: true, target: "inbox", inboxItem }, 201);
+  return json(
+    {
+      ok: true,
+      target: "inbox",
+      inboxItem,
+      suggestions: judgments.suggestions,
+      duplicateHint: judgments.duplicateHint,
+    },
+    201,
+  );
 }
 
 export async function handleCaptureShare(request: Request): Promise<Response> {
@@ -280,13 +316,35 @@ export async function handleCaptureShare(request: Request): Promise<Response> {
     return json(noteErrorBody("validation"), 400);
   }
   const store = await getNotesStore();
+  const captureTitle = hasTitle || hasText?.slice(0, 120) || hasUrl || "Shared item";
+  const captureBody = hasText || hasUrl || "";
+  let judgments;
+  try {
+    judgments = await judgmentsForCapture(store, captureTitle, captureBody);
+  } catch (error) {
+    if (error instanceof TypesafeMisconfiguredError) {
+      return json(noteErrorBody("typesafe_misconfigured"), 503);
+    }
+    if (error instanceof JudgmentFailedError) {
+      return json(noteErrorBody("judgment_failed"), 502);
+    }
+    throw error;
+  }
   const inboxItem = await store.createInboxItem({
-    title: hasTitle || hasText?.slice(0, 120) || hasUrl || "Shared item",
-    body: hasText || hasUrl || "",
+    title: captureTitle,
+    body: captureBody,
     source: "share",
     url: hasUrl || null,
   });
-  return json({ ok: true, inboxItem }, 201);
+  return json(
+    {
+      ok: true,
+      inboxItem,
+      suggestions: judgments.suggestions,
+      duplicateHint: judgments.duplicateHint,
+    },
+    201,
+  );
 }
 
 export async function handleListInbox(request: Request): Promise<Response> {

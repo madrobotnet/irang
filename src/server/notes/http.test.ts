@@ -4,6 +4,8 @@ import path from "node:path";
 import os from "node:os";
 import { MemoryNotesStore } from "./memory-store";
 import { setNotesStoreForTests, resetNotesRuntimeForTests } from "./runtime";
+import { setSystemOneInvokerForTests } from "@/server/typesafe/runtime";
+import { mockSystemOneInvoker } from "@/server/typesafe/test-helpers";
 import {
   handleCapture,
   handleCaptureShare,
@@ -23,10 +25,14 @@ let attachDir = "";
 beforeEach(async () => {
   attachDir = await mkdtemp(path.join(os.tmpdir(), "sb-attach-"));
   process.env.ATTACHMENTS_DIR = attachDir;
+  process.env.TYPESAFE_API_KEY = "test-key-not-used-with-mock";
+  setSystemOneInvokerForTests(mockSystemOneInvoker());
   setNotesStoreForTests(new MemoryNotesStore());
 });
 
 afterEach(async () => {
+  setSystemOneInvokerForTests(null);
+  delete process.env.TYPESAFE_API_KEY;
   resetNotesRuntimeForTests();
   if (attachDir) {
     await rm(attachDir, { recursive: true, force: true });
@@ -106,6 +112,11 @@ describe("notes API (API_NOTE_CONTRACT)", () => {
   });
 
   it("capture to inbox and note without url", async () => {
+    setSystemOneInvokerForTests(
+      mockSystemOneInvoker({
+        tag_idea: { type: "noul", noul: 0.7 },
+      }),
+    );
     const inbox = await handleCapture(
       new Request("http://localhost/api/capture", {
         method: "POST",
@@ -114,6 +125,13 @@ describe("notes API (API_NOTE_CONTRACT)", () => {
       }),
     );
     expect(inbox.status).toBe(201);
+    const inboxBody = (await inbox.json()) as {
+      suggestions: { tags: { tag: string }[] };
+      duplicateHint: unknown;
+    };
+    expect(inboxBody.suggestions.tags.some((t) => t.tag === "idea")).toBe(true);
+    expect(inboxBody.duplicateHint).toBeNull();
+
     const note = await handleCapture(
       new Request("http://localhost/api/capture", {
         method: "POST",
@@ -122,6 +140,37 @@ describe("notes API (API_NOTE_CONTRACT)", () => {
       }),
     );
     expect(note.status).toBe(201);
+  });
+
+  it("capture returns typesafe_misconfigured without API key", async () => {
+    setSystemOneInvokerForTests(null);
+    delete process.env.TYPESAFE_API_KEY;
+    const res = await handleCapture(
+      new Request("http://localhost/api/capture", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Cap", body: "Body", target: "note" }),
+      }),
+    );
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ ok: false, code: "typesafe_misconfigured" });
+  });
+
+  it("capture returns judgment_failed when TypeSafe fails", async () => {
+    setSystemOneInvokerForTests({
+      async systemOne() {
+        throw new Error("upstream down");
+      },
+    });
+    const res = await handleCapture(
+      new Request("http://localhost/api/capture", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Cap", body: "Body", target: "note" }),
+      }),
+    );
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ ok: false, code: "judgment_failed" });
   });
 
   it("capture url failure records ingest job", async () => {

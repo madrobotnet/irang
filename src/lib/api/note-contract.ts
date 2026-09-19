@@ -10,6 +10,8 @@ export type NoteApiErrorCode =
   | "payload_too_large"
   | "ingest_failed"
   | "misconfigured"
+  | "typesafe_misconfigured"
+  | "judgment_failed"
   | "unauthorized";
 
 export function noteErrorBody(
