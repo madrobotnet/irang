@@ -11,6 +11,8 @@ export const NOTE_COPY = {
   bodyPlaceholder: "본문",
   loadError: "노트를 불러오지 못했어요",
   saveError: "저장에 실패했어요",
+  purgedError: "휴지통 보관 기간이 지나 복구할 수 없어요",
+  unauthorized: "다시 로그인해 주세요",
+  validationError: "제목과 본문을 확인해 주세요",
   retry: "다시",
-  rawBadge: "읽기 전용",
 } as const;

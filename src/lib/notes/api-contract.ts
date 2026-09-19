@@ -1,27 +1,9 @@
 /**
- * Rex API_NOTE_CONTRACT — consumer reference for UI client (Rex owns server impl).
- *
- * Notes
- * - GET    /api/notes?limit=&cursor=&status=&includeDeleted=1
- *          → 200 { ok: true, notes: NoteRecord[], nextCursor }
- * - POST   /api/notes → 201 { ok: true, note }
- * - GET    /api/notes/:id → 200 { ok: true, note }
- * - PATCH  /api/notes/:id → 200 { ok: true, note } | 409 deleted | 410 purged
- * - DELETE /api/notes/:id → 200 { ok: true, note } (soft delete, sets deletedAt/purgeAt)
- * - POST   /api/notes/:id/restore → 200 { ok: true, note } | 409 not_deleted | 410 purged
- *
- * Capture (JSON)
- * - POST /api/capture → 201 { ok: true, target: "inbox", inboxItem } | { ok: true, target: "note", note }
- *   body: { title, body, target: "inbox"|"note", url? }
- *   | 502 { ok: false, code: "ingest_failed", jobId? }
- *
- * Attachments (multipart after capture)
- * - POST /api/attachments → 201 { ok: true, attachment }
- *   form: file, noteId | inboxItemId
- *   | 415 unsupported_media | 413 payload_too_large
- *
- * Errors: { ok: false, code: NoteApiErrorCode, fields?, ... } — see `@/lib/api/note-contract`.
+ * Rex API_NOTE_CONTRACT (authoritative consumer copy for Lio client).
+ * Server impl: Kai/Rex — do not edit `src/server/**` from UI lane.
  */
+
+import type { NoteApiErrorCode } from "@/lib/api/note-contract";
 
 export const NOTES_API = {
   list: "/api/notes",
@@ -31,3 +13,27 @@ export const NOTES_API = {
 
 export const CAPTURE_API = "/api/capture";
 export const ATTACHMENTS_API = "/api/attachments";
+
+/** HTTP status Rex uses per endpoint success (client asserts these). */
+export const API_SUCCESS_STATUS = {
+  noteCreate: 201,
+  noteRead: 200,
+  capture: 201,
+  attachment: 201,
+} as const;
+
+/** Map Rex `{ ok: false, code }` (+ HTTP) to UI handling hints. */
+export function mapNoteApiFailure(
+  status: number,
+  code: NoteApiErrorCode | undefined,
+): NoteApiErrorCode {
+  if (code) return code;
+  if (status === 401) return "unauthorized";
+  if (status === 413) return "payload_too_large";
+  if (status === 415) return "unsupported_media";
+  if (status === 502) return "ingest_failed";
+  if (status === 503) return "misconfigured";
+  if (status === 410) return "purged";
+  if (status === 404) return "not_found";
+  return "validation";
+}

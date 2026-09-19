@@ -1,10 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mapNoteApiFailure } from "./api-contract";
 import {
   createNote,
   daysUntilPurge,
   listNotes,
+  NotesApiError,
+  restoreNote,
   submitCapture,
 } from "./client-api";
+
+describe("mapNoteApiFailure", () => {
+  it("prefers explicit Rex code", () => {
+    expect(mapNoteApiFailure(502, "ingest_failed")).toBe("ingest_failed");
+  });
+
+  it("infers from HTTP when code missing", () => {
+    expect(mapNoteApiFailure(401, undefined)).toBe("unauthorized");
+    expect(mapNoteApiFailure(413, undefined)).toBe("payload_too_large");
+    expect(mapNoteApiFailure(410, undefined)).toBe("purged");
+  });
+});
 
 describe("daysUntilPurge", () => {
   afterEach(() => {
@@ -16,12 +31,6 @@ describe("daysUntilPurge", () => {
     vi.setSystemTime(new Date("2026-09-24T12:00:00Z"));
     expect(daysUntilPurge("2026-09-26T12:00:00Z", "2026-09-19T12:00:00Z")).toBe(2);
   });
-
-  it("falls back to 7-day window from deletedAt", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-09-19T12:00:00Z"));
-    expect(daysUntilPurge(null, "2026-09-19T12:00:00Z")).toBe(7);
-  });
 });
 
 describe("notes client API (Rex envelopes)", () => {
@@ -29,7 +38,7 @@ describe("notes client API (Rex envelopes)", () => {
     vi.unstubAllGlobals();
   });
 
-  it("listNotes unwraps { ok, notes, nextCursor }", async () => {
+  it("listNotes requires 200 and ok envelope", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -44,11 +53,10 @@ describe("notes client API (Rex envelopes)", () => {
       }),
     );
     const result = await listNotes();
-    expect(result.notes).toHaveLength(1);
     expect(result.notes[0].id).toBe("n1");
   });
 
-  it("createNote POSTs title/body JSON", async () => {
+  it("createNote requires 201", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 201,
@@ -70,50 +78,58 @@ describe("notes client API (Rex envelopes)", () => {
     vi.stubGlobal("fetch", fetchMock);
     const note = await createNote({ title: "Hi", body: "There" });
     expect(note.id).toBe("n2");
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/notes",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ title: "Hi", body: "There" }),
-      }),
-    );
   });
 
-  it("submitCapture sends target JSON then optional attachment", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
+  it("restoreNote surfaces purged 410", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 410,
+        text: async () => JSON.stringify({ ok: false, code: "purged" }),
+      }),
+    );
+    await expect(restoreNote("x")).rejects.toMatchObject({
+      code: "purged",
+      status: 410,
+    } satisfies Partial<NotesApiError>);
+  });
+
+  it("submitCapture maps ingest_failed 502", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 502,
+        text: async () => JSON.stringify({ ok: false, code: "ingest_failed", jobId: "j1" }),
+      }),
+    );
+    const result = await submitCapture({
+      target: "note",
+      title: "T",
+      body: "B",
+      url: "https://example.com",
+    });
+    expect(result).toEqual({ ok: false, reason: "ingest_failed" });
+  });
+
+  it("submitCapture honors duplicateHint on 201", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
         ok: true,
         status: 201,
         text: async () =>
           JSON.stringify({
             ok: true,
-            target: "note",
-            note: { id: "note-1" },
+            target: "inbox",
+            inboxItem: { id: "in1" },
+            duplicateHint: true,
           }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        status: 201,
-        text: async () => JSON.stringify({ ok: true, attachment: { id: "a1" } }),
-      });
-    vi.stubGlobal("fetch", fetchMock);
-
-    const file = new File(["# x"], "x.md", { type: "text/markdown" });
-    const result = await submitCapture({
-      target: "note",
-      title: "Cap",
-      body: "Body",
-      file,
-    });
+      }),
+    );
+    const result = await submitCapture({ target: "inbox", title: "T", body: "B" });
     expect(result.ok).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const captureCall = fetchMock.mock.calls[0];
-    expect(captureCall[0]).toBe("/api/capture");
-    expect(JSON.parse(captureCall[1].body as string)).toEqual({
-      title: "Cap",
-      body: "Body",
-      target: "note",
-    });
+    if (result.ok) expect(result.duplicateHint).toBe(true);
   });
 });

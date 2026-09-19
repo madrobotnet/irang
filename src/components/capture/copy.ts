@@ -6,6 +6,8 @@ export const CAPTURE_COPY = {
   mime: "이 형식은 못 받아요",
   size: "100MB를 넘어요",
   networkError: "연결에 실패했어요",
+  ingestError: "URL 요약에 실패했어요",
+  unauthorized: "다시 로그인해 주세요",
   retry: "다시",
   title: "캡처",
   titleLabel: "제목",

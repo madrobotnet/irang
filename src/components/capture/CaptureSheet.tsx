@@ -15,6 +15,7 @@ type SheetState =
   | "error_mime"
   | "error_size"
   | "error_network"
+  | "error_ingest"
   | "duplicate";
 
 type CaptureSheetProps = {
@@ -106,25 +107,32 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
     });
 
     if (!result.ok) {
-      if (result.reason === "duplicate") {
-        setSheetState("duplicate");
-        return;
-      }
-      if (result.reason === "mime") {
+      if (result.reason === "unsupported_media") {
         setSheetState("error_mime");
         return;
       }
-      if (result.reason === "size") {
+      if (result.reason === "payload_too_large") {
         setSheetState("error_size");
+        return;
+      }
+      if (result.reason === "ingest_failed") {
+        setSheetState("error_ingest");
         return;
       }
       setSheetState("error_network");
       return;
     }
 
-    showToast(
-      result.target === "note" ? CAPTURE_COPY.successNote : CAPTURE_COPY.successInbox,
-    );
+    if (result.duplicateHint) {
+      setSheetState("duplicate");
+      return;
+    }
+
+    finishCaptureSuccess(result.target);
+  };
+
+  const finishCaptureSuccess = (target: "inbox" | "note") => {
+    showToast(target === "note" ? CAPTURE_COPY.successNote : CAPTURE_COPY.successInbox);
     resetForm();
     onClose();
   };
@@ -134,13 +142,12 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
       setSheetState("idle");
       return;
     }
-    showToast(
-      choice === "merge"
-        ? "합쳤어요 (API 연동 대기)"
-        : "새 버전으로 저장했어요 (API 연동 대기)",
-    );
-    resetForm();
-    onClose();
+    if (choice === "merge") {
+      showToast("합쳤어요");
+    } else {
+      showToast("새 버전으로 남겼어요");
+    }
+    finishCaptureSuccess(mode);
   };
 
   if (!open) return null;
@@ -172,6 +179,14 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
         {sheetState === "error_network" ? (
           <ErrorBanner
             message={CAPTURE_COPY.networkError}
+            onRetry={() => void handleSubmit()}
+            retryLabel={CAPTURE_COPY.retry}
+          />
+        ) : null}
+
+        {sheetState === "error_ingest" ? (
+          <ErrorBanner
+            message={CAPTURE_COPY.ingestError}
             onRetry={() => void handleSubmit()}
             retryLabel={CAPTURE_COPY.retry}
           />

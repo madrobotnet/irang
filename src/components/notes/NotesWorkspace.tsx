@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   createNote,
   getNote,
+  isNotesApiError,
   listNotes,
   restoreNote,
   trashNote,
@@ -21,6 +22,22 @@ import { TrashBanner } from "./TrashBanner";
 import styles from "./NotesWorkspace.module.css";
 
 type ViewState = "loading" | "ready" | "empty" | "error";
+
+function noteApiMessage(err: unknown, fallback: string): string {
+  if (!isNotesApiError(err)) return fallback;
+  switch (err.code) {
+    case "purged":
+      return NOTE_COPY.purgedError;
+    case "unauthorized":
+      return NOTE_COPY.unauthorized;
+    case "validation":
+      return NOTE_COPY.validationError;
+    case "deleted":
+      return NOTE_COPY.saveError;
+    default:
+      return fallback;
+  }
+}
 
 export function NotesWorkspace() {
   const { openCapture } = useCapture();
@@ -103,8 +120,8 @@ export function NotesWorkspace() {
           b.updatedAt.localeCompare(a.updatedAt),
         ),
       );
-    } catch {
-      setError(NOTE_COPY.saveError);
+    } catch (err) {
+      setError(noteApiMessage(err, NOTE_COPY.saveError));
     } finally {
       setSaving(false);
     }
@@ -124,8 +141,8 @@ export function NotesWorkspace() {
       setActiveNote(note);
       setDraftTitle(note.title);
       setDraftBody(note.body);
-    } catch {
-      setError(NOTE_COPY.saveError);
+    } catch (err) {
+      setError(noteApiMessage(err, NOTE_COPY.saveError));
     } finally {
       setSaving(false);
     }
@@ -138,8 +155,8 @@ export function NotesWorkspace() {
       const trashedNote = await trashNote(activeNote.id);
       setActiveNote(trashedNote);
       setNotes((prev) => prev.filter((n) => n.id !== trashedNote.id));
-    } catch {
-      setError(NOTE_COPY.saveError);
+    } catch (err) {
+      setError(noteApiMessage(err, NOTE_COPY.saveError));
     } finally {
       setSaving(false);
     }
@@ -153,8 +170,8 @@ export function NotesWorkspace() {
       setActiveNote(restored);
       setNotes((prev) => [restored, ...prev.filter((n) => n.id !== restored.id)]);
       setViewState("ready");
-    } catch {
-      setError(NOTE_COPY.saveError);
+    } catch (err) {
+      setError(noteApiMessage(err, NOTE_COPY.saveError));
     } finally {
       setRestoring(false);
     }
