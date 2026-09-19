@@ -406,6 +406,9 @@ export async function handleUploadAttachment(request: Request): Promise<Response
       return json(noteErrorBody("not_found"), 404);
     }
   }
+  if (attachmentTooLarge(file.size)) {
+    return json(noteErrorBody("payload_too_large"), 413);
+  }
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (attachmentTooLarge(bytes.length)) {
     return json(noteErrorBody("payload_too_large"), 413);

@@ -1,8 +1,6 @@
 import { NOTE_STATUSES, type NoteStatus } from "@/domain/notes/constants";
-import {
-  ATTACHMENT_WHITELIST,
-  MAX_ATTACHMENT_BYTES,
-} from "@/domain/notes/constants";
+import { ATTACHMENT_WHITELIST } from "@/domain/notes/constants";
+import { exceedsAttachmentByteLimit } from "@/domain/notes/attachment-limits";
 
 export function requireNonEmptyString(
   value: unknown,
@@ -47,5 +45,5 @@ export function isAllowedAttachment(
 }
 
 export function attachmentTooLarge(sizeBytes: number): boolean {
-  return sizeBytes > MAX_ATTACHMENT_BYTES;
+  return exceedsAttachmentByteLimit(sizeBytes);
 }
