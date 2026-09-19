@@ -1,0 +1,22 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: radial-gradient(
+    ellipse 120% 80% at 50% 0%,
+    color-mix(in srgb, var(--accent) 8%, var(--bg)),
+    var(--bg)
+  );
+}
+
+.fallback {
+  width: 100%;
+  max-width: 400px;
+  min-height: 280px;
+  border-radius: var(--radius-md);
+  background: var(--elevated);
+  border: 1px solid var(--stroke);
+  opacity: 0.6;
+}
