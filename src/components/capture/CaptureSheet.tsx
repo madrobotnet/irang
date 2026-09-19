@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { validateCaptureFile } from "@/lib/capture/validation";
+import type { CaptureJudgmentPayload } from "@/lib/jev/capture-types";
+import { applyTagSuggestions } from "@/lib/jev/apply-tag-suggestions";
+import { derivePostCaptureJevState } from "@/lib/jev/jev-state";
 import type { CaptureTarget } from "@/lib/notes/client-api";
 import { submitCapture } from "@/lib/notes/client-api";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
+import { JEV_COPY } from "@/components/jev/copy";
+import { CaptureJevPanel } from "./CaptureJevPanel";
 import { CAPTURE_COPY } from "./copy";
 import styles from "./CaptureSheet.module.css";
 
@@ -16,7 +21,16 @@ type SheetState =
   | "error_size"
   | "error_network"
   | "error_ingest"
-  | "duplicate";
+  | "error_jev"
+  | "error_key_missing"
+  | "post_capture";
+
+type CaptureSuccess = {
+  target: CaptureTarget;
+  noteId?: string;
+  inboxItemId?: string;
+  judgments: CaptureJudgmentPayload;
+};
 
 type CaptureSheetProps = {
   open: boolean;
@@ -32,11 +46,13 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>("idle");
+  const [captureSuccess, setCaptureSuccess] = useState<CaptureSuccess | null>(null);
 
   useEffect(() => {
     if (open) {
       setMode(defaultMode);
       setSheetState("idle");
+      setCaptureSuccess(null);
     }
   }, [open, defaultMode]);
 
@@ -49,9 +65,12 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose, sheetState]);
 
-  const disabled = sheetState === "uploading" || sheetState === "duplicate";
+  const formLocked = sheetState === "uploading" || sheetState === "post_capture";
   const canSubmit =
-    !disabled && title.trim().length > 0 && body.trim().length > 0;
+    sheetState !== "uploading" &&
+    sheetState !== "post_capture" &&
+    title.trim().length > 0 &&
+    body.trim().length > 0;
 
   const resetForm = () => {
     setTitle("");
@@ -59,6 +78,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
     setUrl("");
     setFile(null);
     setSheetState("idle");
+    setCaptureSuccess(null);
   };
 
   const handleClose = () => {
@@ -85,6 +105,26 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
     if (sheetState === "error_mime" || sheetState === "error_size") {
       setSheetState("idle");
     }
+  };
+
+  const finishCaptureSuccess = (target: CaptureTarget) => {
+    showToast(target === "note" ? CAPTURE_COPY.successNote : CAPTURE_COPY.successInbox);
+    resetForm();
+    onClose();
+  };
+
+  const afterCaptureSuccess = (success: CaptureSuccess) => {
+    const hasJevUi =
+      success.judgments.suggestions.tags.length > 0 ||
+      Boolean(success.judgments.duplicateHint?.relatedNoteId) ||
+      derivePostCaptureJevState(success.judgments) !== "jev_idle";
+
+    if (hasJevUi) {
+      setCaptureSuccess(success);
+      setSheetState("post_capture");
+      return;
+    }
+    finishCaptureSuccess(success.target);
   };
 
   const handleSubmit = async () => {
@@ -119,35 +159,50 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
         setSheetState("error_ingest");
         return;
       }
+      if (result.reason === "jev_error") {
+        setSheetState("error_jev");
+        return;
+      }
+      if (result.reason === "key_missing") {
+        setSheetState("error_key_missing");
+        return;
+      }
       setSheetState("error_network");
       return;
     }
 
-    if (result.duplicateHint) {
-      setSheetState("duplicate");
-      return;
-    }
-
-    finishCaptureSuccess(result.target);
+    afterCaptureSuccess({
+      target: result.target,
+      noteId: result.noteId,
+      inboxItemId: result.inboxItemId,
+      judgments: result.judgments,
+    });
   };
 
-  const finishCaptureSuccess = (target: "inbox" | "note") => {
-    showToast(target === "note" ? CAPTURE_COPY.successNote : CAPTURE_COPY.successInbox);
-    resetForm();
-    onClose();
+  const handleApplyTags = async (tags: string[]) => {
+    if (!captureSuccess) return;
+    await applyTagSuggestions({
+      tags,
+      noteId: captureSuccess.noteId,
+      inboxItemId: captureSuccess.inboxItemId,
+    });
+    showToast("제안 태그를 적용했어요");
+    finishCaptureSuccess(captureSuccess.target);
+  };
+
+  const handleSkipTags = () => {
+    if (!captureSuccess) return;
+    finishCaptureSuccess(captureSuccess.target);
   };
 
   const handleDuplicateChoice = (choice: "merge" | "version" | "cancel") => {
+    if (!captureSuccess) return;
     if (choice === "cancel") {
-      setSheetState("idle");
+      setSheetState("post_capture");
       return;
     }
-    if (choice === "merge") {
-      showToast("합쳤어요");
-    } else {
-      showToast("새 버전으로 남겼어요");
-    }
-    finishCaptureSuccess(mode);
+    showToast(choice === "merge" ? "합쳤어요" : "새 버전으로 남겼어요");
+    finishCaptureSuccess(captureSuccess.target);
   };
 
   if (!open) return null;
@@ -176,6 +231,18 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
           </button>
         </header>
 
+        {sheetState === "error_jev" ? (
+          <ErrorBanner
+            message={JEV_COPY.jevErrorRetry}
+            onRetry={() => void handleSubmit()}
+            retryLabel={CAPTURE_COPY.retry}
+          />
+        ) : null}
+
+        {sheetState === "error_key_missing" ? (
+          <ErrorBanner message={JEV_COPY.keyMissing} />
+        ) : null}
+
         {sheetState === "error_network" ? (
           <ErrorBanner
             message={CAPTURE_COPY.networkError}
@@ -192,21 +259,13 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
           />
         ) : null}
 
-        {sheetState === "duplicate" ? (
-          <div className={styles.duplicate} role="status">
-            <p className={styles.duplicateLead}>{CAPTURE_COPY.duplicateTitle}</p>
-            <div className={styles.duplicateActions}>
-              <button type="button" onClick={() => handleDuplicateChoice("merge")}>
-                {CAPTURE_COPY.merge}
-              </button>
-              <button type="button" onClick={() => handleDuplicateChoice("version")}>
-                {CAPTURE_COPY.newVersion}
-              </button>
-              <button type="button" onClick={() => handleDuplicateChoice("cancel")}>
-                {CAPTURE_COPY.cancel}
-              </button>
-            </div>
-          </div>
+        {sheetState === "post_capture" && captureSuccess ? (
+          <CaptureJevPanel
+            judgments={captureSuccess.judgments}
+            onApplyTags={(tags) => void handleApplyTags(tags)}
+            onSkipTags={handleSkipTags}
+            onDuplicateChoice={handleDuplicateChoice}
+          />
         ) : (
           <>
             <div className={styles.modeToggle} role="group" aria-label="캡처 모드">
@@ -214,7 +273,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
                 type="button"
                 className={mode === "inbox" ? styles.modeActive : styles.mode}
                 onClick={() => setMode("inbox")}
-                disabled={disabled}
+                disabled={formLocked}
               >
                 {CAPTURE_COPY.modeInbox}
               </button>
@@ -222,7 +281,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
                 type="button"
                 className={mode === "note" ? styles.modeActive : styles.mode}
                 onClick={() => setMode("note")}
-                disabled={disabled}
+                disabled={formLocked}
               >
                 {CAPTURE_COPY.modeNote}
               </button>
@@ -233,7 +292,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                disabled={disabled}
+                disabled={formLocked}
                 required
               />
             </label>
@@ -243,7 +302,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                disabled={disabled}
+                disabled={formLocked}
                 required
                 rows={5}
               />
@@ -255,7 +314,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                disabled={disabled}
+                disabled={formLocked}
                 placeholder="https://"
               />
               <span className={styles.hint}>{CAPTURE_COPY.urlHint}</span>
@@ -265,7 +324,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
               <span>{CAPTURE_COPY.fileLabel}</span>
               <input
                 type="file"
-                disabled={disabled}
+                disabled={formLocked}
                 onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                 accept=".md,.pdf,.png,.jpg,.jpeg,.zip,.mp3,.mp4"
               />

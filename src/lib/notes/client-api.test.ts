@@ -12,6 +12,8 @@ import {
 describe("mapNoteApiFailure", () => {
   it("prefers explicit Rex code", () => {
     expect(mapNoteApiFailure(502, "ingest_failed")).toBe("ingest_failed");
+    expect(mapNoteApiFailure(502, "judgment_failed")).toBe("judgment_failed");
+    expect(mapNoteApiFailure(503, "typesafe_misconfigured")).toBe("typesafe_misconfigured");
   });
 
   it("infers from HTTP when code missing", () => {
@@ -95,25 +97,37 @@ describe("notes client API (Rex envelopes)", () => {
     } satisfies Partial<NotesApiError>);
   });
 
-  it("submitCapture maps ingest_failed 502", async () => {
+  it("submitCapture maps judgment_failed to jev_error", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
         ok: false,
         status: 502,
-        text: async () => JSON.stringify({ ok: false, code: "ingest_failed", jobId: "j1" }),
+        text: async () => JSON.stringify({ ok: false, code: "judgment_failed" }),
       }),
     );
     const result = await submitCapture({
       target: "note",
       title: "T",
       body: "B",
-      url: "https://example.com",
     });
-    expect(result).toEqual({ ok: false, reason: "ingest_failed" });
+    expect(result).toEqual({ ok: false, reason: "jev_error" });
   });
 
-  it("submitCapture maps Rex wire duplicateHint to UI boolean on 201", async () => {
+  it("submitCapture maps typesafe_misconfigured to key_missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: async () => JSON.stringify({ ok: false, code: "typesafe_misconfigured" }),
+      }),
+    );
+    const result = await submitCapture({ target: "inbox", title: "T", body: "B" });
+    expect(result).toEqual({ ok: false, reason: "key_missing" });
+  });
+
+  it("submitCapture parses Rex wire judgments on 201", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -124,7 +138,7 @@ describe("notes client API (Rex envelopes)", () => {
             ok: true,
             target: "inbox",
             inboxItem: { id: "in1" },
-            suggestions: { tags: [] },
+            suggestions: { tags: [{ tag: "idea", probability: 0.8 }] },
             duplicateHint: {
               relatedNoteId: "note-a",
               choice: "note-a",
@@ -136,6 +150,9 @@ describe("notes client API (Rex envelopes)", () => {
     );
     const result = await submitCapture({ target: "inbox", title: "T", body: "B" });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.duplicateHint).toBe(true);
+    if (result.ok) {
+      expect(result.judgments.suggestions.tags[0].tag).toBe("idea");
+      expect(result.judgments.duplicateHint?.relatedNoteId).toBe("note-a");
+    }
   });
 });

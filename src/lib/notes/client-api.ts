@@ -6,8 +6,12 @@ import {
   mapNoteApiFailure,
   NOTES_API,
 } from "./api-contract";
+<<<<<<< HEAD
 import type { CaptureInboxOk, CaptureNoteOk } from "@/lib/api/note-dto";
 import { parseCaptureJudgmentFields, wireDuplicateHintToBoolean } from "@/lib/judgments";
+=======
+import type { CaptureJudgmentPayload } from "@/lib/jev/capture-types";
+>>>>>>> f6159f5 (feat(ui): Jev capture slots — TagSuggestionChips, RelatedHint, errors)
 import type {
   CreateNoteInput,
   Note,
@@ -136,6 +140,8 @@ export type CaptureFailureReason =
   | "payload_too_large"
   | "not_found"
   | "misconfigured"
+  | "jev_error"
+  | "key_missing"
   | "network"
   | "server";
 
@@ -145,10 +151,19 @@ export type CaptureResult =
       target: CaptureTarget;
       noteId?: string;
       inboxItemId?: string;
-      /** Rex soft hint — user chooses merge / new version / cancel in UI */
-      duplicateHint?: boolean;
+      judgments: CaptureJudgmentPayload;
     }
   | { ok: false; reason: CaptureFailureReason };
+
+function parseCaptureJudgments(body: {
+  suggestions?: CaptureJudgmentPayload["suggestions"];
+  duplicateHint?: CaptureJudgmentPayload["duplicateHint"];
+}): CaptureJudgmentPayload {
+  return {
+    suggestions: body.suggestions ?? { tags: [] },
+    duplicateHint: body.duplicateHint ?? null,
+  };
+}
 
 async function uploadAttachmentForCapture(
   file: File,
@@ -191,11 +206,18 @@ function captureFailFromApi(status: number, body: ApiFail): CaptureResult {
       return { ok: false, reason: "validation" };
     case "ingest_failed":
       return { ok: false, reason: "ingest_failed" };
+<<<<<<< HEAD
     case "typesafe_misconfigured":
     case "misconfigured":
       return { ok: false, reason: "misconfigured" };
     case "judgment_failed":
       return { ok: false, reason: "server" };
+=======
+    case "judgment_failed":
+      return { ok: false, reason: "jev_error" };
+    case "typesafe_misconfigured":
+      return { ok: false, reason: "key_missing" };
+>>>>>>> f6159f5 (feat(ui): Jev capture slots — TagSuggestionChips, RelatedHint, errors)
     default:
       return { ok: false, reason: "server" };
   }
@@ -215,7 +237,27 @@ export async function submitCapture(payload: CapturePayload): Promise<CaptureRes
       }),
     });
 
+<<<<<<< HEAD
     const body = await parseJson<(CaptureNoteOk | CaptureInboxOk) | ApiFail>(res);
+=======
+    const body = await parseJson<
+      | {
+          ok: true;
+          target: "note";
+          note: { id: string };
+          suggestions?: CaptureJudgmentPayload["suggestions"];
+          duplicateHint?: CaptureJudgmentPayload["duplicateHint"];
+        }
+      | {
+          ok: true;
+          target: "inbox";
+          inboxItem: { id: string };
+          suggestions?: CaptureJudgmentPayload["suggestions"];
+          duplicateHint?: CaptureJudgmentPayload["duplicateHint"];
+        }
+      | ApiFail
+    >(res);
+>>>>>>> f6159f5 (feat(ui): Jev capture slots — TagSuggestionChips, RelatedHint, errors)
 
     if (res.status !== API_SUCCESS_STATUS.capture || body.ok === false) {
       return captureFailFromApi(res.status, body as ApiFail);
@@ -228,7 +270,11 @@ export async function submitCapture(payload: CapturePayload): Promise<CaptureRes
 
     const noteId = body.target === "note" ? body.note.id : undefined;
     const inboxItemId = body.target === "inbox" ? body.inboxItem.id : undefined;
+<<<<<<< HEAD
     const duplicateHint = wireDuplicateHintToBoolean(judgments.duplicateHint);
+=======
+    const judgments = parseCaptureJudgments(body);
+>>>>>>> f6159f5 (feat(ui): Jev capture slots — TagSuggestionChips, RelatedHint, errors)
 
     if (payload.file) {
       const uploadResult = await uploadAttachmentForCapture(payload.file, {
@@ -243,7 +289,7 @@ export async function submitCapture(payload: CapturePayload): Promise<CaptureRes
       target: body.target,
       noteId,
       inboxItemId,
-      duplicateHint: duplicateHint || undefined,
+      judgments,
     };
   } catch {
     return { ok: false, reason: "network" };
