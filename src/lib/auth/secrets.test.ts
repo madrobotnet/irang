@@ -6,8 +6,10 @@ describe("secrets stay out of the repo", () => {
     const example = readFileSync(".env.example", "utf8");
     expect(example).toContain("AUTH_PASSWORD_HASH=");
     expect(example).toContain("SESSION_SECRET=");
+    expect(example).toContain("TYPESAFE_API_KEY=");
     expect(example).not.toMatch(/AUTH_PASSWORD_HASH=.+/m);
     expect(example).not.toMatch(/SESSION_SECRET=.+/m);
+    expect(example).not.toMatch(/TYPESAFE_API_KEY=.+/m);
 
     const gitignore = readFileSync(".gitignore", "utf8");
     expect(gitignore).toMatch(/^\.env$/m);

@@ -6,4 +6,4 @@ Tests: `npm test`. Postgres round-trip (auth + notes E2): `npm run test:postgres
 
 E2 API (session required): `/api/notes`, `/api/capture`, `/api/capture/share`, `/api/attachments`, `/api/inbox` (list/promote/discard hooks).
 
-Capture/share also require `TYPESAFE_API_KEY` (Jev tag **suggestions** + `duplicateHint` proposals only — never auto-applied). Missing key → `503 typesafe_misconfigured`; TypeSafe failure → `502 judgment_failed`.
+Capture/share also require `TYPESAFE_API_KEY` (Jev tag **suggestions** + `duplicateHint` proposals only — never auto-applied). Missing key → `503 typesafe_misconfigured`; TypeSafe failure → `502 judgment_failed`. Typed client seat for Rex follow-up: `src/lib/jev/`.
