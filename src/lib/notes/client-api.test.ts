@@ -113,7 +113,7 @@ describe("notes client API (Rex envelopes)", () => {
     expect(result).toEqual({ ok: false, reason: "ingest_failed" });
   });
 
-  it("submitCapture honors duplicateHint on 201", async () => {
+  it("submitCapture maps Rex wire duplicateHint to UI boolean on 201", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -124,7 +124,13 @@ describe("notes client API (Rex envelopes)", () => {
             ok: true,
             target: "inbox",
             inboxItem: { id: "in1" },
-            duplicateHint: true,
+            suggestions: { tags: [] },
+            duplicateHint: {
+              relatedNoteId: "note-a",
+              choice: "note-a",
+              probability: 0.77,
+              confidence: 0.77,
+            },
           }),
       }),
     );

@@ -44,9 +44,46 @@ export type ListNotesOk = {
 
 export type NoteOk = { ok: true; note: NoteDto };
 
-export type CaptureOk =
-  | { ok: true; target: "note"; note: NoteDto }
-  | { ok: true; target: "inbox"; inboxItem: InboxItemDto };
+export type TagSuggestionDto = {
+  tag: string;
+  probability: number;
+};
+
+export type CaptureSuggestionsDto = {
+  tags: TagSuggestionDto[];
+};
+
+/** Rex Jev wire on capture/share 201 (see `src/domain/judgments/capture-api-wire.ts`). */
+export type DuplicateHintDto = {
+  relatedNoteId: string | null;
+  choice: string;
+  probability: number;
+  confidence: number;
+};
+
+export type CaptureJudgmentFieldsDto = {
+  suggestions: CaptureSuggestionsDto;
+  duplicateHint: DuplicateHintDto | null;
+};
+
+export type CaptureNoteOk = CaptureJudgmentFieldsDto & {
+  ok: true;
+  target: "note";
+  note: NoteDto;
+};
+
+export type CaptureInboxOk = CaptureJudgmentFieldsDto & {
+  ok: true;
+  target: "inbox";
+  inboxItem: InboxItemDto;
+};
+
+export type CaptureShareOk = CaptureJudgmentFieldsDto & {
+  ok: true;
+  inboxItem: InboxItemDto;
+};
+
+export type CaptureOk = CaptureNoteOk | CaptureInboxOk;
 
 export type InboxListOk = { ok: true; inboxItems: InboxItemDto[] };
 

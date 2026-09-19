@@ -6,6 +6,8 @@ import {
   mapNoteApiFailure,
   NOTES_API,
 } from "./api-contract";
+import type { CaptureInboxOk, CaptureNoteOk } from "@/lib/api/note-dto";
+import { parseCaptureJudgmentFields, wireDuplicateHintToBoolean } from "@/lib/judgments";
 import type {
   CreateNoteInput,
   Note,
@@ -189,6 +191,11 @@ function captureFailFromApi(status: number, body: ApiFail): CaptureResult {
       return { ok: false, reason: "validation" };
     case "ingest_failed":
       return { ok: false, reason: "ingest_failed" };
+    case "typesafe_misconfigured":
+    case "misconfigured":
+      return { ok: false, reason: "misconfigured" };
+    case "judgment_failed":
+      return { ok: false, reason: "server" };
     default:
       return { ok: false, reason: "server" };
   }
@@ -208,29 +215,20 @@ export async function submitCapture(payload: CapturePayload): Promise<CaptureRes
       }),
     });
 
-    const body = await parseJson<
-      | {
-          ok: true;
-          target: "note";
-          note: { id: string };
-          duplicateHint?: boolean;
-        }
-      | {
-          ok: true;
-          target: "inbox";
-          inboxItem: { id: string };
-          duplicateHint?: boolean;
-        }
-      | ApiFail
-    >(res);
+    const body = await parseJson<(CaptureNoteOk | CaptureInboxOk) | ApiFail>(res);
 
     if (res.status !== API_SUCCESS_STATUS.capture || body.ok === false) {
       return captureFailFromApi(res.status, body as ApiFail);
     }
 
+    const judgments = parseCaptureJudgmentFields(body);
+    if (!judgments) {
+      return { ok: false, reason: "server" };
+    }
+
     const noteId = body.target === "note" ? body.note.id : undefined;
     const inboxItemId = body.target === "inbox" ? body.inboxItem.id : undefined;
-    const duplicateHint = Boolean(body.duplicateHint);
+    const duplicateHint = wireDuplicateHintToBoolean(judgments.duplicateHint);
 
     if (payload.file) {
       const uploadResult = await uploadAttachmentForCapture(payload.file, {
