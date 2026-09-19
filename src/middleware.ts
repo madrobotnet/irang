@@ -3,12 +3,6 @@ import { decideAuthGate, isPublicPath } from "@/lib/auth/gate";
 import { applySecurityHeaders } from "@/lib/auth/security-headers";
 import { unauthorizedJsonResponse } from "@/lib/auth/api-errors";
 import { hasVerifiedSession } from "@/lib/auth/verify-session";
-import {
-  attachmentPayloadTooLargeResponse,
-  isAttachmentRequestBodyTooLarge,
-  isAttachmentUploadPost,
-  parseContentLengthHeader,
-} from "@/lib/notes/attachment-upload-limit";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -32,15 +26,6 @@ export async function middleware(request: NextRequest) {
     response = new NextResponse(body.body, {
       status: 401,
       headers: body.headers,
-    });
-  } else if (
-    isAttachmentUploadPost(pathname, request.method) &&
-    isAttachmentRequestBodyTooLarge(parseContentLengthHeader(request.headers))
-  ) {
-    const tooLarge = attachmentPayloadTooLargeResponse();
-    response = new NextResponse(tooLarge.body, {
-      status: tooLarge.status,
-      headers: tooLarge.headers,
     });
   } else {
     response = NextResponse.next();

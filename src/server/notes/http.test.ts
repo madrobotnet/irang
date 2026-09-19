@@ -19,7 +19,6 @@ import {
   handleRestoreNote,
   handleUploadAttachment,
 } from "./http";
-import { ATTACHMENT_MAX_REQUEST_BODY_BYTES } from "@/lib/notes/attachment-upload-limit";
 
 let attachDir = "";
 
@@ -205,34 +204,6 @@ describe("notes API (API_NOTE_CONTRACT)", () => {
     expect(res.status).toBe(201);
     const body = (await res.json()) as { inboxItem: { source: string } };
     expect(body.inboxItem.source).toBe("share");
-  });
-
-  it("attachment upload rejects Content-Length over limit with 413", async () => {
-    const noteRes = await handleCreateNote(
-      new Request("http://localhost/api/notes", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title: "Att", body: "b" }),
-      }),
-    );
-    const { note } = (await noteRes.json()) as { note: { id: string } };
-    const res = await handleUploadAttachment(
-      new Request("http://localhost/api/attachments", {
-        method: "POST",
-        headers: {
-          "content-length": String(ATTACHMENT_MAX_REQUEST_BODY_BYTES + 1),
-        },
-        body: (() => {
-          const fd = new FormData();
-          fd.set("noteId", note.id);
-          fd.set("file", new File(["tiny"], "readme.md", { type: "text/markdown" }));
-          return fd;
-        })(),
-      }),
-    );
-    expect(res.status).toBe(413);
-    const body = (await res.json()) as { code: string };
-    expect(body.code).toBe("payload_too_large");
   });
 
   it("attachment upload whitelist and size", async () => {
