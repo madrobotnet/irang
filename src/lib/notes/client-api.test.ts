@@ -127,6 +127,27 @@ describe("notes client API (Rex envelopes)", () => {
     expect(result).toEqual({ ok: false, reason: "key_missing" });
   });
 
+  it("submitCapture sets duplicateHint boolean false when wire has no related note", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: async () =>
+          JSON.stringify({
+            ok: true,
+            target: "inbox",
+            inboxItem: { id: "in1" },
+            suggestions: { tags: [] },
+            duplicateHint: null,
+          }),
+      }),
+    );
+    const result = await submitCapture({ target: "inbox", title: "T", body: "B" });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.duplicateHint).toBe(false);
+  });
+
   it("submitCapture parses Rex wire judgments on 201", async () => {
     vi.stubGlobal(
       "fetch",
@@ -151,6 +172,7 @@ describe("notes client API (Rex envelopes)", () => {
     const result = await submitCapture({ target: "inbox", title: "T", body: "B" });
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.duplicateHint).toBe(true);
       expect(result.judgments.suggestions.tags[0].tag).toBe("idea");
       expect(result.judgments.duplicateHint?.relatedNoteId).toBe("note-a");
     }

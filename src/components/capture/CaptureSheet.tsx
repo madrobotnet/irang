@@ -29,6 +29,7 @@ type CaptureSuccess = {
   target: CaptureTarget;
   noteId?: string;
   inboxItemId?: string;
+  duplicateHint: boolean;
   judgments: CaptureJudgmentPayload;
 };
 
@@ -115,8 +116,8 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
 
   const afterCaptureSuccess = (success: CaptureSuccess) => {
     const hasJevUi =
+      success.duplicateHint ||
       success.judgments.suggestions.tags.length > 0 ||
-      Boolean(success.judgments.duplicateHint?.relatedNoteId) ||
       derivePostCaptureJevState(success.judgments) !== "jev_idle";
 
     if (hasJevUi) {
@@ -175,6 +176,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
       target: result.target,
       noteId: result.noteId,
       inboxItemId: result.inboxItemId,
+      duplicateHint: result.duplicateHint,
       judgments: result.judgments,
     });
   };
@@ -262,6 +264,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
         {sheetState === "post_capture" && captureSuccess ? (
           <CaptureJevPanel
             judgments={captureSuccess.judgments}
+            duplicateHint={captureSuccess.duplicateHint}
             onApplyTags={(tags) => void handleApplyTags(tags)}
             onSkipTags={handleSkipTags}
             onDuplicateChoice={handleDuplicateChoice}

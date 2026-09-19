@@ -1,22 +1,8 @@
-/** Client DTOs for capture judgment fields (mirrors Rex wire; no domain import). */
+/** Client aliases for Rex judgment wire (via Kai `lib/judgments` boundary). */
 
-export type TagSuggestionDto = {
-  tag: string;
-  probability: number;
-};
-
-export type CaptureSuggestionsDto = {
-  tags: TagSuggestionDto[];
-};
-
-export type DuplicateHintDto = {
-  relatedNoteId: string | null;
-  choice: string;
-  probability: number;
-  confidence: number;
-};
-
-export type CaptureJudgmentPayload = {
-  suggestions: CaptureSuggestionsDto;
-  duplicateHint: DuplicateHintDto | null;
-};
+export type {
+  CaptureJudgments as CaptureJudgmentPayload,
+  CaptureSuggestions as CaptureSuggestionsDto,
+  DuplicateHint as DuplicateHintDto,
+  TagSuggestion as TagSuggestionDto,
+} from "@/lib/judgments";
