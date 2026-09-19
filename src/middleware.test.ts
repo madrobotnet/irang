@@ -12,6 +12,7 @@ import { createAuthService, createMemoryAuthDeps, setAuthRuntimeForTests } from 
 import { sha256TokenHasher } from "@/server/auth/crypto";
 import { handleMe } from "@/server/auth/http";
 import { E2_PROTECTED_API_ROUTES } from "@/lib/auth/e2-gate-paths";
+import { ATTACHMENT_MAX_REQUEST_BODY_BYTES } from "@/lib/notes/attachment-upload-limit";
 
 function installRuntime() {
   const sessions = new InMemorySessionRepository();
@@ -150,6 +151,41 @@ describe("middleware gate", () => {
       const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
       expect(response.status).toBe(401);
     }
+  });
+
+  it("returns 413 for attachment upload when Content-Length exceeds limit (authenticated)", async () => {
+    const { service } = installRuntime();
+    const login = await service.login({ password: "ok-password", clientKey: "test" });
+    expect(login.kind).toBe("ok");
+    if (login.kind !== "ok") {
+      return;
+    }
+    const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
+    const response = await middleware(
+      new NextRequest("https://brain.madrobot.net/api/attachments", {
+        method: "POST",
+        headers: {
+          cookie,
+          "content-type": "multipart/form-data; boundary=----test",
+          "content-length": String(ATTACHMENT_MAX_REQUEST_BODY_BYTES + 1),
+        },
+      }),
+    );
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ ok: false, code: "payload_too_large" });
+  });
+
+  it("returns 401 (not 413) for oversize attachment upload without session", async () => {
+    const response = await middleware(
+      new NextRequest("https://brain.madrobot.net/api/attachments", {
+        method: "POST",
+        headers: {
+          "content-type": "multipart/form-data; boundary=----test",
+          "content-length": String(ATTACHMENT_MAX_REQUEST_BODY_BYTES + 1),
+        },
+      }),
+    );
+    expect(response.status).toBe(401);
   });
 
   it("sets security headers on gated responses", async () => {

@@ -25,6 +25,10 @@ import {
   JudgmentFailedError,
   TypesafeMisconfiguredError,
 } from "@/server/typesafe/runtime";
+import {
+  isAttachmentRequestBodyTooLarge,
+  parseContentLengthHeader,
+} from "@/lib/notes/attachment-upload-limit";
 
 function json(body: unknown, status: number): Response {
   const headers = new Headers({ "content-type": "application/json; charset=utf-8" });
@@ -382,6 +386,9 @@ export async function handleDiscardInbox(id: string): Promise<Response> {
 }
 
 export async function handleUploadAttachment(request: Request): Promise<Response> {
+  if (isAttachmentRequestBodyTooLarge(parseContentLengthHeader(request.headers))) {
+    return json(noteErrorBody("payload_too_large"), 413);
+  }
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {
