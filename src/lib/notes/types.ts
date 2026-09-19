@@ -1,19 +1,20 @@
-export type NoteKind = "wiki" | "raw";
+/** UI view of Rex `NoteRecord` (see server/domain — do not import from domain in UI lane). */
 
-/** Rex/Kai contract — see `api-contract.ts` for HTTP shapes. */
+export type NoteStatus = "draft" | "confirmed" | "archived";
+
 export type Note = {
   id: string;
   title: string;
   body: string;
-  kind: NoteKind;
+  status: NoteStatus;
   createdAt: string;
   updatedAt: string;
-  /** ISO timestamp when soft-deleted; null = active */
-  trashedAt: string | null;
+  deletedAt: string | null;
+  purgeAt: string | null;
 };
 
 export type NoteListResponse = {
-  items: Note[];
+  notes: Note[];
   nextCursor: string | null;
 };
 
@@ -27,4 +28,7 @@ export type UpdateNoteInput = {
   body: string;
 };
 
-export const TRASH_RETENTION_DAYS = 7;
+export type InboxItemSummary = {
+  id: string;
+  title: string;
+};

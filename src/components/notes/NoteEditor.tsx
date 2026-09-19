@@ -52,7 +52,7 @@ export function NoteEditor({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const readOnly = trashed || note?.kind === "raw";
+  const readOnly = trashed;
 
   if (!note) {
     return (
@@ -65,11 +65,8 @@ export function NoteEditor({
   return (
     <div className={styles.editor}>
       <div className={styles.toolbar}>
-        {note.kind === "raw" ? (
-          <span className={styles.badge}>{NOTE_COPY.rawBadge}</span>
-        ) : null}
         <div className={styles.toolbarActions}>
-          {!trashed && note.kind === "wiki" ? (
+          {!trashed ? (
             <button
               type="button"
               className={styles.trashBtn}

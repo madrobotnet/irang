@@ -38,24 +38,24 @@ export function NotesWorkspace() {
     activeNote !== null &&
     (draftTitle !== activeNote.title || draftBody !== activeNote.body);
 
-  const trashed = Boolean(activeNote?.trashedAt);
+  const trashed = Boolean(activeNote?.deletedAt);
 
   const loadList = useCallback(async () => {
     setViewState("loading");
     setError(null);
     try {
-      const { items } = await listNotes();
-      setNotes(items);
-      if (items.length === 0) {
+      const { notes: listed } = await listNotes();
+      setNotes(listed);
+      if (listed.length === 0) {
         setViewState("empty");
         setSelectedId(null);
         setActiveNote(null);
         return;
       }
       setViewState("ready");
-      const pick = selectedId && items.some((n) => n.id === selectedId)
+      const pick = selectedId && listed.some((n) => n.id === selectedId)
         ? selectedId
-        : items[0].id;
+        : listed[0].id;
       setSelectedId(pick);
     } catch {
       setViewState("error");
@@ -146,7 +146,7 @@ export function NotesWorkspace() {
   };
 
   const handleRestore = async () => {
-    if (!activeNote?.trashedAt) return;
+    if (!activeNote?.deletedAt) return;
     setRestoring(true);
     try {
       const restored = await restoreNote(activeNote.id);
@@ -212,9 +212,10 @@ export function NotesWorkspace() {
             onSelect={setSelectedId}
           />
           <div className={styles.editorColumn}>
-            {trashed && activeNote?.trashedAt ? (
+            {trashed && activeNote?.deletedAt ? (
               <TrashBanner
-                trashedAt={activeNote.trashedAt}
+                deletedAt={activeNote.deletedAt}
+                purgeAt={activeNote.purgeAt}
                 onRestore={() => void handleRestore()}
                 restoring={restoring}
               />

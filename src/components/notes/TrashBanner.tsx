@@ -1,17 +1,18 @@
 "use client";
 
-import { daysUntilTrashPurge } from "@/lib/notes/client-api";
+import { daysUntilPurge } from "@/lib/notes/client-api";
 import { NOTE_COPY } from "./copy";
 import styles from "./TrashBanner.module.css";
 
 type TrashBannerProps = {
-  trashedAt: string;
+  deletedAt: string;
+  purgeAt: string | null;
   onRestore: () => void;
   restoring?: boolean;
 };
 
-export function TrashBanner({ trashedAt, onRestore, restoring }: TrashBannerProps) {
-  const days = daysUntilTrashPurge(trashedAt);
+export function TrashBanner({ deletedAt, purgeAt, onRestore, restoring }: TrashBannerProps) {
+  const days = daysUntilPurge(purgeAt, deletedAt);
 
   return (
     <div className={styles.banner} role="status">

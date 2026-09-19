@@ -1,5 +1,9 @@
-import { CAPTURE_API, NOTES_API } from "./api-contract";
-import { localNotesStub } from "./local-stub";
+import type { NoteApiErrorCode } from "@/lib/api/note-contract";
+import {
+  ATTACHMENTS_API,
+  CAPTURE_API,
+  NOTES_API,
+} from "./api-contract";
 import type {
   CreateNoteInput,
   Note,
@@ -10,18 +14,15 @@ import type {
 export class NotesApiError extends Error {
   constructor(
     message: string,
-    readonly status?: number,
+    readonly status: number,
+    readonly code?: NoteApiErrorCode,
   ) {
     super(message);
     this.name = "NotesApiError";
   }
 }
 
-let preferStub = false;
-
-function apiUnavailable(status: number): boolean {
-  return status === 404 || status === 501 || status === 405;
-}
+type ApiFail = { ok: false; code: NoteApiErrorCode; fields?: string[] };
 
 async function parseJson<T>(res: Response): Promise<T> {
   const text = await res.text();
@@ -29,125 +30,74 @@ async function parseJson<T>(res: Response): Promise<T> {
   return JSON.parse(text) as T;
 }
 
-async function withStubFallback<T>(
-  http: () => Promise<T>,
-  stub: () => Promise<T>,
-): Promise<T> {
-  if (preferStub) return stub();
-  try {
-    return await http();
-  } catch (err) {
-    if (err instanceof NotesApiError && err.status && apiUnavailable(err.status)) {
-      preferStub = true;
-      return stub();
-    }
-    throw err;
+async function expectOk<T extends { ok: true }>(res: Response): Promise<T> {
+  const body = await parseJson<T | ApiFail>(res);
+  if (!res.ok || (body as ApiFail).ok === false) {
+    const fail = body as ApiFail;
+    throw new NotesApiError(fail.code ?? "request_failed", res.status, fail.code);
   }
+  return body as T;
 }
 
 export async function listNotes(cursor?: string): Promise<NoteListResponse> {
-  return withStubFallback(
-    async () => {
-      const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-      const res = await fetch(`${NOTES_API.list}${qs}`, { credentials: "include" });
-      if (!res.ok) {
-        throw new NotesApiError("list_failed", res.status);
-      }
-      return parseJson<NoteListResponse>(res);
-    },
-    () => localNotesStub.list(),
-  );
+  const qs = new URLSearchParams();
+  if (cursor) qs.set("cursor", cursor);
+  const suffix = qs.size ? `?${qs.toString()}` : "";
+  const res = await fetch(`${NOTES_API.list}${suffix}`, { credentials: "include" });
+  const body = await expectOk<{ ok: true; notes: Note[]; nextCursor: string | null }>(res);
+  return { notes: body.notes, nextCursor: body.nextCursor };
 }
 
 export async function getNote(id: string): Promise<Note> {
-  return withStubFallback(
-    async () => {
-      const res = await fetch(NOTES_API.item(id), { credentials: "include" });
-      if (!res.ok) {
-        throw new NotesApiError("get_failed", res.status);
-      }
-      return parseJson<Note>(res);
-    },
-    async () => {
-      const note = await localNotesStub.get(id);
-      if (!note) throw new NotesApiError("not_found", 404);
-      return note;
-    },
-  );
+  const res = await fetch(NOTES_API.item(id), { credentials: "include" });
+  const body = await expectOk<{ ok: true; note: Note }>(res);
+  return body.note;
 }
 
 export async function createNote(input: CreateNoteInput): Promise<Note> {
-  return withStubFallback(
-    async () => {
-      const res = await fetch(NOTES_API.list, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-      if (!res.ok) {
-        throw new NotesApiError("create_failed", res.status);
-      }
-      return parseJson<Note>(res);
-    },
-    () => localNotesStub.create(input),
-  );
+  const res = await fetch(NOTES_API.list, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: input.title, body: input.body }),
+  });
+  const body = await expectOk<{ ok: true; note: Note }>(res);
+  return body.note;
 }
 
 export async function updateNote(id: string, input: UpdateNoteInput): Promise<Note> {
-  return withStubFallback(
-    async () => {
-      const res = await fetch(NOTES_API.item(id), {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-      if (!res.ok) {
-        throw new NotesApiError("update_failed", res.status);
-      }
-      return parseJson<Note>(res);
-    },
-    () => localNotesStub.update(id, input),
-  );
+  const res = await fetch(NOTES_API.item(id), {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: input.title, body: input.body }),
+  });
+  const body = await expectOk<{ ok: true; note: Note }>(res);
+  return body.note;
 }
 
 export async function trashNote(id: string): Promise<Note> {
-  return withStubFallback(
-    async () => {
-      const res = await fetch(NOTES_API.item(id), {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        throw new NotesApiError("trash_failed", res.status);
-      }
-      return parseJson<Note>(res);
-    },
-    () => localNotesStub.trash(id),
-  );
+  const res = await fetch(NOTES_API.item(id), {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const body = await expectOk<{ ok: true; note: Note }>(res);
+  return body.note;
 }
 
 export async function restoreNote(id: string): Promise<Note> {
-  return withStubFallback(
-    async () => {
-      const res = await fetch(NOTES_API.restore(id), {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        throw new NotesApiError("restore_failed", res.status);
-      }
-      return parseJson<Note>(res);
-    },
-    () => localNotesStub.restore(id),
-  );
+  const res = await fetch(NOTES_API.restore(id), {
+    method: "POST",
+    credentials: "include",
+  });
+  const body = await expectOk<{ ok: true; note: Note }>(res);
+  return body.note;
 }
 
-export type CaptureMode = "inbox" | "note";
+export type CaptureTarget = "inbox" | "note";
 
 export type CapturePayload = {
-  mode: CaptureMode;
+  target: CaptureTarget;
   title: string;
   body: string;
   url?: string;
@@ -155,59 +105,103 @@ export type CapturePayload = {
 };
 
 export type CaptureResult =
-  | { ok: true; target: CaptureMode; id?: string }
-  | { ok: false; reason: "network" | "duplicate" | "server" };
+  | {
+      ok: true;
+      target: CaptureTarget;
+      noteId?: string;
+      inboxItemId?: string;
+    }
+  | {
+      ok: false;
+      reason: "network" | "duplicate" | "server" | "mime" | "size" | "ingest_failed";
+    };
 
-export async function submitCapture(payload: CapturePayload): Promise<CaptureResult> {
+async function uploadAttachmentForCapture(
+  file: File,
+  refs: { noteId?: string; inboxItemId?: string },
+): Promise<CaptureResult | null> {
+  const form = new FormData();
+  form.set("file", file);
+  if (refs.noteId) form.set("noteId", refs.noteId);
+  if (refs.inboxItemId) form.set("inboxItemId", refs.inboxItemId);
+
   try {
-    const form = new FormData();
-    form.set("mode", payload.mode);
-    form.set("title", payload.title);
-    form.set("body", payload.body);
-    if (payload.url?.trim()) form.set("url", payload.url.trim());
-    if (payload.file) form.set("file", payload.file);
-
-    const res = await fetch(CAPTURE_API, {
+    const res = await fetch(ATTACHMENTS_API, {
       method: "POST",
       credentials: "include",
       body: form,
     });
-
-    if (res.status === 409) {
-      return { ok: false, reason: "duplicate" };
-    }
-    if (!res.ok) {
-      if (apiUnavailable(res.status)) {
-        if (payload.mode === "note") {
-          const note = await createNote({
-            title: payload.title,
-            body: payload.body,
-          });
-          return { ok: true, target: "note", id: note.id };
-        }
-        return { ok: true, target: "inbox" };
-      }
+    const body = await parseJson<{ ok: boolean; code?: NoteApiErrorCode }>(res);
+    if (!res.ok || body.ok === false) {
+      if (body.code === "unsupported_media") return { ok: false, reason: "mime" };
+      if (body.code === "payload_too_large") return { ok: false, reason: "size" };
       return { ok: false, reason: "server" };
     }
-    const data = await parseJson<{ id?: string; target?: CaptureMode }>(res);
+    return null;
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+export async function submitCapture(payload: CapturePayload): Promise<CaptureResult> {
+  try {
+    const res = await fetch(CAPTURE_API, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: payload.title,
+        body: payload.body,
+        target: payload.target,
+        ...(payload.url?.trim() ? { url: payload.url.trim() } : {}),
+      }),
+    });
+
+    const body = await parseJson<
+      | { ok: true; target: "note"; note: { id: string } }
+      | { ok: true; target: "inbox"; inboxItem: { id: string } }
+      | ApiFail
+    >(res);
+
+    if (!res.ok || body.ok === false) {
+      const fail = body as ApiFail;
+      if (res.status === 409) return { ok: false, reason: "duplicate" };
+      if (fail.code === "ingest_failed") return { ok: false, reason: "ingest_failed" };
+      return { ok: false, reason: "server" };
+    }
+
+    const noteId = body.target === "note" ? body.note.id : undefined;
+    const inboxItemId = body.target === "inbox" ? body.inboxItem.id : undefined;
+
+    if (payload.file) {
+      const uploadResult = await uploadAttachmentForCapture(payload.file, {
+        noteId,
+        inboxItemId,
+      });
+      if (uploadResult) return uploadResult;
+    }
+
     return {
       ok: true,
-      target: data.target ?? payload.mode,
-      id: data.id,
+      target: body.target,
+      noteId,
+      inboxItemId,
     };
   } catch {
     return { ok: false, reason: "network" };
   }
 }
 
-export function daysUntilTrashPurge(trashedAt: string, retentionDays = 7): number {
-  const trashed = new Date(trashedAt).getTime();
-  const purgeAt = trashed + retentionDays * 24 * 60 * 60 * 1000;
-  const remainingMs = purgeAt - Date.now();
-  return Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
-}
-
-/** @internal test helper */
-export function resetNotesApiPreference(): void {
-  preferStub = false;
+/** Days until Rex hard-purges a soft-deleted note (uses purgeAt when present). */
+export function daysUntilPurge(purgeAt: string | null, deletedAt?: string | null): number {
+  if (purgeAt) {
+    const remainingMs = new Date(purgeAt).getTime() - Date.now();
+    return Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+  }
+  if (deletedAt) {
+    const trashed = new Date(deletedAt).getTime();
+    const purgeEstimate = trashed + 7 * 24 * 60 * 60 * 1000;
+    return Math.max(0, Math.ceil((purgeEstimate - Date.now()) / (24 * 60 * 60 * 1000)));
+  }
+  return 0;
 }

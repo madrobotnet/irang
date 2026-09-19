@@ -7,11 +7,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import type { CaptureMode } from "@/lib/notes/client-api";
+import type { CaptureTarget } from "@/lib/notes/client-api";
 import { CaptureSheet } from "./CaptureSheet";
 
 type CaptureContextValue = {
-  openCapture: (defaultMode?: CaptureMode) => void;
+  openCapture: (defaultTarget?: CaptureTarget) => void;
   closeCapture: () => void;
 };
 
@@ -19,9 +19,9 @@ const CaptureContext = createContext<CaptureContextValue | null>(null);
 
 export function CaptureProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const [defaultMode, setDefaultMode] = useState<CaptureMode>("inbox");
+  const [defaultMode, setDefaultMode] = useState<CaptureTarget>("inbox");
 
-  const openCapture = useCallback((mode: CaptureMode = "inbox") => {
+  const openCapture = useCallback((mode: CaptureTarget = "inbox") => {
     setDefaultMode(mode);
     setOpen(true);
   }, []);

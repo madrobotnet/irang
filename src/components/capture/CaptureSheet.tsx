@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { validateCaptureFile } from "@/lib/capture/validation";
-import type { CaptureMode } from "@/lib/notes/client-api";
+import type { CaptureTarget } from "@/lib/notes/client-api";
 import { submitCapture } from "@/lib/notes/client-api";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useToast } from "@/components/ui/Toast";
@@ -19,13 +19,13 @@ type SheetState =
 
 type CaptureSheetProps = {
   open: boolean;
-  defaultMode: CaptureMode;
+  defaultMode: CaptureTarget;
   onClose: () => void;
 };
 
 export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) {
   const { showToast } = useToast();
-  const [mode, setMode] = useState<CaptureMode>(defaultMode);
+  const [mode, setMode] = useState<CaptureTarget>(defaultMode);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
@@ -98,7 +98,7 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
 
     setSheetState("uploading");
     const result = await submitCapture({
-      mode,
+      target: mode,
       title: title.trim(),
       body: body.trim(),
       url: url.trim() || undefined,
@@ -108,6 +108,14 @@ export function CaptureSheet({ open, defaultMode, onClose }: CaptureSheetProps) 
     if (!result.ok) {
       if (result.reason === "duplicate") {
         setSheetState("duplicate");
+        return;
+      }
+      if (result.reason === "mime") {
+        setSheetState("error_mime");
+        return;
+      }
+      if (result.reason === "size") {
+        setSheetState("error_size");
         return;
       }
       setSheetState("error_network");
