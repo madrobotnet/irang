@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { E2_PROTECTED_API_ROUTES, E2_PROTECTED_PAGE_ROUTES } from "./e2-gate-paths";
 import { decideAuthGate, isPublicPath } from "./gate";
 
 describe("auth gate", () => {
@@ -36,5 +37,22 @@ describe("auth gate", () => {
     expect(decideAuthGate({ pathname: "/api/notes", hasValidSessionToken: true }).action).toBe(
       "next",
     );
+  });
+
+  it("does not treat E2 note/capture APIs as public", () => {
+    for (const pathname of E2_PROTECTED_API_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "unauthorized",
+      });
+    }
+  });
+
+  it("redirects unauthenticated E2 pages to login", () => {
+    for (const pathname of E2_PROTECTED_PAGE_ROUTES) {
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "redirect_login",
+      });
+    }
   });
 });

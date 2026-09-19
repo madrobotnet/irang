@@ -11,6 +11,7 @@ import {
 import { createAuthService, createMemoryAuthDeps, setAuthRuntimeForTests } from "@/server/auth/runtime";
 import { sha256TokenHasher } from "@/server/auth/crypto";
 import { handleMe } from "@/server/auth/http";
+import { E2_PROTECTED_API_ROUTES } from "@/lib/auth/e2-gate-paths";
 
 function installRuntime() {
   const sessions = new InMemorySessionRepository();
@@ -95,8 +96,26 @@ describe("middleware gate", () => {
       return;
     }
     const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
+    for (const path of ["/chat", "/notes"]) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie },
+        }),
+      );
+      expect(response.status).toBe(200);
+    }
+  });
+
+  it("allows verified session through middleware for E2 APIs (handler enforces business rules)", async () => {
+    const { service } = installRuntime();
+    const login = await service.login({ password: "ok-password", clientKey: "test" });
+    expect(login.kind).toBe("ok");
+    if (login.kind !== "ok") {
+      return;
+    }
+    const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
     const response = await middleware(
-      new NextRequest("https://brain.madrobot.net/chat", {
+      new NextRequest("https://brain.madrobot.net/api/capture", {
         headers: { cookie },
       }),
     );
@@ -124,6 +143,13 @@ describe("middleware gate", () => {
       }),
     );
     expect(response.status).toBe(401);
+  });
+
+  it("returns 401 for unauthenticated E2 APIs", async () => {
+    for (const path of E2_PROTECTED_API_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(401);
+    }
   });
 
   it("sets security headers on gated responses", async () => {
