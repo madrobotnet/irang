@@ -9,3 +9,4 @@ coverage
 .omo
 letsencrypt
 acme.json
+data/uploads

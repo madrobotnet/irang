@@ -1,0 +1,90 @@
+import { noul, TypeSafeClient } from "@typesafe-ai/sdk";
+import type { NoulQuestion } from "@typesafe-ai/sdk";
+
+export class TypeSafeMisconfiguredError extends Error {
+  readonly name = "TypeSafeMisconfiguredError";
+
+  constructor() {
+    super("typesafe_misconfigured");
+  }
+}
+
+class DuplicateJudgmentIncompleteError extends Error {
+  readonly name = "DuplicateJudgmentIncompleteError";
+
+  constructor(readonly candidateId: string) {
+    super(`duplicate answer missing for ${candidateId}`);
+  }
+}
+
+export type DuplicateCandidate = {
+  readonly id: string;
+  readonly title: string;
+  readonly body: string;
+};
+
+export type DuplicateJudgmentState = {
+  readonly incoming: {
+    readonly title: string;
+    readonly body: string;
+    readonly url: string | null;
+  };
+  readonly candidates: readonly DuplicateCandidate[];
+};
+
+export type DuplicateJudgment = {
+  readonly candidates: readonly {
+    readonly id: string;
+    readonly probability: number;
+  }[];
+};
+
+export async function judgeDuplicates(state: DuplicateJudgmentState): Promise<DuplicateJudgment> {
+  const apiKey = process.env["TYPESAFE_API_KEY"]?.trim() ?? "";
+  if (apiKey === "") throw new TypeSafeMisconfiguredError();
+  if (state.candidates.length === 0) return { candidates: [] };
+
+  const questions: { [id: string]: NoulQuestion } = {};
+  for (const [index, candidate] of state.candidates.entries()) {
+    const candidatePath = `candidates[${String(index)}]`;
+    questions[candidate.id] = noul(
+      {
+        question:
+          "Is this candidate a duplicate or near-duplicate of the incoming capture, close enough that a person should be offered a merge?",
+        compare: `Compare \`incoming\` with \`${candidatePath}\`, including \`incoming.url\` when it is not null.`,
+        duplicate: "The candidate restates the incoming capture and should be offered for merge.",
+        distinct: "The candidate is a different note. Shared topic words alone are not a duplicate.",
+      },
+      {
+        true: "Offer this candidate as a duplicate or near-duplicate.",
+        false: "Do not offer this candidate. It is a distinct note.",
+      },
+    );
+  }
+
+  const client = new TypeSafeClient({ apiKey, logLevel: "off" });
+  const result = await client.systemOne({
+    model: "jev-latest",
+    state: {
+      incoming: {
+        title: state.incoming.title,
+        body: state.incoming.body,
+        url: state.incoming.url,
+      },
+      candidates: state.candidates.map((candidate) => ({
+        id: candidate.id,
+        title: candidate.title,
+        body: candidate.body,
+      })),
+    },
+    questions,
+  });
+
+  return {
+    candidates: state.candidates.map((candidate) => {
+      const answer = result.answers[candidate.id];
+      if (answer === undefined) throw new DuplicateJudgmentIncompleteError(candidate.id);
+      return { id: candidate.id, probability: answer.noul };
+    }),
+  };
+}

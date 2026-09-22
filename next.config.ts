@@ -11,6 +11,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // 101mb sits above the 100MB upload gate so proxy truncation cannot turn an oversized body into a 500.
+    proxyClientMaxBodySize: "101mb",
+  },
   async headers() {
     return [{ source: "/:path*", headers: [...securityHeaders] }];
   },

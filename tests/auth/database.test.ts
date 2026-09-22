@@ -47,7 +47,16 @@ it("preserves auth tables when the migration is applied again", async () => {
   const tables = await database<{ readonly table_name: string }[]>`
     SELECT table_name FROM information_schema.tables WHERE table_schema = ${schema} ORDER BY table_name
   `;
-  assert.deepEqual(tables.map((table) => table.table_name), ["audit_events", "login_failures", "login_locks", "sessions"]);
+  assert.deepEqual(tables.map((table) => table.table_name), [
+    "attachments",
+    "audit_events",
+    "inbox_items",
+    "judgments",
+    "login_failures",
+    "login_locks",
+    "notes",
+    "sessions",
+  ]);
 });
 
 const now = new Date("2030-01-01T00:00:00Z");
