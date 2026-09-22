@@ -1,0 +1,49 @@
+.home {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 4rem;
+}
+
+.title {
+  margin: 0 0 0.4rem;
+  font-family: "Nanum Myeongjo", "Noto Serif CJK KR", serif;
+  font-size: clamp(2.4rem, 6vw, 3.4rem);
+  font-weight: 400;
+}
+
+.lede {
+  margin: 0 0 2rem;
+  color: var(--muted);
+}
+
+.actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.action {
+  display: block;
+  padding: 1.1rem 1rem;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.action strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 1.25rem;
+}
+
+.action span {
+  color: var(--muted);
+}
+
+.logout {
+  margin-top: 2rem;
+  background: transparent;
+  color: var(--fg);
+  border: 0;
+  font: inherit;
+}
