@@ -12,6 +12,21 @@ function likeTerm(query: string): string {
   return `%${query.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
 }
 
+export function embed(text: string): readonly number[] {
+  const buckets = [0, 0, 0, 0, 0, 0, 0, 0];
+  const chars = Array.from(text.normalize("NFKC").toLowerCase()).filter((char) => char.trim() !== "");
+  for (const char of chars) {
+    const index = (char.codePointAt(0) ?? 0) % 8;
+    buckets[index] = (buckets[index] ?? 0) + 1;
+  }
+  const norm = Math.hypot(...buckets) || 1;
+  return buckets.map((value) => value / norm);
+}
+
+function vectorLiteral(values: readonly number[]): string {
+  return `[${values.join(",")}]`;
+}
+
 export async function indexStatus(): Promise<IndexStatus> {
   const [row] = await getDb()`
     SELECT count(*)::integer AS waiting
@@ -23,16 +38,25 @@ export async function indexStatus(): Promise<IndexStatus> {
 }
 
 export async function runNightlyIndex(now = new Date()): Promise<number> {
-  const rows = await getDb()`
-    INSERT INTO search_docs (note_id, document, indexed_at)
-    SELECT id, to_tsvector('simple', title || ' ' || body), ${now}
-    FROM notes
-    WHERE deleted_at IS NULL
-    ON CONFLICT (note_id) DO UPDATE
-      SET document = EXCLUDED.document, indexed_at = EXCLUDED.indexed_at
-    RETURNING note_id
-  `;
-  return rows.length;
+  const notes = await getDb()`SELECT id, title, body FROM notes WHERE deleted_at IS NULL`;
+  for (const note of notes) {
+    const text = `${String(note["title"])} ${String(note["body"])}`;
+    const embedding = vectorLiteral(embed(text));
+    await getDb()`
+      INSERT INTO search_docs (note_id, document, embedding, indexed_at)
+      VALUES (
+        ${note["id"]},
+        to_tsvector('simple', ${text}),
+        ${embedding}::vector,
+        ${now}
+      )
+      ON CONFLICT (note_id) DO UPDATE
+        SET document = EXCLUDED.document,
+            embedding = EXCLUDED.embedding,
+            indexed_at = EXCLUDED.indexed_at
+    `;
+  }
+  return notes.length;
 }
 
 export async function keywordSearch(query: string, tag?: string): Promise<readonly SearchHit[]> {
@@ -55,7 +79,10 @@ export async function keywordSearch(query: string, tag?: string): Promise<readon
           WHERE nt.note_id = n.id AND t.name = ${tag ?? ""}
         )
       )
-    ORDER BY n.updated_at DESC
+    ORDER BY
+      CASE WHEN d.embedding IS NULL THEN 1 ELSE 0 END,
+      d.embedding <=> ${vectorLiteral(embed(query))}::vector,
+      n.updated_at DESC
   `;
   return rows.map((row) => ({
     id: String(row["id"]),

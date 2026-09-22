@@ -64,6 +64,21 @@ it("marks the index ready after the nightly batch", async () => {
   assert.equal(body.indexStatus, "ready");
 });
 
+it("ranks the closer indexed note ahead of a newer keyword match", async () => {
+  const older = randomUUID();
+  const newer = randomUUID();
+  await ctx.database`
+    INSERT INTO notes (id, title, body, created_at, updated_at)
+    VALUES
+      (${older}, '반복', '메모', '2020-01-01', '2020-01-01'),
+      (${newer}, '최신', 'zzzz 메모', '2024-01-01', '2024-01-01')
+  `;
+  await INDEX(authed("/api/search/index", "POST"));
+  const response = await SEARCH(authed("/api/search?q=메모"));
+  const body = await response.json() as { hits: { id: string }[] };
+  assert.equal(body.hits[0]?.id, older);
+});
+
 it("filters keyword hits by tag", async () => {
   const tagged = await seed("같은 제목", "본문", "독서");
   await seed("같은 제목", "다른 본문", "요리");
