@@ -13,6 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" style={{ colorScheme: "dark" }}>
+      <link rel="manifest" href="/manifest.webmanifest" />
       <body>{children}</body>
     </html>
   );
