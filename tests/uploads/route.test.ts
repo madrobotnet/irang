@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { readdir, readFile, rm } from "node:fs/promises";
+import { readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadEnvFile } from "node:process";
@@ -123,8 +123,7 @@ it("returns 413 and writes nothing when Content-Length is above 104857600", asyn
 it("stores a small file when Content-Length is exactly 104857600", async () => {
   // Given
   const cookie = await sessionCookie();
-  const payload = "boundary";
-  const request = uploadRequest(new File([payload], "exact.md", { type: "text/plain" }), {
+  const request = uploadRequest(new File(["boundary"], "exact.md", { type: "text/plain" }), {
     cookie,
     "content-length": "104857600",
   });

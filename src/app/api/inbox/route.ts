@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDb } from "@/db/client";
+import { listOpenInbox } from "@/lib/inbox/store";
 import { currentSession, unauthorized } from "@/lib/notes/http";
 
 async function fields(request: Request): Promise<{ title: string; body: string; url: string | null }> {
@@ -25,6 +26,11 @@ async function fields(request: Request): Promise<{ title: string; body: string; 
     body: typeof text === "string" ? text : "",
     url: typeof url === "string" && url !== "" ? url : null,
   };
+}
+
+export async function GET(request: Request) {
+  if (await currentSession(request) === null) return unauthorized();
+  return Response.json({ items: await listOpenInbox() });
 }
 
 export async function POST(request: Request) {

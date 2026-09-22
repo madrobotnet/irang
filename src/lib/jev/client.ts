@@ -39,6 +39,27 @@ export type DuplicateJudgment = {
   }[];
 };
 
+export async function suggestLabels(text: string): Promise<readonly { readonly label: string; readonly probability: number }[]> {
+  const apiKey = process.env["TYPESAFE_API_KEY"]?.trim() ?? "";
+  if (apiKey === "") throw new TypeSafeMisconfiguredError();
+  if (text.trim() === "") return [];
+  const client = new TypeSafeClient();
+  const response = await client.systemOne({
+    state: { text },
+    questions: {
+      label: noul({
+        question: "What short Korean tag should be suggested for this inbox item?",
+        compare: "Read `text` and propose one tag. Do not apply it.",
+        tagged: "A short tag is appropriate.",
+        untagged: "No tag should be suggested.",
+      }),
+    },
+  });
+  const answer = response.answers.label;
+  if (answer === undefined || answer.noul < 0.5) return [];
+  return [{ label: text.trim().slice(0, 24), probability: answer.noul }];
+}
+
 export async function judgeDuplicates(state: DuplicateJudgmentState): Promise<DuplicateJudgment> {
   const apiKey = process.env["TYPESAFE_API_KEY"]?.trim() ?? "";
   if (apiKey === "") throw new TypeSafeMisconfiguredError();

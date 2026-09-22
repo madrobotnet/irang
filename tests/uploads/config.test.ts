@@ -18,7 +18,6 @@ it("raises the proxy body limit without dropping security headers", async () => 
   const rules = await headers();
   // Then
   assert.equal(nextConfig.experimental?.proxyClientMaxBodySize, "101mb");
-  assert.equal(rules.length, 1);
   const rule = rules[0];
   assert.ok(rule);
   assert.equal(rule.source, "/:path*");

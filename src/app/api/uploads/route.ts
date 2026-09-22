@@ -1,26 +1,33 @@
-import { fail as assertNever } from "node:assert/strict";
-import type { NextRequest } from "next/server";
-import { resolveSession, SESSION_COOKIE } from "@/lib/auth/session";
+import { currentSession, unauthorized } from "@/lib/notes/http";
+import { contentLengthExceedsLimit } from "@/lib/uploads/policy";
 import { readAcceptedUpload } from "@/lib/uploads/read";
 import { storeUpload } from "@/lib/uploads/store";
 
-function jsonError(status: 400 | 401 | 413 | 415, error: string): Response {
-  return Response.json({ error }, { status });
+class UnexpectedUploadDecisionError extends Error {
+  readonly name = "UnexpectedUploadDecisionError";
+
+  constructor(readonly decision: never) {
+    super("unexpected upload decision");
+  }
 }
 
-export async function POST(request: NextRequest): Promise<Response> {
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const session = token ? await resolveSession(token) : null;
-  if (session === null) return jsonError(401, "unauthorized");
+function assertNever(decision: never): never {
+  throw new UnexpectedUploadDecisionError(decision);
+}
 
+export async function POST(request: Request): Promise<Response> {
+  if (contentLengthExceedsLimit(request.headers.get("content-length"))) {
+    return Response.json({ error: "payload_too_large" }, { status: 413 });
+  }
+  if (await currentSession(request) === null) return unauthorized();
   const admission = await readAcceptedUpload(request);
   switch (admission.kind) {
     case "too_large":
-      return jsonError(413, "payload_too_large");
+      return Response.json({ error: "payload_too_large" }, { status: 413 });
     case "invalid":
-      return jsonError(400, "invalid_request");
+      return Response.json({ error: "invalid_request" }, { status: 400 });
     case "unsupported_type":
-      return jsonError(415, "unsupported_media_type");
+      return Response.json({ error: "unsupported_media_type" }, { status: 415 });
     case "accept": {
       const stored = await storeUpload(admission.file);
       return Response.json({
@@ -29,7 +36,6 @@ export async function POST(request: NextRequest): Promise<Response> {
         mime: stored.mime,
         byteSize: stored.byteSize,
         storageKey: stored.storageKey,
-        createdAt: stored.createdAt.toISOString(),
       }, { status: 201 });
     }
     default:
