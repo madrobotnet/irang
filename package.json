@@ -15,6 +15,7 @@
     "hash-password": "node scripts/hash-password.mjs"
   },
   "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0",
     "argon2": "^0.43.1",
     "next": "^15.5.4",
     "pg": "^8.16.3",
