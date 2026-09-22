@@ -65,6 +65,6 @@ export function uploadDirectory(override: string | undefined): string {
   return join(process.cwd(), "data", "uploads");
 }
 
-export function uploadRoot(): string {
-  return uploadDirectory(process.env["BRAIN_UPLOAD_DIR"]);
+export function uploadRoot(override: string | undefined = process.env["BRAIN_UPLOAD_DIR"]): string {
+  return uploadDirectory(override);
 }

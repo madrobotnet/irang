@@ -48,14 +48,17 @@ it("preserves auth tables when the migration is applied again", async () => {
     SELECT table_name FROM information_schema.tables WHERE table_schema = ${schema} ORDER BY table_name
   `;
   assert.deepEqual(tables.map((table) => table.table_name), [
+    "ai_jobs",
     "attachments",
     "audit_events",
     "inbox_items",
     "judgments",
     "login_failures",
     "login_locks",
+    "note_tags",
     "notes",
     "sessions",
+    "tags",
   ]);
 });
 
