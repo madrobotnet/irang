@@ -178,10 +178,16 @@ function readNoteId(record: Record<string, unknown>): string | null {
   return path.replace(/^\/+/, "") || null;
 }
 
+function readRoutingConfidence(message: Record<string, unknown>): number | null {
+  if (!isRecord(message.routing) || message.routing.type !== "choice") return null;
+  return readUnit(message.routing.confidence);
+}
+
 function readLink(
   value: unknown,
   position: number,
   judgments: ChatJudgmentsDto | null,
+  routeConfidence: number | null,
 ): CitationView | null {
   if (!isRecord(value) || hasForbiddenKey(value)) return null;
   const noteId = readNoteId(value);
@@ -200,7 +206,7 @@ function readLink(
     title,
     path: explicitPath ?? notePath(noteId),
     snippet,
-    confidence: relevanceFor(judgments, noteId) ?? score,
+    confidence: relevanceFor(judgments, noteId) ?? score ?? routeConfidence,
   };
 }
 
@@ -208,14 +214,13 @@ function readCitationList(
   message: Record<string, unknown>,
   judgments: ChatJudgmentsDto | null,
 ): CitationView[] {
-  const raw = Array.isArray(message.sources)
-    ? message.sources
-    : Array.isArray(message.citations)
-      ? message.citations
-      : [];
+  const citations = Array.isArray(message.citations) ? message.citations : null;
+  const sources = Array.isArray(message.sources) ? message.sources : null;
+  const raw = citations && citations.length > 0 ? citations : sources ?? citations ?? [];
+  const routeConfidence = readRoutingConfidence(message);
   const views: CitationView[] = [];
   for (let i = 0; i < raw.length; i += 1) {
-    const link = readLink(raw[i], i, judgments);
+    const link = readLink(raw[i], i, judgments, routeConfidence);
     if (link) views.push({ ...link, index: views.length + 1 });
   }
   return views;
@@ -229,7 +234,8 @@ function readMessage(
   const id = readString(value.id);
   const threadId = readString(value.threadId);
   const role = value.role;
-  const body = typeof value.body === "string" ? value.body : null;
+  const body =
+    typeof value.body === "string" ? value.body : typeof value.content === "string" ? value.content : null;
   const createdAt = readString(value.createdAt);
   if (!id || !threadId || !createdAt || body === null) return null;
   if (role !== "user" && role !== "assistant" && role !== "system") return null;
@@ -304,11 +310,21 @@ function fail(
 }
 
 export function mapChatFailure(status: number, code: string | null): ChatFailReason | null {
-  if (code === "codex_failed" || code === "citations_required" || code === "validation") return "error";
-  if (code === "unauthorized") return "unauthorized";
   if (code === "judgment_failed" || code === "jev_error") return "jev_error";
   if (code === "typesafe_misconfigured" || code === "key_missing") return "key_missing";
   if (code === "context_limit" || code === "context_exhausted") return "context_limit";
+  if (
+    code === "codex_failed" ||
+    code === "citations_required" ||
+    code === "validation" ||
+    code === "not_found" ||
+    code === "streaming_unsupported" ||
+    code === "proposal_not_pending" ||
+    code === "search_index_unavailable"
+  ) {
+    return "error";
+  }
+  if (code === "unauthorized") return "unauthorized";
   if (status === 401) return "unauthorized";
   if (status === 502) return "jev_error";
   if (status === 503) return "key_missing";

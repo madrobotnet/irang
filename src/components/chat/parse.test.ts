@@ -100,15 +100,40 @@ describe("chat turn parser", () => {
     expect(parsed.value.assistantMessage?.body).toContain("소유권");
   });
 
+  it("keeps citation snippets when sources and citations are both present", () => {
+    const body = turn();
+    const assistant = {
+      ...(body.assistantMessage as object),
+      content: "소유권은 이쪽입니다 [1]",
+      sources: [{ noteId: "note-1", title: "소유권" }],
+      citations: [{ noteId: "note-1", title: "소유권", snippet: "내 노트" }],
+      routing: { type: "choice", choice: "answer", confidence: 0.74, probabilities: { answer: 1 } },
+    };
+    const parsed = interpretTurnBody(200, { ...body, assistantMessage: assistant });
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.value.assistantMessage?.citations[0]).toMatchObject({
+      noteId: "note-1",
+      snippet: "내 노트",
+      confidence: 0.7,
+    });
+  });
+
   it("fails closed on judgment_failed, typesafe_misconfigured, 502, and 503", () => {
     expect(interpretTurnBody(502, { ok: false, code: "judgment_failed", answer: "키워드 결과" })).toEqual({
       ok: false,
       reason: "jev_error",
       contextLimit: null,
     });
-    expect(interpretTurnBody(503, { ok: false, code: "typesafe_misconfigured" }).ok).toBe(false);
+    expect(interpretTurnBody(502, { ok: false, code: "jev_error" })).toMatchObject({ reason: "jev_error" });
     expect(interpretTurnBody(503, { ok: false, code: "typesafe_misconfigured" })).toMatchObject({
       reason: "key_missing",
+    });
+    expect(interpretTurnBody(503, { ok: false, code: "key_missing" })).toMatchObject({
+      reason: "key_missing",
+    });
+    expect(interpretTurnBody(502, { ok: false, code: "codex_failed" })).toMatchObject({
+      reason: "error",
     });
     expect(interpretTurnBody(502, null)).toMatchObject({ ok: false, reason: "jev_error" });
     expect(interpretTurnBody(503, null)).toMatchObject({ ok: false, reason: "key_missing" });

@@ -16,6 +16,7 @@ import {
   interpretThreadList,
   interpretTurnBody,
   mapChatFailure,
+  readContextLimit,
   type ChatMessageView,
   type Interpreted,
   type ParsedThreads,
@@ -256,13 +257,12 @@ export async function decideNoteEdit(
         typeof body === "object" && body !== null && "code" in body && typeof body.code === "string"
           ? body.code
           : null;
-      if (code === "judgment_failed" || code === "jev_error" || res.status === 502) {
-        return { ok: false, reason: "jev_error", contextLimit: null };
-      }
-      if (code === "typesafe_misconfigured" || code === "key_missing" || res.status === 503) {
-        return { ok: false, reason: "key_missing", contextLimit: null };
-      }
-      return network();
+      const reason = mapChatFailure(res.status, code) ?? "error";
+      const contextLimit =
+        reason === "context_limit" && typeof body === "object" && body !== null
+          ? readContextLimit((body as { contextLimit?: unknown }).contextLimit)
+          : null;
+      return { ok: false, reason, contextLimit };
     }
     return { ok: true, value: payload };
   } catch {

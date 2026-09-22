@@ -173,4 +173,29 @@ describe("chat client", () => {
     expect(chatProposalDecisionPath("proposal-1", "approve")).toBe("/api/chat/proposals/proposal-1/approve");
     expect(String(fetchImpl.mock.calls[1]?.[0])).toBe("/api/chat/proposals/proposal-1/approve");
   });
+
+  it("maps Rex fail-closed codes without treating codex_failed as a Jev error", async () => {
+    const jev = await sendChatMessage(
+      "thread-1",
+      { body: "질문" },
+      () => {},
+      vi.fn(async () => jsonResponse({ ok: false, code: "judgment_failed" }, 502)),
+    );
+    expect(jev).toMatchObject({ ok: false, reason: "jev_error" });
+
+    const missing = await sendChatMessage(
+      "thread-1",
+      { body: "질문" },
+      () => {},
+      vi.fn(async () => jsonResponse({ ok: false, code: "typesafe_misconfigured" }, 503)),
+    );
+    expect(missing).toMatchObject({ ok: false, reason: "key_missing" });
+
+    const codex = await decideNoteEdit(
+      "proposal-1",
+      "approve",
+      vi.fn(async () => jsonResponse({ ok: false, code: "codex_failed" }, 502)),
+    );
+    expect(codex).toMatchObject({ ok: false, reason: "error" });
+  });
 });
