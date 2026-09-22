@@ -1,0 +1,14 @@
+:root {
+  color-scheme: dark;
+  --bg: #14120e;
+  --fg: #f3ead7;
+  --muted: #b5a890;
+  --accent: #e2a04a;
+  --danger: #e07a5f;
+  --line: #3a342c;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
