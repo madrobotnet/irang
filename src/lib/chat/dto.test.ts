@@ -12,6 +12,7 @@ import {
   CHAT_CONTEXT_MAX_TOKENS,
   CHAT_FAIL_CLOSED_ERROR_CODES,
   CHAT_ROUTE_IDS,
+  CHAT_SERVER_CANONICAL_ERROR_CODES,
   chatContextExceeded,
   chatContextLimitError,
   chatContextLimitSignal,
@@ -77,8 +78,18 @@ type DecisionIsNotAWrite = Extract<
   ? true
   : never;
 
-const failClosedCodesMatch: Equal<FailClosedCode, "jev_error" | "key_missing" | "context_limit"> =
-  true;
+const failClosedCodesMatch: Equal<
+  FailClosedCode,
+  | "typesafe_misconfigured"
+  | "judgment_failed"
+  | "jev_error"
+  | "key_missing"
+  | "context_limit"
+> = true;
+const serverCanonicalCodesMatch: Equal<
+  (typeof CHAT_SERVER_CANONICAL_ERROR_CODES)[number],
+  "typesafe_misconfigured" | "judgment_failed"
+> = true;
 const routeIdsMatch: Equal<(typeof CHAT_ROUTE_IDS)[number], "answer" | "propose_edit" | "none"> =
   true;
 const noForbiddenOnTurn: AssertNoForbidden<ChatTurnOk> = true;
@@ -163,6 +174,7 @@ function turnEnvelope(): ChatTurnOk {
 describe("E5 chat DTO seat", () => {
   it("keeps Choice confidence distinct from Noul and requires citation links", () => {
     expect(failClosedCodesMatch).toBe(true);
+    expect(serverCanonicalCodesMatch).toBe(true);
     expect(routeIdsMatch).toBe(true);
     expect(noForbiddenOnTurn).toBe(true);
     expect(noForbiddenOnProposal).toBe(true);
@@ -210,7 +222,22 @@ describe("E5 chat DTO seat", () => {
   });
 
   it("reports Jev and key failure as explicit error codes", () => {
-    expect(CHAT_FAIL_CLOSED_ERROR_CODES).toEqual(["jev_error", "key_missing", "context_limit"]);
+    expect(CHAT_SERVER_CANONICAL_ERROR_CODES).toEqual([
+      "typesafe_misconfigured",
+      "judgment_failed",
+    ]);
+    expect(CHAT_FAIL_CLOSED_ERROR_CODES).toEqual([
+      "typesafe_misconfigured",
+      "judgment_failed",
+      "jev_error",
+      "key_missing",
+      "context_limit",
+    ]);
+    expect(chatErrorBody("typesafe_misconfigured")).toEqual({
+      ok: false,
+      code: "typesafe_misconfigured",
+    });
+    expect(chatErrorBody("judgment_failed")).toEqual({ ok: false, code: "judgment_failed" });
     expect(chatErrorBody("jev_error")).toEqual({ ok: false, code: "jev_error" });
     expect(chatErrorBody("key_missing")).toEqual({ ok: false, code: "key_missing" });
     expect(chatErrorBody("unauthorized")).toEqual({ ok: false, code: "unauthorized" });
@@ -220,6 +247,7 @@ describe("E5 chat DTO seat", () => {
         "CHAT_CONTEXT_MAX_TOKENS",
         "CHAT_FAIL_CLOSED_ERROR_CODES",
         "CHAT_ROUTE_IDS",
+        "CHAT_SERVER_CANONICAL_ERROR_CODES",
         "chatContextExceeded",
         "chatContextLimitError",
         "chatContextLimitSignal",

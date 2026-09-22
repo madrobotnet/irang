@@ -13,12 +13,15 @@
  * re-verifies the judgment. Codex generation and note writes are outside
  * this module.
  *
- * TypeSafe or key failure is `ChatErrorBody` (`jev_error`, `key_missing`).
+ * TypeSafe or key failure is `ChatErrorBody`. Server-canonical codes
+ * (Ada lock) are `typesafe_misconfigured` and `judgment_failed`.
+ * `key_missing` and `jev_error` remain accepted aliases for those cases.
  * Over-budget context is `context_limit`. There is no keyword or heuristic
  * success variant and no silent fallback field.
  *
- * `key_missing` means `TYPESAFE_API_KEY` is absent or blank for the
- * second-brain environment. The key value is never part of an envelope.
+ * `typesafe_misconfigured` and its alias `key_missing` mean `TYPESAFE_API_KEY`
+ * is absent or blank for the second-brain environment. The key value is never
+ * part of an envelope.
  */
 
 /** Hard cap for notes placed in one chat turn's context. */
@@ -234,13 +237,25 @@ export type CreateNoteEditProposalBody = {
 };
 
 /**
- * System One call failed.
+ * Ada lock. Rex chat responses use these strings.
+ * `typesafe_misconfigured` is a missing or blank key (503).
+ * `judgment_failed` is a System One call failure (502).
+ */
+export type ChatServerCanonicalErrorCode = "typesafe_misconfigured" | "judgment_failed";
+
+export const CHAT_SERVER_CANONICAL_ERROR_CODES = [
+  "typesafe_misconfigured",
+  "judgment_failed",
+] as const satisfies readonly ChatServerCanonicalErrorCode[];
+
+/**
+ * Alias for server-canonical `judgment_failed`.
  * Callers show the error. They do not route or pick context another way.
  */
 export type ChatJevErrorCode = "jev_error";
 
 /**
- * Key missing, blank, or not injected for the second-brain environment.
+ * Alias for server-canonical `typesafe_misconfigured`.
  * Callers show the error. They do not call Jev or Codex without a key.
  */
 export type ChatKeyErrorCode = "key_missing";
@@ -248,12 +263,16 @@ export type ChatKeyErrorCode = "key_missing";
 /** Selected context is over 10 notes or 32k tokens. */
 export type ChatContextLimitErrorCode = "context_limit";
 
+/** Canonical codes plus the older aliases. `context_limit` stays its own case. */
 export type ChatFailClosedErrorCode =
+  | ChatServerCanonicalErrorCode
   | ChatJevErrorCode
   | ChatKeyErrorCode
   | ChatContextLimitErrorCode;
 
 export const CHAT_FAIL_CLOSED_ERROR_CODES = [
+  "typesafe_misconfigured",
+  "judgment_failed",
   "jev_error",
   "key_missing",
   "context_limit",
