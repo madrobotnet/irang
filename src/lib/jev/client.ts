@@ -39,6 +39,37 @@ export type DuplicateJudgment = {
   }[];
 };
 
+export async function selectEvidence(
+  question: string,
+  notes: readonly { readonly id: string; readonly title: string; readonly body: string }[],
+): Promise<readonly { readonly id: string; readonly probability: number }[]> {
+  const apiKey = process.env["TYPESAFE_API_KEY"]?.trim() ?? "";
+  if (apiKey === "") throw new TypeSafeMisconfiguredError();
+  if (question.trim() === "" || notes.length === 0) return [];
+  const client = new TypeSafeClient();
+  const questions: { [id: string]: NoulQuestion } = {};
+  for (const note of notes) {
+    questions[note.id] = noul({
+      question: "Can this note support an answer to the question?",
+      compare: "Compare the question with this note title and body.",
+      relevant: "The note contains evidence that answers the question.",
+      irrelevant: "The note does not answer the question.",
+    });
+  }
+  const response = await client.systemOne({
+    state: {
+      question,
+      notes: notes.map((note) => ({ id: note.id, title: note.title, body: note.body })),
+    },
+    questions,
+  });
+  return notes.flatMap((note) => {
+    const answer = response.answers[note.id];
+    if (answer === undefined || answer.noul < 0.5) return [];
+    return [{ id: note.id, probability: answer.noul }];
+  });
+}
+
 export async function suggestLabels(text: string): Promise<readonly { readonly label: string; readonly probability: number }[]> {
   const apiKey = process.env["TYPESAFE_API_KEY"]?.trim() ?? "";
   if (apiKey === "") throw new TypeSafeMisconfiguredError();

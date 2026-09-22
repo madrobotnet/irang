@@ -57,6 +57,7 @@ it("preserves auth tables when the migration is applied again", async () => {
     "login_locks",
     "note_tags",
     "notes",
+    "search_docs",
     "sessions",
     "tags",
   ]);
