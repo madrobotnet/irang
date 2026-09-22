@@ -292,6 +292,37 @@ describe("middleware gate", () => {
     }
   });
 
+  it("returns 401 for contract chat paths without a verified session", async () => {
+    const paths = [
+      "/api/chat/threads",
+      "/api/chat/threads/thread-id",
+      "/api/chat/threads/thread-id/messages",
+      "/api/chat/proposals",
+      "/api/chat/proposals/proposal-id/approve",
+      "/api/chat/proposals/proposal-id/reject",
+      "/api/chat/manage/suggest",
+    ];
+    for (const path of paths) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({
+        ok: false,
+        authenticated: false,
+        code: "unauthorized",
+      });
+    }
+    installRuntime();
+    const forged = `${"f".repeat(43)}`;
+    for (const path of paths) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${forged}` },
+        }),
+      );
+      expect(response.status).toBe(401);
+    }
+  });
+
   it("sets security headers on gated responses", async () => {
     const response = await middleware(new NextRequest("https://brain.madrobot.net/"));
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {

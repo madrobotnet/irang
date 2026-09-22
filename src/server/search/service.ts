@@ -7,7 +7,7 @@ import { embedText } from "@/domain/search/embed";
 import { reciprocalRankFusion } from "@/domain/search/fusion";
 import { buildSnippet } from "@/domain/search/snippet";
 import { selectEvidenceNotes } from "@/domain/search/select";
-import type { SearchFilters, SearchSourceDoc } from "@/domain/search/types";
+import { OPEN_SEARCH_FILTERS, type SearchFilters, type SearchSourceDoc } from "@/domain/search/types";
 import type { EvidenceNotesOk, SearchResultsOk } from "@/lib/search/dto";
 import { runOvernightIndexBatch } from "./batch";
 import { loadActiveNotes } from "./corpus";
@@ -107,6 +107,12 @@ async function loadNotesInOrder(ids: readonly string[]): Promise<SearchSourceDoc
     notes.push(doc);
   }
   return notes;
+}
+
+/** Hybrid shortlist for another Jev pass. Retrieval order is not a chat rank. */
+export async function retrieveSearchCandidates(query: string): Promise<SearchSourceDoc[]> {
+  await runOvernightIndexBatch(OVERNIGHT_INDEX_LIMIT);
+  return retrieve(query, OPEN_SEARCH_FILTERS);
 }
 
 export class EvidenceCandidatesInvalidError extends Error {
