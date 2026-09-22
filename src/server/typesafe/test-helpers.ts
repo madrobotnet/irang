@@ -1,6 +1,29 @@
+import { INBOX_CLASS_VOCABULARY, type InboxClassId } from "@/domain/inbox/classification";
 import { CAPTURE_TAG_VOCABULARY } from "@/domain/judgments/tag-vocabulary";
 import type { Questions, SystemOneResult } from "@typesafe-ai/sdk";
 import type { SystemOneInvoker } from "./ports";
+
+export function mockClassificationAnswer(
+  choice: InboxClassId = "unsorted",
+  probability = 0.8,
+): {
+  type: "choice";
+  choice: InboxClassId;
+  confidence: number;
+  probabilities: Record<InboxClassId, number>;
+} {
+  const rest = (1 - probability) / (INBOX_CLASS_VOCABULARY.length - 1);
+  const probabilities = {} as Record<InboxClassId, number>;
+  for (const entry of INBOX_CLASS_VOCABULARY) {
+    probabilities[entry.id] = entry.id === choice ? probability : rest;
+  }
+  return {
+    type: "choice",
+    choice,
+    confidence: probability,
+    probabilities,
+  };
+}
 
 export function mockSystemOneInvoker(
   overrides: Record<string, unknown> = {},
@@ -16,6 +39,7 @@ export function mockSystemOneInvoker(
       confidence: 0.9,
       probabilities: { none: 0.9 },
     },
+    classification: mockClassificationAnswer(),
     ...overrides,
   });
   return {

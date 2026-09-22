@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { StoredInboxSuggestions } from "@/domain/inbox/suggestions";
 import { SOFT_DELETE_RETENTION_MS } from "@/domain/notes/constants";
 import type { InboxSource, NoteStatus } from "@/domain/notes/constants";
 import type {
@@ -7,7 +8,12 @@ import type {
   IngestJobRecord,
   NoteRecord,
 } from "@/domain/notes/types";
-import type { ListNotesQuery, NotesStore } from "./ports";
+import type {
+  ListIngestJobsQuery,
+  ListInboxQuery,
+  ListNotesQuery,
+  NotesStore,
+} from "./ports";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -128,6 +134,11 @@ export class MemoryNotesStore implements NotesStore {
         this.attachments.delete(aid);
       }
     }
+    for (const [inboxId, item] of this.inbox) {
+      if (item.promotedNoteId === id) {
+        this.inbox.set(inboxId, { ...item, promotedNoteId: null });
+      }
+    }
   }
 
   async purgeDueNotes(now: Date): Promise<number> {
@@ -146,6 +157,7 @@ export class MemoryNotesStore implements NotesStore {
     body: string;
     source: InboxSource;
     url: string | null;
+    suggestions?: StoredInboxSuggestions | null;
   }): Promise<InboxItemRecord> {
     const id = randomUUID();
     const item: InboxItemRecord = {
@@ -157,43 +169,89 @@ export class MemoryNotesStore implements NotesStore {
       createdAt: nowIso(),
       promotedNoteId: null,
       discardedAt: null,
+      suggestions: input.suggestions ?? null,
     };
     this.inbox.set(id, item);
     return item;
   }
 
-  async listInboxItems(limit: number): Promise<InboxItemRecord[]> {
-    const rows = [...this.inbox.values()].filter(
-      (i) => !i.discardedAt && !i.promotedNoteId,
-    );
-    rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    return rows.slice(0, limit);
+  async listInboxItems(
+    query: ListInboxQuery,
+  ): Promise<{ items: InboxItemRecord[]; nextCursor: string | null }> {
+    let rows = [...this.inbox.values()];
+    if (!query.includeClosed) {
+      rows = rows.filter((item) => !item.discardedAt && !item.promotedNoteId);
+    }
+    rows.sort((a, b) => {
+      const created = b.createdAt.localeCompare(a.createdAt);
+      if (created !== 0) {
+        return created;
+      }
+      return b.id.localeCompare(a.id);
+    });
+    let start = 0;
+    if (query.cursor) {
+      const idx = rows.findIndex((item) => item.id === query.cursor);
+      start = idx >= 0 ? idx + 1 : 0;
+    }
+    const hasMore = rows.length > start + query.limit;
+    const slice = rows.slice(start, start + query.limit);
+    const nextCursor = hasMore ? slice[slice.length - 1]?.id ?? null : null;
+    return { items: slice, nextCursor };
   }
 
   async getInboxItemById(id: string): Promise<InboxItemRecord | null> {
     return this.inbox.get(id) ?? null;
   }
 
+  async setInboxSuggestions(
+    id: string,
+    suggestions: StoredInboxSuggestions,
+  ): Promise<InboxItemRecord | null> {
+    const item = this.inbox.get(id);
+    if (!item) {
+      return null;
+    }
+    const updated: InboxItemRecord = { ...item, suggestions };
+    this.inbox.set(id, updated);
+    return updated;
+  }
+
   async promoteInboxItem(
     id: string,
     noteInput: { title: string; body: string; status: NoteStatus },
+    options: { allowDiscarded: boolean },
   ): Promise<{ inbox: InboxItemRecord; note: NoteRecord } | null> {
     const item = this.inbox.get(id);
-    if (!item) {
+    if (!item || item.promotedNoteId) {
+      return null;
+    }
+    if (item.discardedAt && !options.allowDiscarded) {
       return null;
     }
     const note = await this.createNote(noteInput);
     const updated: InboxItemRecord = {
       ...item,
       promotedNoteId: note.id,
+      discardedAt: options.allowDiscarded ? null : item.discardedAt,
     };
     this.inbox.set(id, updated);
     return { inbox: updated, note };
   }
 
-  async discardInboxItem(id: string, at: Date): Promise<InboxItemRecord | null> {
+  async discardInboxItem(
+    id: string,
+    at: Date,
+    options: { allowPromoted: boolean },
+  ): Promise<InboxItemRecord | null> {
     const item = this.inbox.get(id);
     if (!item) {
+      return null;
+    }
+    if (item.discardedAt) {
+      return item;
+    }
+    if (item.promotedNoteId && !options.allowPromoted) {
       return null;
     }
     const updated: InboxItemRecord = {
@@ -256,6 +314,64 @@ export class MemoryNotesStore implements NotesStore {
     };
     this.ingestJobs.set(id, job);
     return job;
+  }
+
+  async getIngestJobById(id: string): Promise<IngestJobRecord | null> {
+    return this.ingestJobs.get(id) ?? null;
+  }
+
+  async listIngestJobs(
+    query: ListIngestJobsQuery,
+  ): Promise<{ jobs: IngestJobRecord[]; nextCursor: string | null }> {
+    let rows = [...this.ingestJobs.values()];
+    if (query.status !== "all") {
+      rows = rows.filter((job) => job.status === query.status);
+    }
+    rows.sort((a, b) => {
+      const created = b.createdAt.localeCompare(a.createdAt);
+      if (created !== 0) {
+        return created;
+      }
+      return b.id.localeCompare(a.id);
+    });
+    let start = 0;
+    if (query.cursor) {
+      const idx = rows.findIndex((job) => job.id === query.cursor);
+      start = idx >= 0 ? idx + 1 : 0;
+    }
+    const hasMore = rows.length > start + query.limit;
+    const slice = rows.slice(start, start + query.limit);
+    const nextCursor = hasMore ? slice[slice.length - 1]?.id ?? null : null;
+    return { jobs: slice, nextCursor };
+  }
+
+  async claimFailedIngestJob(id: string): Promise<IngestJobRecord | null> {
+    const job = this.ingestJobs.get(id);
+    if (!job || job.status !== "failed") {
+      return null;
+    }
+    const next: IngestJobRecord = { ...job, status: "pending", updatedAt: nowIso() };
+    this.ingestJobs.set(id, next);
+    return next;
+  }
+
+  async updateIngestJob(
+    id: string,
+    patch: { status: string; error: string | null; payload?: Record<string, unknown> },
+  ): Promise<IngestJobRecord | null> {
+    const job = this.ingestJobs.get(id);
+    if (!job) {
+      return null;
+    }
+    const next: IngestJobRecord = {
+      ...job,
+      status: patch.status,
+      error: patch.error,
+      payload: patch.payload ?? job.payload,
+      updatedAt: nowIso(),
+    };
+    this.ingestJobs.set(id, next);
+    return next;
   }
 }
 

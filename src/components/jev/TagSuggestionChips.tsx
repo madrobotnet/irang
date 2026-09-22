@@ -7,12 +7,24 @@ import styles from "./TagSuggestionChips.module.css";
 
 type TagSuggestionChipsProps = {
   tags: TagSuggestionDto[];
-  onApply: (selected: string[]) => void;
-  onSkip: () => void;
+  /** Capture writes tags from this row. Inbox leaves approval to PromoteSheet. */
+  onApply?: (selected: string[]) => void;
+  onSkip?: () => void;
+  /** Parent-owned selection. Hides the inline apply/skip row. */
+  selected?: readonly string[];
+  onToggle?: (tag: string) => void;
 };
 
-export function TagSuggestionChips({ tags, onApply, onSkip }: TagSuggestionChipsProps) {
-  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+export function TagSuggestionChips({
+  tags,
+  onApply,
+  onSkip,
+  selected: selectedProp,
+  onToggle,
+}: TagSuggestionChipsProps) {
+  const [internal, setInternal] = useState<Set<string>>(() => new Set());
+  const controlled = selectedProp !== undefined;
+  const selected = controlled ? new Set(selectedProp) : internal;
 
   const sorted = useMemo(
     () => [...tags].sort((a, b) => b.probability - a.probability),
@@ -22,7 +34,9 @@ export function TagSuggestionChips({ tags, onApply, onSkip }: TagSuggestionChips
   if (sorted.length === 0) return null;
 
   const toggle = (tag: string) => {
-    setSelected((prev) => {
+    onToggle?.(tag);
+    if (controlled) return;
+    setInternal((prev) => {
       const next = new Set(prev);
       if (next.has(tag)) next.delete(tag);
       else next.add(tag);
@@ -50,19 +64,21 @@ export function TagSuggestionChips({ tags, onApply, onSkip }: TagSuggestionChips
           );
         })}
       </div>
-      <div className={styles.actions}>
-        <button
-          type="button"
-          className={styles.apply}
-          disabled={selected.size === 0}
-          onClick={() => onApply([...selected])}
-        >
-          {JEV_COPY.applyTags}
-        </button>
-        <button type="button" className={styles.skip} onClick={onSkip}>
-          {JEV_COPY.skipTags}
-        </button>
-      </div>
+      {controlled || !onApply || !onSkip ? null : (
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.apply}
+            disabled={selected.size === 0}
+            onClick={() => onApply([...selected])}
+          >
+            {JEV_COPY.applyTags}
+          </button>
+          <button type="button" className={styles.skip} onClick={onSkip}>
+            {JEV_COPY.skipTags}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

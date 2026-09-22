@@ -1,6 +1,17 @@
-import { NOTE_STATUSES, type NoteStatus } from "@/domain/notes/constants";
+import { DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT, NOTE_STATUSES, type NoteStatus } from "@/domain/notes/constants";
 import { ATTACHMENT_WHITELIST } from "@/domain/notes/constants";
 import { exceedsAttachmentByteLimit } from "@/domain/notes/attachment-limits";
+
+export function parseListLimit(raw: string | null): number {
+  if (!raw) {
+    return DEFAULT_LIST_LIMIT;
+  }
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1) {
+    return DEFAULT_LIST_LIMIT;
+  }
+  return Math.min(n, MAX_LIST_LIMIT);
+}
 
 export function requireNonEmptyString(
   value: unknown,

@@ -1,3 +1,4 @@
+import type { StoredInboxSuggestions } from "@/domain/inbox/suggestions";
 import type {
   AttachmentRecord,
   InboxItemRecord,
@@ -5,6 +6,20 @@ import type {
   NoteRecord,
 } from "@/domain/notes/types";
 import type { InboxSource, NoteStatus } from "@/domain/notes/constants";
+
+export type ListInboxQuery = {
+  limit: number;
+  cursor?: string;
+  includeClosed: boolean;
+};
+
+export type IngestJobListStatus = "pending" | "failed" | "done" | "all";
+
+export type ListIngestJobsQuery = {
+  limit: number;
+  cursor?: string;
+  status: IngestJobListStatus;
+};
 
 export type ListNotesQuery = {
   limit: number;
@@ -37,14 +52,27 @@ export type NotesStore = {
     body: string;
     source: InboxSource;
     url: string | null;
+    suggestions?: StoredInboxSuggestions | null;
   }): Promise<InboxItemRecord>;
-  listInboxItems(limit: number): Promise<InboxItemRecord[]>;
+  listInboxItems(query: ListInboxQuery): Promise<{
+    items: InboxItemRecord[];
+    nextCursor: string | null;
+  }>;
   getInboxItemById(id: string): Promise<InboxItemRecord | null>;
+  setInboxSuggestions(
+    id: string,
+    suggestions: StoredInboxSuggestions,
+  ): Promise<InboxItemRecord | null>;
   promoteInboxItem(
     id: string,
     note: { title: string; body: string; status: NoteStatus },
+    options: { allowDiscarded: boolean },
   ): Promise<{ inbox: InboxItemRecord; note: NoteRecord } | null>;
-  discardInboxItem(id: string, at: Date): Promise<InboxItemRecord | null>;
+  discardInboxItem(
+    id: string,
+    at: Date,
+    options: { allowPromoted: boolean },
+  ): Promise<InboxItemRecord | null>;
 
   createAttachment(input: {
     noteId: string | null;
@@ -63,4 +91,15 @@ export type NotesStore = {
     payload: Record<string, unknown>;
     error?: string | null;
   }): Promise<IngestJobRecord>;
+  getIngestJobById(id: string): Promise<IngestJobRecord | null>;
+  listIngestJobs(query: ListIngestJobsQuery): Promise<{
+    jobs: IngestJobRecord[];
+    nextCursor: string | null;
+  }>;
+  /** Move a failed job to pending. Returns null when it was not failed. */
+  claimFailedIngestJob(id: string): Promise<IngestJobRecord | null>;
+  updateIngestJob(
+    id: string,
+    patch: { status: string; error: string | null; payload?: Record<string, unknown> },
+  ): Promise<IngestJobRecord | null>;
 };

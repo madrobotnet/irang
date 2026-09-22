@@ -1,3 +1,5 @@
+import type { InboxClassification } from "@/domain/inbox/classification";
+
 /** Typed Jev / TypeSafe judgment results for API responses (UI consumes later). */
 
 export type JudgmentNoul = {
@@ -32,6 +34,8 @@ export type DuplicateHint = {
 
 export type CaptureSuggestions = {
   tags: TagSuggestion[];
+  /** Present when the inbox classification question was asked. Not an applied tag. */
+  classification?: InboxClassification;
 };
 
 export type CaptureJudgments = {

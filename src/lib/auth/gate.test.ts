@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { E2_PROTECTED_API_ROUTES, E2_PROTECTED_PAGE_ROUTES } from "./e2-gate-paths";
+import {
+  E3_PROTECTED_API_ROUTES,
+  E3_PROTECTED_PAGE_ROUTES,
+  e3InboxDiscardPath,
+  e3InboxPromotePath,
+} from "./e3-gate-paths";
 import { decideAuthGate, isPublicPath } from "./gate";
 
 describe("auth gate", () => {
@@ -53,6 +59,51 @@ describe("auth gate", () => {
       expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
         action: "redirect_login",
       });
+    }
+  });
+
+  it("lists inbox page and inbox APIs on the E3 gate", () => {
+    expect([...E3_PROTECTED_PAGE_ROUTES]).toEqual(["/inbox"]);
+    expect([...E3_PROTECTED_API_ROUTES]).toEqual([
+      "/api/inbox",
+      "/api/inbox/item-id/promote",
+      "/api/inbox/item-id/discard",
+    ]);
+  });
+
+  it("does not treat E3 inbox APIs as public", () => {
+    for (const pathname of E3_PROTECTED_API_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "unauthorized",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("matches Rex inbox route handlers on the gated paths", async () => {
+    const collection = await import("@/app/api/inbox/route");
+    const promote = await import("@/app/api/inbox/[id]/promote/route");
+    const discard = await import("@/app/api/inbox/[id]/discard/route");
+    expect(typeof collection.GET).toBe("function");
+    expect(typeof collection.POST).toBe("function");
+    expect(typeof promote.POST).toBe("function");
+    expect("GET" in promote).toBe(false);
+    expect(typeof discard.POST).toBe("function");
+    expect("GET" in discard).toBe(false);
+    expect(e3InboxPromotePath("item-id")).toBe("/api/inbox/item-id/promote");
+    expect(e3InboxDiscardPath("item-id")).toBe("/api/inbox/item-id/discard");
+    expect(E3_PROTECTED_API_ROUTES).toContain(e3InboxPromotePath("item-id"));
+    expect(E3_PROTECTED_API_ROUTES).toContain(e3InboxDiscardPath("item-id"));
+  });
+
+  it("redirects unauthenticated inbox page to login", () => {
+    for (const pathname of E3_PROTECTED_PAGE_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "redirect_login",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
     }
   });
 });

@@ -1,16 +1,14 @@
 import { applySecurityHeaders } from "@/lib/auth/security-headers";
 import { noteErrorBody } from "@/lib/api/note-contract";
-import {
-  DEFAULT_LIST_LIMIT,
-  MAX_LIST_LIMIT,
-  SOFT_DELETE_RETENTION_MS,
-} from "@/domain/notes/constants";
+import { E3_DEV_GATES } from "@/domain/inbox/dev-process-gates";
+import { storedSuggestionsFromJudgment } from "@/domain/inbox/suggestions";
 import type { NoteStatus } from "@/domain/notes/constants";
 import { getNotesStore } from "./runtime";
 import { purgeAtFrom } from "./memory-store";
 import {
   attachmentTooLarge,
   isAllowedAttachment,
+  parseListLimit,
   parseNoteStatus,
   requireNonEmptyString,
 } from "./validation";
@@ -20,7 +18,7 @@ import {
   readAttachmentFile,
   storeAttachmentFile,
 } from "./attachment-storage";
-import { judgmentsForCapture } from "./capture-enrichment";
+import { inboxClassificationEnabled, judgmentsForCapture } from "./capture-enrichment";
 import {
   JudgmentFailedError,
   TypesafeMisconfiguredError,
@@ -32,14 +30,7 @@ function json(body: unknown, status: number): Response {
 }
 
 function parseLimit(raw: string | null): number {
-  if (!raw) {
-    return DEFAULT_LIST_LIMIT;
-  }
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 1) {
-    return DEFAULT_LIST_LIMIT;
-  }
-  return Math.min(n, MAX_LIST_LIMIT);
+  return parseListLimit(raw);
 }
 
 function isPurged(note: { purgeAt: string | null }): boolean {
@@ -235,7 +226,7 @@ export async function handleCapture(request: Request): Promise<Response> {
       const job = await store.createIngestJob({
         kind: "url_summary",
         status: "failed",
-        payload: { url, title: title.value },
+        payload: { url, title: title.value, body: text.value, target },
         error: summary.error,
       });
       return json(noteErrorBody("ingest_failed", { jobId: job.id }), 502);
@@ -246,7 +237,10 @@ export async function handleCapture(request: Request): Promise<Response> {
   const store = await getNotesStore();
   let judgments;
   try {
-    judgments = await judgmentsForCapture(store, title.value, finalBody);
+    judgments = await judgmentsForCapture(store, title.value, finalBody, {
+      includeClassification:
+        target === "inbox" && E3_DEV_GATES.classificationShape === "choice_plus_tag_nouls",
+    });
   } catch (error) {
     if (error instanceof TypesafeMisconfiguredError) {
       return json(noteErrorBody("typesafe_misconfigured"), 503);
@@ -279,6 +273,7 @@ export async function handleCapture(request: Request): Promise<Response> {
     body: finalBody,
     source: url ? "url" : "api",
     url,
+    suggestions: storedSuggestionsFromJudgment(judgments.suggestions, new Date().toISOString()),
   });
   return json(
     {
@@ -319,7 +314,9 @@ export async function handleCaptureShare(request: Request): Promise<Response> {
   const captureBody = hasText || hasUrl || "";
   let judgments;
   try {
-    judgments = await judgmentsForCapture(store, captureTitle, captureBody);
+    judgments = await judgmentsForCapture(store, captureTitle, captureBody, {
+      includeClassification: inboxClassificationEnabled(),
+    });
   } catch (error) {
     if (error instanceof TypesafeMisconfiguredError) {
       return json(noteErrorBody("typesafe_misconfigured"), 503);
@@ -334,6 +331,7 @@ export async function handleCaptureShare(request: Request): Promise<Response> {
     body: captureBody,
     source: "share",
     url: hasUrl || null,
+    suggestions: storedSuggestionsFromJudgment(judgments.suggestions, new Date().toISOString()),
   });
   return json(
     {
@@ -346,39 +344,14 @@ export async function handleCaptureShare(request: Request): Promise<Response> {
   );
 }
 
-export async function handleListInbox(request: Request): Promise<Response> {
-  const url = new URL(request.url);
-  const limit = parseLimit(url.searchParams.get("limit"));
-  const store = await getNotesStore();
-  const items = await store.listInboxItems(limit);
-  return json({ ok: true, inboxItems: items }, 200);
-}
-
-export async function handlePromoteInbox(id: string): Promise<Response> {
-  const store = await getNotesStore();
-  const item = await store.getInboxItemById(id);
-  if (!item) {
-    return json(noteErrorBody("not_found"), 404);
-  }
-  const result = await store.promoteInboxItem(id, {
-    title: item.title,
-    body: item.body,
-    status: "draft",
-  });
-  if (!result) {
-    return json(noteErrorBody("not_found"), 404);
-  }
-  return json({ ok: true, inboxItem: result.inbox, note: result.note }, 200);
-}
-
-export async function handleDiscardInbox(id: string): Promise<Response> {
-  const store = await getNotesStore();
-  const item = await store.discardInboxItem(id, new Date());
-  if (!item) {
-    return json(noteErrorBody("not_found"), 404);
-  }
-  return json({ ok: true, inboxItem: item }, 200);
-}
+export {
+  handleDiscardInbox,
+  handleGetInbox,
+  handleInboxCommand,
+  handleListInbox,
+  handlePromoteInbox,
+  handleRefreshInboxSuggestions,
+} from "./inbox-api";
 
 export async function handleUploadAttachment(request: Request): Promise<Response> {
   const form = await request.formData();

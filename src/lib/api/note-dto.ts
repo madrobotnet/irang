@@ -4,6 +4,47 @@ export type NoteStatusDto = "draft" | "confirmed" | "archived";
 
 export type InboxSourceDto = "web" | "url" | "share" | "api";
 
+/**
+ * Closed Choice labels Rex stores on an inbox item.
+ * `unsorted` is the no-match class. A suggestion, never an applied tag.
+ */
+export const INBOX_CLASS_IDS = [
+  "reference",
+  "idea",
+  "task",
+  "project",
+  "meeting",
+  "technical",
+  "personal",
+  "unsorted",
+] as const;
+
+export type InboxClassIdDto = (typeof INBOX_CLASS_IDS)[number];
+
+/** Choice answer: selected label, its probability, confidence, and the full distribution. */
+export type InboxClassificationDto = {
+  choice: InboxClassIdDto;
+  probability: number;
+  confidence: number;
+  probabilities: Record<InboxClassIdDto, number>;
+};
+
+/** Noul answer for one proposed tag: probability of yes. No separate confidence. */
+export type InboxTagSuggestionDto = {
+  tag: string;
+  probability: number;
+};
+
+/**
+ * Jev output stored on the inbox row.
+ * `null` on the item means no judgment was stored. Do not invent a class or tags.
+ */
+export type InboxSuggestionsDto = {
+  tags: InboxTagSuggestionDto[];
+  classification: InboxClassificationDto | null;
+  judgedAt: string;
+};
+
 export type NoteDto = {
   id: string;
   title: string;
@@ -24,6 +65,7 @@ export type InboxItemDto = {
   createdAt: string;
   promotedNoteId: string | null;
   discardedAt: string | null;
+  suggestions: InboxSuggestionsDto | null;
 };
 
 export type AttachmentDto = {
@@ -85,7 +127,11 @@ export type CaptureShareOk = CaptureJudgmentFieldsDto & {
 
 export type CaptureOk = CaptureNoteOk | CaptureInboxOk;
 
-export type InboxListOk = { ok: true; inboxItems: InboxItemDto[] };
+export type InboxListOk = {
+  ok: true;
+  inboxItems: InboxItemDto[];
+  nextCursor: string | null;
+};
 
 export type InboxItemOk = { ok: true; inboxItem: InboxItemDto };
 

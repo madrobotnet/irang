@@ -1,3 +1,4 @@
+import type { StoredInboxSuggestions } from "@/domain/inbox/suggestions";
 import type { InboxSource, NoteStatus } from "./constants";
 
 export type NoteRecord = {
@@ -20,6 +21,8 @@ export type InboxItemRecord = {
   createdAt: string;
   promotedNoteId: string | null;
   discardedAt: string | null;
+  /** Jev classification and tag proposals. Never an applied tag set. */
+  suggestions: StoredInboxSuggestions | null;
 };
 
 export type AttachmentRecord = {

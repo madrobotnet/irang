@@ -1,4 +1,10 @@
 import { choice, noul } from "@typesafe-ai/sdk";
+import {
+  INBOX_CLASS_VOCABULARY,
+  isInboxClassId,
+  type InboxClassId,
+  type InboxClassification,
+} from "@/domain/inbox/classification";
 import type { CaptureJudgments, DuplicateHint, TagSuggestion } from "@/domain/judgments/types";
 import {
   CAPTURE_TAG_VOCABULARY,
@@ -16,6 +22,8 @@ export type CaptureJudgmentInput = {
   title: string;
   body: string;
   candidates: CaptureCandidateNote[];
+  /** Ask the inbox primary-class Choice in the same request as tag Nouls. */
+  includeClassification?: boolean;
 };
 
 function buildDuplicateCriteria(candidates: CaptureCandidateNote[]): Record<string, null> {
@@ -26,7 +34,18 @@ function buildDuplicateCriteria(candidates: CaptureCandidateNote[]): Record<stri
   return criteria;
 }
 
-function buildTagQuestions(): Record<string, ReturnType<typeof noul>> {
+function classificationCriteria(): Record<string, string> {
+  return Object.fromEntries(INBOX_CLASS_VOCABULARY.map((entry) => [entry.id, entry.description]));
+}
+
+function buildClassificationQuestion(): ReturnType<typeof choice> {
+  return choice(
+    "Which single class best describes `capture`? Choose unsorted when none of the other classes fit. This answer is a suggestion only and does not apply a tag.",
+    classificationCriteria(),
+  );
+}
+
+export function buildTagQuestions(): Record<string, ReturnType<typeof noul>> {
   const questions: Record<string, ReturnType<typeof noul>> = {};
   for (const entry of CAPTURE_TAG_VOCABULARY) {
     questions[`tag_${entry.tag}`] = noul(
@@ -38,6 +57,34 @@ function buildTagQuestions(): Record<string, ReturnType<typeof noul>> {
     );
   }
   return questions;
+}
+
+function mapClassification(answer: {
+  type?: string;
+  choice?: string;
+  confidence?: number;
+  probabilities?: Record<string, number>;
+}): InboxClassification {
+  if (answer.type !== "choice" || !answer.choice || !isInboxClassId(answer.choice)) {
+    throw new Error("classification_missing");
+  }
+  if (!answer.probabilities) {
+    throw new Error("classification_missing");
+  }
+  const probabilities = {} as Record<InboxClassId, number>;
+  for (const entry of INBOX_CLASS_VOCABULARY) {
+    const probability = answer.probabilities[entry.id];
+    if (typeof probability !== "number") {
+      throw new Error("classification_incomplete");
+    }
+    probabilities[entry.id] = probability;
+  }
+  return {
+    choice: answer.choice,
+    probability: probabilities[answer.choice],
+    confidence: typeof answer.confidence === "number" ? answer.confidence : 0,
+    probabilities,
+  };
 }
 
 function mapTagSuggestions(
@@ -89,6 +136,7 @@ export async function evaluateCaptureJudgments(
   const tagQuestions = buildTagQuestions();
   const hasCandidates = input.candidates.length > 0;
   const duplicateCriteria = hasCandidates ? buildDuplicateCriteria(input.candidates) : null;
+  const includeClassification = input.includeClassification === true;
 
   try {
     const response = await invoker.systemOne({
@@ -112,6 +160,7 @@ export async function evaluateCaptureJudgments(
               ),
             }
           : {}),
+        ...(includeClassification ? { classification: buildClassificationQuestion() } : {}),
         ...tagQuestions,
       },
     });
@@ -127,12 +176,25 @@ export async function evaluateCaptureJudgments(
           }>,
         )
       : null;
+    const classification = includeClassification
+      ? mapClassification(
+          (response.answers as { classification?: {
+            type?: string;
+            choice?: string;
+            confidence?: number;
+            probabilities?: Record<string, number>;
+          } }).classification ?? {},
+        )
+      : undefined;
 
     return {
-      suggestions: { tags },
+      suggestions: classification ? { tags, classification } : { tags },
       duplicateHint,
     };
   } catch (error) {
+    if (error instanceof JudgmentFailedError) {
+      throw error;
+    }
     throw new JudgmentFailedError(error);
   }
 }

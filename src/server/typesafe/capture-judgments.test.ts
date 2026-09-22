@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { evaluateCaptureJudgments } from "./capture-judgments";
 import { setSystemOneInvokerForTests } from "./runtime";
-import { mockSystemOneInvoker } from "./test-helpers";
+import { mockClassificationAnswer, mockSystemOneInvoker } from "./test-helpers";
 
 afterEach(() => {
   setSystemOneInvokerForTests(null);
@@ -55,7 +55,34 @@ describe("evaluateCaptureJudgments", () => {
     });
 
     expect(questionKeys).not.toContain("duplicate_match");
+    expect(questionKeys).not.toContain("classification");
     expect(result.duplicateHint).toBeNull();
     expect(result.suggestions.tags[0]?.tag).toBe("reference");
+    expect(result.suggestions.classification).toBeUndefined();
+  });
+
+  it("maps a classification choice without treating it as an applied tag", async () => {
+    let questionKeys: string[] = [];
+    const inner = mockSystemOneInvoker({
+      classification: mockClassificationAnswer("task", 0.91),
+    });
+    setSystemOneInvokerForTests({
+      async systemOne(request) {
+        questionKeys = Object.keys(request.questions);
+        return inner.systemOne(request);
+      },
+    });
+    const result = await evaluateCaptureJudgments({
+      title: "Ship the inbox API",
+      body: "Implement promote and discard",
+      candidates: [],
+      includeClassification: true,
+    });
+    expect(questionKeys).toContain("classification");
+    expect(result.suggestions.classification).toMatchObject({
+      choice: "task",
+      probability: 0.91,
+    });
+    expect(result.suggestions.tags.some((tag) => tag.tag === "task")).toBe(false);
   });
 });

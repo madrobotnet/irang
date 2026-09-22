@@ -28,11 +28,14 @@ CREATE TABLE IF NOT EXISTS inbox_items (
   url               text NULL,
   promoted_note_id  uuid NULL REFERENCES notes(id) ON DELETE SET NULL,
   discarded_at      timestamptz NULL,
-  created_at        timestamptz NOT NULL DEFAULT now()
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  suggestions       jsonb NULL
 );
 
 CREATE INDEX IF NOT EXISTS inbox_open_idx ON inbox_items (created_at DESC)
   WHERE discarded_at IS NULL AND promoted_note_id IS NULL;
+
+ALTER TABLE inbox_items ADD COLUMN IF NOT EXISTS suggestions jsonb NULL;
 
 CREATE TABLE IF NOT EXISTS attachments (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
