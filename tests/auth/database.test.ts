@@ -49,12 +49,17 @@ it("preserves auth tables when the migration is applied again", async () => {
   `;
   assert.deepEqual(tables.map((table) => table.table_name), [
     "ai_jobs",
+    "ai_logs",
     "attachments",
     "audit_events",
+    "chat_citations",
+    "chat_messages",
+    "chat_threads",
     "inbox_items",
     "judgments",
     "login_failures",
     "login_locks",
+    "note_edits",
     "note_tags",
     "notes",
     "search_docs",

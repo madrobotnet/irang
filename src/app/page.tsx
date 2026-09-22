@@ -10,7 +10,7 @@ export default async function Page() {
   return (
     <main data-app-shell="brain">
       <h1>보호된 홈</h1>
-      <p><a href="/search">검색</a> · <a href="/notes">노트</a> · <a href="/inbox">받은 편지함</a></p>
+      <p><a href="/search">검색</a> · <a href="/inbox">받은 편지함</a> · <a href="/chat">AI 채팅</a></p>
       <form action="/api/auth/logout" method="post">
         <button type="submit">로그아웃</button>
       </form>
