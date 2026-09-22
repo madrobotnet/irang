@@ -1,0 +1,18 @@
+{
+  "name": "세컨드 브레인",
+  "short_name": "브레인",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14120e",
+  "theme_color": "#14120e",
+  "share_target": {
+    "action": "/api/inbox",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
