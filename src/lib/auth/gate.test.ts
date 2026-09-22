@@ -6,6 +6,7 @@ import {
   e3InboxDiscardPath,
   e3InboxPromotePath,
 } from "./e3-gate-paths";
+import { E4_PROTECTED_API_ROUTES, E4_PROTECTED_PAGE_ROUTES } from "./e4-gate-paths";
 import { decideAuthGate, isPublicPath } from "./gate";
 
 describe("auth gate", () => {
@@ -99,6 +100,40 @@ describe("auth gate", () => {
 
   it("redirects unauthenticated inbox page to login", () => {
     for (const pathname of E3_PROTECTED_PAGE_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "redirect_login",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("lists the search page and Rex search APIs on the E4 gate", () => {
+    expect([...E4_PROTECTED_PAGE_ROUTES]).toEqual(["/search"]);
+    expect([...E4_PROTECTED_API_ROUTES]).toEqual(["/api/search", "/api/search/evidence"]);
+  });
+
+  it("matches Rex search route handlers on the gated paths", async () => {
+    const search = await import("@/app/api/search/route");
+    const evidence = await import("@/app/api/search/evidence/route");
+    expect(typeof search.GET).toBe("function");
+    expect(typeof search.POST).toBe("function");
+    expect(typeof evidence.GET).toBe("function");
+    expect(typeof evidence.POST).toBe("function");
+  });
+
+  it("does not treat E4 search APIs as public", () => {
+    for (const pathname of E4_PROTECTED_API_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "unauthorized",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("redirects unauthenticated search page to login", () => {
+    for (const pathname of E4_PROTECTED_PAGE_ROUTES) {
       expect(isPublicPath(pathname)).toBe(false);
       expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
         action: "redirect_login",

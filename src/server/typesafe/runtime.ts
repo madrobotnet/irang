@@ -1,5 +1,5 @@
 import { TypeSafeClient } from "@typesafe-ai/sdk";
-import { typesafeApiKeyFromEnv } from "./env";
+import { resolveTypesafeApiKey } from "./env";
 import type { SystemOneInvoker } from "./ports";
 
 export class TypesafeMisconfiguredError extends Error {
@@ -31,7 +31,7 @@ export function getSystemOneInvoker(): SystemOneInvoker {
   if (invokerOverride) {
     return invokerOverride;
   }
-  const apiKey = typesafeApiKeyFromEnv();
+  const apiKey = resolveTypesafeApiKey();
   if (!apiKey) {
     throw new TypesafeMisconfiguredError();
   }

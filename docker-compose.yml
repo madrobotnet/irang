@@ -1,7 +1,7 @@
 # App + Postgres for sessions. Traefik/dynamic.yml is Oak-owned — do not edit it here.
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: second_brain
       POSTGRES_PASSWORD: second_brain
@@ -26,6 +26,8 @@ services:
       DATABASE_URL: postgres://second_brain:second_brain@db:5432/second_brain
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
       SESSION_SECRET: ${SESSION_SECRET}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      TYPESAFE_PROD_API_KEY: ${TYPESAFE_PROD_API_KEY:-}
     ports:
       - "3000:3000"
     healthcheck:

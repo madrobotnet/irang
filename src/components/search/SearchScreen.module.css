@@ -1,0 +1,264 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.input {
+  flex: 1 1 220px;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.submit,
+.filter,
+.filterActive,
+.filterApply {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke);
+  background: var(--elevated);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.filterActive {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.submit:focus-visible,
+.filter:focus-visible,
+.filterActive:focus-visible,
+.filterApply:focus-visible,
+.primary:focus-visible,
+.chip:focus-visible,
+.chipOn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.jev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch-min);
+}
+
+.onWord {
+  color: var(--accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.hint,
+.filterSoft,
+.low,
+.route {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  background: var(--elevated);
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.control {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.filterSoft {
+  flex: 1 1 100%;
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.indexBanner {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  background: var(--elevated);
+  color: var(--text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-md);
+  background: var(--elevated);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding-top: 2px;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.rowBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.rowTitle {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+.path,
+.snippet,
+.similarLabel,
+.relevanceLabel {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.snippet {
+  color: var(--text);
+}
+
+.relevance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.similar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.chip,
+.chipOn,
+.chipStatic {
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  border: 1px solid var(--stroke);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.chipStatic {
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+}
+
+.chipOn {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+}
+
+.evidence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-min);
+  padding: 0 var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -10,6 +10,7 @@ import {
 } from "@/server/typesafe/runtime";
 import { judgmentsForInboxSuggestion } from "./capture-enrichment";
 import { handleGetIngestJob, handleListIngestJobs, handleRetryIngestJob } from "./ingest-api";
+import { notifySearchCorpusChanged } from "@/server/search/hooks";
 import { getNotesStore } from "./runtime";
 import type { NotesStore } from "./ports";
 import { parseListLimit, requireNonEmptyString } from "./validation";
@@ -213,6 +214,7 @@ async function promoteOpenItem(store: NotesStore, item: InboxItemRecord): Promis
     { allowDiscarded: allowDiscardedOnPromote() },
   );
   if (created) {
+    await notifySearchCorpusChanged();
     return jsonResponse({ ok: true, inboxItem: created.inbox, note: created.note }, 200);
   }
   const fresh = await store.getInboxItemById(item.id);

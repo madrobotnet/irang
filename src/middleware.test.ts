@@ -13,6 +13,7 @@ import { sha256TokenHasher } from "@/server/auth/crypto";
 import { handleMe } from "@/server/auth/http";
 import { E2_PROTECTED_API_ROUTES } from "@/lib/auth/e2-gate-paths";
 import { E3_PROTECTED_API_ROUTES, E3_PROTECTED_PAGE_ROUTES } from "@/lib/auth/e3-gate-paths";
+import { E4_PROTECTED_API_ROUTES, E4_PROTECTED_PAGE_ROUTES } from "@/lib/auth/e4-gate-paths";
 
 function installRuntime() {
   const sessions = new InMemorySessionRepository();
@@ -97,7 +98,7 @@ describe("middleware gate", () => {
       return;
     }
     const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
-    for (const path of ["/chat", "/notes", "/inbox"]) {
+    for (const path of ["/chat", "/notes", "/inbox", "/search"]) {
       const response = await middleware(
         new NextRequest(`https://brain.madrobot.net${path}`, {
           headers: { cookie },
@@ -169,6 +170,56 @@ describe("middleware gate", () => {
         authenticated: false,
         code: "unauthorized",
       });
+    }
+  });
+
+  it("allows a verified session through middleware for search APIs", async () => {
+    const { service } = installRuntime();
+    const login = await service.login({ password: "ok-password", clientKey: "test" });
+    expect(login.kind).toBe("ok");
+    if (login.kind !== "ok") {
+      return;
+    }
+    const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
+    for (const path of E4_PROTECTED_API_ROUTES) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie },
+        }),
+      );
+      expect(response.status).toBe(200);
+    }
+  });
+
+  it("redirects unauthenticated search and returns 401 for search APIs", async () => {
+    for (const path of E4_PROTECTED_PAGE_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(302);
+      expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
+        "/login",
+      );
+    }
+    for (const path of E4_PROTECTED_API_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({
+        ok: false,
+        authenticated: false,
+        code: "unauthorized",
+      });
+    }
+  });
+
+  it("returns 401 for search APIs with a forged session cookie", async () => {
+    installRuntime();
+    const forged = `${"d".repeat(43)}`;
+    for (const path of E4_PROTECTED_API_ROUTES) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${forged}` },
+        }),
+      );
+      expect(response.status).toBe(401);
     }
   });
 

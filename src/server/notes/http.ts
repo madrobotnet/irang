@@ -19,6 +19,7 @@ import {
   storeAttachmentFile,
 } from "./attachment-storage";
 import { inboxClassificationEnabled, judgmentsForCapture } from "./capture-enrichment";
+import { notifySearchCorpusChanged } from "@/server/search/hooks";
 import {
   JudgmentFailedError,
   TypesafeMisconfiguredError,
@@ -69,6 +70,7 @@ export async function handleCreateNote(request: Request): Promise<Response> {
     body: text.value,
     status,
   });
+  await notifySearchCorpusChanged();
   return json({ ok: true, note }, 201);
 }
 
@@ -154,6 +156,7 @@ export async function handlePatchNote(id: string, request: Request): Promise<Res
   if (!note) {
     return json(noteErrorBody("not_found"), 404);
   }
+  await notifySearchCorpusChanged();
   return json({ ok: true, note }, 200);
 }
 
@@ -172,6 +175,7 @@ export async function handleDeleteNote(id: string): Promise<Response> {
   if (!note) {
     return json(noteErrorBody("not_found"), 404);
   }
+  await notifySearchCorpusChanged();
   return json({ ok: true, note }, 200);
 }
 
@@ -192,6 +196,7 @@ export async function handleRestoreNote(id: string): Promise<Response> {
   if (!note) {
     return json(noteErrorBody("not_found"), 404);
   }
+  await notifySearchCorpusChanged();
   return json({ ok: true, note }, 200);
 }
 
@@ -257,6 +262,7 @@ export async function handleCapture(request: Request): Promise<Response> {
       body: finalBody,
       status: "draft",
     });
+    await notifySearchCorpusChanged();
     return json(
       {
         ok: true,
