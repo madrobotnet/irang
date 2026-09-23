@@ -7,6 +7,13 @@ import {
   e3InboxPromotePath,
 } from "./e3-gate-paths";
 import { E4_PROTECTED_API_ROUTES, E4_PROTECTED_PAGE_ROUTES } from "./e4-gate-paths";
+import {
+  E5_PROTECTED_API_ROUTES,
+  E5_PROTECTED_PAGE_ROUTES,
+  e5ChatMessagesPath,
+  e5ChatProposeEditPath,
+  e5ChatThreadPath,
+} from "./e5-gate-paths";
 import { decideAuthGate, isPublicPath } from "./gate";
 
 describe("auth gate", () => {
@@ -134,6 +141,39 @@ describe("auth gate", () => {
 
   it("redirects unauthenticated search page to login", () => {
     for (const pathname of E4_PROTECTED_PAGE_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "redirect_login",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("lists the chat page and chat API placeholders on the E5 gate", () => {
+    expect([...E5_PROTECTED_PAGE_ROUTES]).toEqual(["/chat"]);
+    expect([...E5_PROTECTED_API_ROUTES]).toEqual([
+      "/api/chat",
+      "/api/chat/thread-id",
+      "/api/chat/thread-id/messages",
+      "/api/chat/thread-id/propose-edit",
+    ]);
+    expect(e5ChatThreadPath("thread-id")).toBe("/api/chat/thread-id");
+    expect(e5ChatMessagesPath("thread-id")).toBe("/api/chat/thread-id/messages");
+    expect(e5ChatProposeEditPath("thread-id")).toBe("/api/chat/thread-id/propose-edit");
+  });
+
+  it("does not treat E5 chat APIs as public", () => {
+    for (const pathname of E5_PROTECTED_API_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "unauthorized",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("redirects unauthenticated chat page to login", () => {
+    for (const pathname of E5_PROTECTED_PAGE_ROUTES) {
       expect(isPublicPath(pathname)).toBe(false);
       expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
         action: "redirect_login",

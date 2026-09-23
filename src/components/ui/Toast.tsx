@@ -10,13 +10,19 @@ import {
 } from "react";
 import styles from "./Toast.module.css";
 
+export type ToastAction = {
+  label: string;
+  onClick: () => void;
+};
+
 type ToastItem = {
   id: string;
   message: string;
+  action?: ToastAction;
 };
 
 type ToastContextValue = {
-  showToast: (message: string) => void;
+  showToast: (message: string, action?: ToastAction) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -24,9 +30,9 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
 
-  const showToast = useCallback((message: string) => {
+  const showToast = useCallback((message: string, action?: ToastAction) => {
     const id = crypto.randomUUID();
-    setItems((prev) => [...prev, { id, message }]);
+    setItems((prev) => [...prev, { id, message, action }]);
   }, []);
 
   const dismiss = useCallback((id: string) => {
@@ -55,11 +61,20 @@ function ToastRow({
   onDismiss: (id: string) => void;
 }) {
   useEffect(() => {
-    const t = window.setTimeout(() => onDismiss(item.id), 3200);
+    const t = window.setTimeout(() => onDismiss(item.id), item.action ? 6000 : 3200);
     return () => window.clearTimeout(t);
   }, [item.id, onDismiss]);
 
-  return <div className={styles.toast}>{item.message}</div>;
+  return (
+    <div className={styles.toast}>
+      <span>{item.message}</span>
+      {item.action ? (
+        <button type="button" className={styles.action} onClick={item.action.onClick}>
+          {item.action.label}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export function useToast(): ToastContextValue {

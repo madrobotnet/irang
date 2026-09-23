@@ -1,10 +1,11 @@
-import { PlaceholderPage } from "@/components/shell/PlaceholderPage";
+import { Suspense } from "react";
+import { ChatScreen } from "@/components/chat/ChatScreen";
+import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 
 export default function ChatPage() {
   return (
-    <PlaceholderPage
-      title="채팅"
-      description="AI 채팅 · P1 준비 중"
-    />
+    <Suspense fallback={<SkeletonBlock lines={4} />}>
+      <ChatScreen />
+    </Suspense>
   );
 }

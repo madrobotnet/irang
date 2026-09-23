@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   createNote,
   getNote,
@@ -41,6 +42,7 @@ function noteApiMessage(err: unknown, fallback: string): string {
 
 export function NotesWorkspace() {
   const { openCapture } = useCapture();
+  const requestedNoteId = useSearchParams().get("note");
   const [viewState, setViewState] = useState<ViewState>("loading");
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,6 +65,11 @@ export function NotesWorkspace() {
     try {
       const { notes: listed } = await listNotes();
       setNotes(listed);
+      if (requestedNoteId) {
+        setViewState("ready");
+        setSelectedId(requestedNoteId);
+        return;
+      }
       if (listed.length === 0) {
         setViewState("empty");
         setSelectedId(null);
@@ -78,7 +85,7 @@ export function NotesWorkspace() {
       setViewState("error");
       setError(NOTE_COPY.loadError);
     }
-  }, [selectedId]);
+  }, [requestedNoteId, selectedId]);
 
   useEffect(() => {
     void loadList();

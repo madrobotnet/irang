@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { HomeTop3 } from "@/components/home/HomeTop3";
 import { SESSION_COOKIE_NAME } from "@/domain/auth/constants";
 import { getAuthRuntime } from "@/server/auth/runtime";
 import styles from "./home.module.css";
@@ -23,6 +24,7 @@ export default async function HomePage() {
         </div>
       </header>
       <p className={styles.lead}>Second Brain · brain.madrobot.net</p>
+      <HomeTop3 />
       <form method="post" action="/api/auth/logout" className={styles.logout}>
         <button type="submit" className={styles.logoutBtn}>나가기</button>
       </form>
