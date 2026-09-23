@@ -2,6 +2,7 @@ import { applySecurityHeaders } from "@/lib/auth/security-headers";
 import { noteErrorBody } from "@/lib/api/note-contract";
 import { E3_DEV_GATES } from "@/domain/inbox/dev-process-gates";
 import { storedSuggestionsFromJudgment } from "@/domain/inbox/suggestions";
+import { contentLengthExceedsLimit } from "@/domain/notes/attachment-limits";
 import type { NoteStatus } from "@/domain/notes/constants";
 import { getNotesStore } from "./runtime";
 import { purgeAtFrom } from "./memory-store";
@@ -360,6 +361,9 @@ export {
 } from "./inbox-api";
 
 export async function handleUploadAttachment(request: Request): Promise<Response> {
+  if (contentLengthExceedsLimit(request.headers.get("content-length"))) {
+    return json(noteErrorBody("payload_too_large"), 413);
+  }
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) {

@@ -1,9 +1,17 @@
+import { lockoutFromFailures } from "@/domain/auth/lockout";
 import type { AuditKind, SessionRecord } from "@/domain/auth/types";
 import type { Pool } from "pg";
+import {
+  loginAdvisoryLockKey,
+  SESSION_ADVISORY_LOCK_KEY,
+  withAdvisoryTransaction,
+} from "../db/advisory-lock";
 import { tokenHashToBuffer } from "./crypto";
 import type {
   AuditRepository,
+  FailureRecordResult,
   LockoutRepository,
+  LockoutWindow,
   SessionRepository,
   UserRepository,
 } from "./ports";
@@ -76,6 +84,41 @@ export class PostgresSessionRepository implements SessionRepository {
         session.expiresAt,
       ],
     );
+  }
+
+  async insertEnforcingCap(
+    session: SessionRecord,
+    userId: string,
+    now: number,
+    maxSessions: number,
+  ): Promise<string[]> {
+    return withAdvisoryTransaction(this.pool, SESSION_ADVISORY_LOCK_KEY, async (client) => {
+      const dropped = await client.query<{ id: string }>(
+        `UPDATE sessions SET revoked_at = to_timestamp($2 / 1000.0)
+         WHERE id IN (
+           SELECT id FROM sessions
+           WHERE user_id = $1
+             AND revoked_at IS NULL
+             AND expires_at > to_timestamp($2 / 1000.0)
+           ORDER BY created_at DESC, id DESC
+           OFFSET $3
+         )
+         RETURNING id`,
+        [userId, now, Math.max(0, maxSessions - 1)],
+      );
+      await client.query(
+        `INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
+         VALUES ($1, $2, $3, to_timestamp($4 / 1000.0), to_timestamp($5 / 1000.0), NULL)`,
+        [
+          session.publicId,
+          userId,
+          tokenHashToBuffer(session.tokenHashHex),
+          session.createdAt,
+          session.expiresAt,
+        ],
+      );
+      return dropped.rows.map((row) => row.id);
+    });
   }
 
   async findByTokenHashHex(tokenHashHex: string): Promise<SessionRecord | null> {
@@ -186,6 +229,83 @@ export class PostgresLockoutRepository implements LockoutRepository {
        WHERE client_key = $1`,
       [clientKey],
     );
+  }
+
+  async recordFailureUnderLock(
+    clientKey: string,
+    now: number,
+    window: LockoutWindow,
+  ): Promise<FailureRecordResult> {
+    return withAdvisoryTransaction(this.pool, loginAdvisoryLockKey(clientKey), async (client) => {
+      const active = await client.query<{ locked_until: Date }>(
+        `SELECT locked_until FROM auth_lockouts
+         WHERE client_key = $1 AND locked_until > to_timestamp($2 / 1000.0)`,
+        [clientKey, now],
+      );
+      const lockedRow = active.rows[0];
+      if (lockedRow?.locked_until) {
+        return { kind: "already_locked", lockedUntil: epochMs(lockedRow.locked_until) };
+      }
+
+      await client.query(
+        `INSERT INTO auth_login_failures (client_key, attempted_at)
+         VALUES ($1, to_timestamp($2 / 1000.0))`,
+        [clientKey, now],
+      );
+      const since = now - window.windowMs;
+      const failures = await client.query<{ attempted_at: Date }>(
+        `SELECT attempted_at FROM auth_login_failures
+         WHERE client_key = $1
+           AND attempted_at > to_timestamp($2 / 1000.0)
+           AND attempted_at <= to_timestamp($3 / 1000.0)`,
+        [clientKey, since, now],
+      );
+      const timestamps = failures.rows.map((row) => epochMs(row.attempted_at));
+      const decision = lockoutFromFailures(
+        timestamps,
+        now,
+        window.maxFailures,
+        window.lockoutMs,
+      );
+      if (decision.shouldLock && decision.lockedUntil !== null) {
+        await client.query(
+          `INSERT INTO auth_lockouts (client_key, failure_count, window_started_at, locked_until, updated_at)
+           VALUES ($1, 0, now(), to_timestamp($2 / 1000.0), now())
+           ON CONFLICT (client_key) DO UPDATE
+           SET locked_until = EXCLUDED.locked_until, failure_count = 0, updated_at = now()`,
+          [clientKey, decision.lockedUntil],
+        );
+        await client.query(`DELETE FROM auth_login_failures WHERE client_key = $1`, [clientKey]);
+        return {
+          kind: "newly_locked",
+          lockedUntil: decision.lockedUntil,
+          failuresInWindow: decision.failuresInWindow,
+        };
+      }
+
+      await client.query(
+        `INSERT INTO auth_lockouts (client_key, failure_count, window_started_at, updated_at)
+         VALUES ($1, $2, to_timestamp($3 / 1000.0), now())
+         ON CONFLICT (client_key) DO UPDATE
+         SET failure_count = EXCLUDED.failure_count,
+             window_started_at = EXCLUDED.window_started_at,
+             updated_at = now()`,
+        [clientKey, timestamps.length, timestamps[0] ?? now],
+      );
+      return { kind: "open", failuresInWindow: decision.failuresInWindow };
+    });
+  }
+
+  async clearUnderLock(clientKey: string): Promise<void> {
+    await withAdvisoryTransaction(this.pool, loginAdvisoryLockKey(clientKey), async (client) => {
+      await client.query(`DELETE FROM auth_login_failures WHERE client_key = $1`, [clientKey]);
+      await client.query(
+        `UPDATE auth_lockouts
+         SET locked_until = NULL, failure_count = 0, updated_at = now()
+         WHERE client_key = $1`,
+        [clientKey],
+      );
+    });
   }
 }
 

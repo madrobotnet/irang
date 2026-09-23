@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it } from "vitest";
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from "@/domain/auth/constants";
 import {
@@ -132,6 +133,13 @@ describe("auth HTTP handlers (API_AUTH_CONTRACT)", () => {
     expect(body.retryAfterSec).toBeGreaterThan(0);
     expect(body.retryAfterSeconds).toBe(body.retryAfterSec);
     expect(body.unlockAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(locked.status).not.toBe(423);
+  });
+
+  it("login lock responses are 429 in the handler source", () => {
+    const source = readFileSync(new URL("./http.ts", import.meta.url), "utf8");
+    expect(source).not.toMatch(/\b423\b/);
+    expect(source).toMatch(/json\(body, 429\)/);
   });
 
   it("logout clears cookie and me returns unauthorized", async () => {

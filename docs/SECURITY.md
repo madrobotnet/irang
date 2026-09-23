@@ -1,0 +1,12 @@
+# Deploy checklist
+
+Hostnames stay in the edge config. This repository does not hardcode a public domain and does not ship a Traefik service. TLS termination stays Oak-owned.
+
+- TLS: serve the app behind HTTPS. Compose in this repo publishes the app and Postgres only. Leave Traefik with Oak.
+- Cookie: `sb_session` is HttpOnly, Secure, SameSite=Lax, Path=/, with a 7 day Max-Age. The database stores the SHA-256 hash of the token. The raw token is not stored.
+- Env: `AUTH_PASSWORD_HASH`, `DATABASE_URL`, `SESSION_SECRET`, and `TYPESAFE_API_KEY` come from the environment. Do not commit them or write them to logs. `AUTH_PASSWORD_HASH` is an Argon2id hash of the gate password (`npm run hash-password`), not the password itself.
+- Missing gate hash: login returns 503 `{ "ok": false, "code": "misconfigured" }`. There is no keyword fallback.
+- Lockout: 5 failures from the same client inside 15 minutes locks that client for 15 minutes. The HTTP status is 429. Further failures during an active lock do not extend it. Workers serialize that decision with `pg_advisory_xact_lock` on `brain:login:` plus the client key.
+- Sessions: TTL is 7 days and the cap is 5 concurrent sessions. A new login revokes the oldest sessions above the cap and keeps the new session. Workers serialize that cap with `pg_advisory_xact_lock` on `brain:sessions`.
+- Uploads: a `Content-Length` above 100MB returns 413 `payload_too_large` before the multipart body is parsed. `experimental.middlewareClientMaxBodySize` is `102mb` (Next 15's name for the proxy body cap, at least 101mb).
+- URL capture: outbound fetches use a 10 second timeout, read at most 256KB (262144 bytes), and allow only `http:` and `https:`. A failed fetch stores a failed ingest job and returns 502.
