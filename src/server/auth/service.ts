@@ -1,5 +1,5 @@
-import { evaluateLockout, lockoutFromFailures } from "@/domain/auth/lockout";
-import { isSessionActive, publicIdsToDropOldest, sessionExpiry } from "@/domain/auth/session-policy";
+import { evaluateLockout } from "@/domain/auth/lockout";
+import { isSessionActive, sessionExpiry } from "@/domain/auth/session-policy";
 import type { LoginResult, SessionRecord } from "@/domain/auth/types";
 import { randomUUID } from "crypto";
 import type { AuthDeps } from "./ports";
@@ -36,33 +36,23 @@ export class AuthService {
         lockedUntil: lock.lockedUntil,
       };
     }
-    if (lockedUntil !== null && lockedUntil <= now) {
-      await this.deps.lockouts.clearLock(args.clientKey);
-    }
-
     const ok = await this.deps.passwords.verify(hash, args.password);
     if (!ok) {
-      await this.deps.lockouts.addFailure(args.clientKey, now);
-      const timestamps = await this.deps.lockouts.listFailuresSince(
-        args.clientKey,
-        now - cfg.failureWindowMs,
-      );
-      const decision = lockoutFromFailures(
-        timestamps,
-        now,
-        cfg.maxFailures,
-        cfg.lockoutMs,
-      );
-      if (decision.shouldLock && decision.lockedUntil !== null) {
-        await this.deps.lockouts.setLockedUntil(args.clientKey, decision.lockedUntil);
-        await this.deps.lockouts.clearFailures(args.clientKey);
-        await this.deps.audit.append({
-          kind: "lockout",
-          clientKey: args.clientKey,
-          sessionPublicId: null,
-          meta: { failuresInWindow: decision.failuresInWindow },
-          at: now,
-        });
+      const decision = await this.deps.lockouts.recordFailureUnderLock(args.clientKey, now, {
+        windowMs: cfg.failureWindowMs,
+        maxFailures: cfg.maxFailures,
+        lockoutMs: cfg.lockoutMs,
+      });
+      if (decision.kind === "already_locked" || decision.kind === "newly_locked") {
+        if (decision.kind === "newly_locked") {
+          await this.deps.audit.append({
+            kind: "lockout",
+            clientKey: args.clientKey,
+            sessionPublicId: null,
+            meta: { failuresInWindow: decision.failuresInWindow },
+            at: now,
+          });
+        }
         return {
           kind: "locked",
           retryAfterMs: decision.lockedUntil - now,
@@ -79,8 +69,7 @@ export class AuthService {
       return { kind: "bad_password" };
     }
 
-    await this.deps.lockouts.clearFailures(args.clientKey);
-    await this.deps.lockouts.clearLock(args.clientKey);
+    await this.deps.lockouts.clearUnderLock(args.clientKey);
 
     const sessionToken = this.deps.tokens.nextToken();
     const tokenHashHex = await this.deps.tokenHasher.hash(sessionToken);
@@ -93,12 +82,13 @@ export class AuthService {
       expiresAt,
       revokedAt: null,
     };
-    await this.deps.sessions.insert(record);
-
-    const active = await this.deps.sessions.listActiveForUser(this.deps.userId, now);
-    const dropIds = publicIdsToDropOldest(active, now, cfg.maxSessions);
+    const dropIds = await this.deps.sessions.insertEnforcingCap(
+      record,
+      this.deps.userId,
+      now,
+      cfg.maxSessions,
+    );
     if (dropIds.length > 0) {
-      await this.deps.sessions.revokeByPublicIds(dropIds, now);
       for (const id of dropIds) {
         await this.deps.audit.append({
           kind: "session_drop",

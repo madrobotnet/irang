@@ -3,11 +3,33 @@ import type { AuditKind, SessionRecord } from "@/domain/auth/types";
 
 export interface SessionRepository {
   insert(session: SessionRecord): Promise<void>;
+  /**
+   * Insert one session and revoke the oldest active sessions above maxSessions.
+   * Postgres holds pg_advisory_xact_lock on `brain:sessions` for the unit.
+   * Returned ids are the sessions revoked to make room. The inserted session is kept.
+   */
+  insertEnforcingCap(
+    session: SessionRecord,
+    userId: string,
+    now: number,
+    maxSessions: number,
+  ): Promise<string[]>;
   findByTokenHashHex(tokenHashHex: string): Promise<SessionRecord | null>;
   revokeByTokenHashHex(tokenHashHex: string, at: number): Promise<void>;
   listActiveForUser(userId: string, now: number): Promise<SessionRecord[]>;
   revokeByPublicIds(publicIds: string[], at: number): Promise<void>;
 }
+
+export type LockoutWindow = {
+  readonly windowMs: number;
+  readonly maxFailures: number;
+  readonly lockoutMs: number;
+};
+
+export type FailureRecordResult =
+  | { readonly kind: "already_locked"; readonly lockedUntil: number }
+  | { readonly kind: "newly_locked"; readonly lockedUntil: number; readonly failuresInWindow: number }
+  | { readonly kind: "open"; readonly failuresInWindow: number };
 
 export interface LockoutRepository {
   getLockedUntil(clientKey: string): Promise<number | null>;
@@ -16,6 +38,18 @@ export interface LockoutRepository {
   addFailure(clientKey: string, at: number): Promise<void>;
   listFailuresSince(clientKey: string, since: number): Promise<number[]>;
   clearFailures(clientKey: string): Promise<void>;
+  /**
+   * Count one failure and maybe start a lock.
+   * An active lock is returned unchanged (it is not extended).
+   * Postgres holds pg_advisory_xact_lock on `brain:login:` + clientKey.
+   */
+  recordFailureUnderLock(
+    clientKey: string,
+    now: number,
+    window: LockoutWindow,
+  ): Promise<FailureRecordResult>;
+  /** Clear failures and any lock for this client under the same advisory key. */
+  clearUnderLock(clientKey: string): Promise<void>;
 }
 
 export interface UserRepository {

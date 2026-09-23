@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { MemoryNotesStore } from "./memory-store";
-import { setNotesStoreForTests, resetNotesRuntimeForTests } from "./runtime";
+import { getNotesStore, setNotesStoreForTests, resetNotesRuntimeForTests } from "./runtime";
 import { setSystemOneInvokerForTests } from "@/server/typesafe/runtime";
 import { mockSystemOneInvoker } from "@/server/typesafe/test-helpers";
 import {
@@ -191,6 +191,38 @@ describe("notes API (API_NOTE_CONTRACT)", () => {
     const body = (await res.json()) as { code: string; jobId?: string };
     expect(body.code).toBe("ingest_failed");
     expect(body.jobId).toBeTruthy();
+  });
+
+  it("capture of a non-http url records a failed ingest job and returns 502", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const res = await handleCapture(
+        new Request("http://localhost/api/capture", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            title: "Local",
+            body: "ignored",
+            target: "note",
+            url: "file:///tmp/note.txt",
+          }),
+        }),
+      );
+      expect(res.status).toBe(502);
+      const body = (await res.json()) as { code: string; jobId: string };
+      expect(body.code).toBe("ingest_failed");
+      const job = await (await getNotesStore()).getIngestJobById(body.jobId);
+      expect(job).toMatchObject({
+        status: "failed",
+        kind: "url_summary",
+        error: "unsupported_protocol",
+        payload: { url: "file:///tmp/note.txt", title: "Local", target: "note" },
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("share capture creates inbox item", async () => {

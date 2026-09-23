@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_ATTACHMENT_BYTES } from "@/domain/notes/constants";
 import { MemoryNotesStore } from "./memory-store";
 import { setNotesStoreForTests, resetNotesRuntimeForTests } from "./runtime";
 import { handleCreateNote, handleUploadAttachment } from "./http";
@@ -42,5 +43,38 @@ describe("attachment upload size (API_NOTE_CONTRACT)", () => {
 
     expect(res.status).toBe(413);
     expect(await res.json()).toEqual({ ok: false, code: "payload_too_large" });
+  });
+
+  it("returns 413 before multipart parse when Content-Length is over the cap", async () => {
+    const request = {
+      headers: new Headers({
+        "content-type": "multipart/form-data; boundary=x",
+        "content-length": String(MAX_ATTACHMENT_BYTES + 1),
+      }),
+      formData: async () => {
+        throw new Error("multipart body was parsed");
+      },
+    } as unknown as Request;
+
+    const res = await handleUploadAttachment(request);
+
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ ok: false, code: "payload_too_large" });
+  });
+
+  it("parses the body when Content-Length is exactly the cap", async () => {
+    let parsed = false;
+    const request = {
+      headers: new Headers({ "content-length": String(MAX_ATTACHMENT_BYTES) }),
+      formData: async () => {
+        parsed = true;
+        return new FormData();
+      },
+    } as unknown as Request;
+
+    const res = await handleUploadAttachment(request);
+
+    expect(parsed).toBe(true);
+    expect(res.status).toBe(400);
   });
 });

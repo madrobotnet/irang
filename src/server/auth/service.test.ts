@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { argon2id, hash as argon2Hash } from "argon2";
-import { FAILURE_WINDOW_MS, LOCKOUT_MS, MAX_CONCURRENT_SESSIONS } from "@/domain/auth/constants";
+import { LOCKOUT_MS, MAX_CONCURRENT_SESSIONS } from "@/domain/auth/constants";
 import {
   InMemoryAuditRepository,
   InMemoryLockoutRepository,
@@ -72,6 +72,55 @@ describe("AuthService", () => {
     const firstHash = await sha256TokenHasher.hash(tokens[0]!);
     expect(await sessions.findByTokenHashHex(firstHash)?.revokedAt).not.toBeNull();
     expect(audit.events.some((e) => e.kind === "session_drop")).toBe(true);
+  });
+
+  it("keeps at most 5 active sessions when logins run together", async () => {
+    const nowRef = { now: 1_000_000 };
+    const { service, sessions, deps } = setup(nowRef);
+    const results = await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        service.login({ password: "ok-password", clientKey: `device-${index}` }),
+      ),
+    );
+    expect(results.every((result) => result.kind === "ok")).toBe(true);
+    const active = await sessions.listActiveForUser(deps.userId, nowRef.now);
+    expect(active).toHaveLength(MAX_CONCURRENT_SESSIONS);
+  });
+
+  it("keeps the session just created when createdAt ties at the cap", async () => {
+    const nowRef = { now: 1_000_000 };
+    const { service, sessions } = setup(nowRef);
+    const tokens: string[] = [];
+    for (let i = 0; i < MAX_CONCURRENT_SESSIONS + 1; i++) {
+      const result = await service.login({ password: "ok-password", clientKey: `tie-${i}` });
+      expect(result.kind).toBe("ok");
+      if (result.kind === "ok") {
+        tokens.push(result.sessionToken);
+      }
+    }
+    const newestHash = await sha256TokenHasher.hash(tokens[tokens.length - 1]!);
+    expect((await sessions.findByTokenHashHex(newestHash))?.revokedAt).toBeNull();
+    expect(await sessions.listActiveForUser("ignored", nowRef.now)).toHaveLength(
+      MAX_CONCURRENT_SESSIONS,
+    );
+  });
+
+  it("does not extend an active lock when a later failure is recorded", async () => {
+    const nowRef = { now: 1_000_000 };
+    const { service, lockouts, deps } = setup(nowRef);
+    for (let i = 0; i < 5; i++) {
+      await service.login({ password: "nope", clientKey: "ip-1" });
+    }
+    const lockedUntil = await lockouts.getLockedUntil("ip-1");
+    expect(lockedUntil).toBe(nowRef.now + LOCKOUT_MS);
+    nowRef.now += 5_000;
+    const again = await lockouts.recordFailureUnderLock("ip-1", nowRef.now, {
+      windowMs: deps.config.failureWindowMs,
+      maxFailures: deps.config.maxFailures,
+      lockoutMs: deps.config.lockoutMs,
+    });
+    expect(again).toMatchObject({ kind: "already_locked", lockedUntil });
+    expect(await lockouts.getLockedUntil("ip-1")).toBe(lockedUntil);
   });
 
   it("writes audit events for login ok and logout", async () => {

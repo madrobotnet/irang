@@ -7,3 +7,26 @@ export function exceedsAttachmentByteLimit(sizeBytes: number): boolean {
   }
   return sizeBytes > MAX_ATTACHMENT_BYTES;
 }
+
+/**
+ * Whole-request Content-Length above the 100MB cap.
+ * Digit length is compared as text so values past Number.MAX_SAFE_INTEGER still reject.
+ * Missing or non-numeric headers do not reject here; the parsed file size is checked later.
+ */
+export function contentLengthExceedsLimit(
+  header: string | null,
+  limitBytes: number = MAX_ATTACHMENT_BYTES,
+): boolean {
+  if (header === null) {
+    return false;
+  }
+  const digits = header.trim().replace(/^0+/u, "");
+  if (!/^\d+$/u.test(digits)) {
+    return false;
+  }
+  const limit = String(limitBytes);
+  if (digits.length !== limit.length) {
+    return digits.length > limit.length;
+  }
+  return digits > limit;
+}

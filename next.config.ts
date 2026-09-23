@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["argon2", "pg"],
   experimental: {
-    // App Router multipart envelope for POST /api/attachments (Next default ~10MB).
+    // Next 15 name for the proxy body cap (Next 16: proxyClientMaxBodySize). 102mb >= 101mb.
     middlewareClientMaxBodySize: ATTACHMENT_UPLOAD_BODY_SIZE_LIMIT,
   },
   async headers() {
