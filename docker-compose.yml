@@ -1,15 +1,20 @@
 # App + Postgres for sessions. Traefik/dynamic.yml is Oak-owned — do not edit it here.
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:0.8.6-pg18
     environment:
-      POSTGRES_USER: second_brain
-      POSTGRES_PASSWORD: second_brain
-      POSTGRES_DB: second_brain
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: postgres
+      POSTGRES_APP_USER: second_brain
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?set POSTGRES_APP_PASSWORD in .env}
+      POSTGRES_APP_DB: second_brain
     ports:
       - "5432:5432"
     volumes:
-      - second_brain_pg:/var/lib/postgresql/data
+      # PG18+ stores data under /var/lib/postgresql/<major>/docker; mount the parent dir.
+      - second_brain_pg18:/var/lib/postgresql
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U second_brain -d second_brain"]
       interval: 5s
@@ -23,11 +28,12 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://second_brain:second_brain@db:5432/second_brain
-      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
-      SESSION_SECRET: ${SESSION_SECRET}
+      DATABASE_URL: postgres://second_brain:${POSTGRES_APP_PASSWORD}@db:5432/second_brain
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:?set AUTH_PASSWORD_HASH in .env}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
       TYPESAFE_PROD_API_KEY: ${TYPESAFE_PROD_API_KEY:-}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
     ports:
       - "3000:3000"
     healthcheck:
@@ -41,4 +47,4 @@ services:
       retries: 10
 
 volumes:
-  second_brain_pg:
+  second_brain_pg18:

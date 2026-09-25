@@ -87,6 +87,35 @@ describe("summarizeUrl bounds", () => {
     await expect(summarizeUrl("https://example.com/boom")).rejects.toThrow("boom");
   });
 
+  it("rejects private and loopback targets before fetch", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(summarizeUrl("http://127.0.0.1/local")).resolves.toEqual({
+      ok: false,
+      error: "blocked_host",
+    });
+    await expect(summarizeUrl("http://169.254.169.254/latest/meta-data")).resolves.toEqual({
+      ok: false,
+      error: "blocked_host",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a redirect whose final URL is private or link-local", async () => {
+    const response = new Response("secret", {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+    });
+    Object.defineProperty(response, "url", { value: "http://192.168.0.10/internal" });
+    vi.stubGlobal("fetch", async () => response);
+
+    await expect(summarizeUrl("https://example.com/start")).resolves.toEqual({
+      ok: false,
+      error: "blocked_host",
+    });
+  });
+
   it("rejects a redirect whose final URL is not http(s)", async () => {
     const response = new Response("secret", {
       status: 200,

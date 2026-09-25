@@ -1,3 +1,5 @@
+import { isBlockedCaptureUrl } from "./url-blocked-host";
+
 const FAIL_HOST = "ingest-fail.test";
 
 export const CAPTURE_FETCH_TIMEOUT_MS = 10_000;
@@ -89,6 +91,9 @@ export async function summarizeUrl(url: string): Promise<UrlSummaryResult> {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return { ok: false, error: "unsupported_protocol" };
   }
+  if (isBlockedCaptureUrl(parsed.href)) {
+    return { ok: false, error: "blocked_host" };
+  }
   if (parsed.hostname === FAIL_HOST) {
     return { ok: false, error: "summary_unavailable" };
   }
@@ -118,6 +123,9 @@ export async function summarizeUrl(url: string): Promise<UrlSummaryResult> {
   }
   if (response.url !== "" && !isHttpProtocol(response.url)) {
     return { ok: false, error: "unsupported_protocol" };
+  }
+  if (response.url !== "" && isBlockedCaptureUrl(response.url)) {
+    return { ok: false, error: "blocked_host" };
   }
 
   let raw: string;

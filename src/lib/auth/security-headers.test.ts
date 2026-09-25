@@ -9,4 +9,10 @@ describe("security headers", () => {
     expect(SECURITY_HEADERS["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
     expect(SECURITY_HEADERS["X-Frame-Options"]).toBe("DENY");
   });
+
+  it("does not allow unsafe-inline scripts", () => {
+    const csp = SECURITY_HEADERS["Content-Security-Policy"];
+    expect(csp).toMatch(/script-src 'self'/);
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
 });

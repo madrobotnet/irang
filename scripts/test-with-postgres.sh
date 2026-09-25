@@ -7,6 +7,12 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 0
 fi
 
+if [ -z "${POSTGRES_PASSWORD:-}" ] || [ -z "${POSTGRES_APP_PASSWORD:-}" ]; then
+  POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-integration-postgres-superuser}"
+  POSTGRES_APP_PASSWORD="${POSTGRES_APP_PASSWORD:-integration-app-password}"
+  export POSTGRES_PASSWORD POSTGRES_APP_PASSWORD
+fi
+
 docker compose up -d db
 echo "Waiting for Postgres..."
 for i in $(seq 1 30); do
@@ -16,7 +22,7 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-export DATABASE_URL="postgres://second_brain:second_brain@127.0.0.1:5432/second_brain"
+export DATABASE_URL="postgres://second_brain:${POSTGRES_APP_PASSWORD}@127.0.0.1:5432/second_brain"
 export RUN_PG_INTEGRATION=1
 export AUTH_PASSWORD_HASH="${AUTH_PASSWORD_HASH:-}"
 export SESSION_SECRET="${SESSION_SECRET:-integration-test-secret-at-least-32-chars}"

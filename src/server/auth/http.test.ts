@@ -103,6 +103,49 @@ describe("auth HTTP handlers (API_AUTH_CONTRACT)", () => {
     expect(await response.json()).toEqual({ ok: false, code: "validation" });
   });
 
+  it("locks the Traefik peer IP when X-Forwarded-For is spoofed", async () => {
+    installRuntime();
+    const victim = "203.0.113.50";
+    const attacker = "203.0.113.9";
+    for (let i = 0; i < 5; i++) {
+      await handleLogin(
+        new Request("http://brain.madrobot.net/api/auth/login", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-forwarded-for": victim,
+            "x-real-ip": attacker,
+          },
+          body: JSON.stringify({ password: "wrong" }),
+        }),
+      );
+    }
+    const lockedVictim = await handleLogin(
+      new Request("http://brain.madrobot.net/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": victim,
+        },
+        body: JSON.stringify({ password: "wrong" }),
+      }),
+    );
+    expect(lockedVictim.status).toBe(401);
+
+    const lockedAttacker = await handleLogin(
+      new Request("http://brain.madrobot.net/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": attacker,
+          "x-real-ip": attacker,
+        },
+        body: JSON.stringify({ password: "wrong" }),
+      }),
+    );
+    expect(lockedAttacker.status).toBe(429);
+  });
+
   it("locked returns 429 with retryAfterSec and unlockAt", async () => {
     installRuntime();
     for (let i = 0; i < 5; i++) {

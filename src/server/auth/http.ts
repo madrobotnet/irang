@@ -6,6 +6,7 @@ import {
 } from "@/domain/auth/cookie-policy";
 import { formatLockRetryCopy } from "@/domain/auth/lockout";
 import { errorBody, lockedBody as contractLockedBody, meOkBody, unauthorizedBody } from "@/lib/auth/api-contract";
+import { clientKeyFromForwardedHeaders, trustedProxyHopsFromEnv } from "./client-ip";
 import { getAuthRuntime } from "./runtime";
 
 function headersWithSecurity(init?: HeadersInit): Headers {
@@ -40,18 +41,11 @@ function wantsHtml(request: Request): boolean {
 }
 
 export function clientKeyFromRequest(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) {
-      return first;
-    }
-  }
-  const real = request.headers.get("x-real-ip")?.trim();
-  if (real) {
-    return real;
-  }
-  return "local";
+  return clientKeyFromForwardedHeaders(
+    request.headers.get("x-forwarded-for"),
+    request.headers.get("x-real-ip"),
+    trustedProxyHopsFromEnv(),
+  );
 }
 
 async function readPassword(request: Request): Promise<string | null> {
