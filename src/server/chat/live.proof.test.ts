@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { handleCreateNote } from "@/server/notes/http";
 import { MemoryNotesStore } from "@/server/notes/memory-store";
 import { resetNotesRuntimeForTests, setNotesStoreForTests } from "@/server/notes/runtime";
+import { E5_CODEX_REPROOF_HOOK } from "@/lib/chat/codex-reproof";
 import { setSystemOneInvokerForTests } from "@/server/typesafe/runtime";
 import { MemorySearchIndex } from "@/server/search/memory-index";
 import { resetSearchRuntimeForTests, setSearchIndexForTests } from "@/server/search/runtime";
@@ -12,6 +13,27 @@ import { resetChatRuntimeForTests, setChatStoreForTests } from "./runtime";
 
 const runLive = process.env.RUN_TYPESAFE_PROOF === "1" && Boolean(process.env.TYPESAFE_API_KEY);
 
+type HookKeys = keyof typeof E5_CODEX_REPROOF_HOOK;
+type NoQuietFallback = Extract<HookKeys, "fallback" | "citedReply" | "approved"> extends never ? true : never;
+const noQuietFallback: NoQuietFallback = true;
+
+describe("E5 Codex re-proof hook", () => {
+  it("keeps live cite and ApproveModal pending until CODEX_API_KEY is injected", () => {
+    expect(noQuietFallback).toBe(true);
+    expect(E5_CODEX_REPROOF_HOOK).toEqual({
+      env: "CODEX_API_KEY",
+      targets: ["live_cite", "approve_modal"],
+      status: "pending_codex_key",
+    });
+  });
+});
+
+/**
+ * Quoting stub so the Jev live path can run without CODEX_API_KEY.
+ * E5_CODEX_REPROOF_HOOK is the later seat: inject the key, then re-prove
+ * live citation and AiApproveModal with the real generator. Leave the
+ * hook pending. This stub is not that proof and is not a quiet success.
+ */
 const quotingCodex: CodexGenerator = {
   async generate(input) {
     const ids = input.notes.map((note) => note.noteId);

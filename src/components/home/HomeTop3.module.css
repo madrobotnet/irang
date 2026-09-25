@@ -8,14 +8,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-1);
   min-height: 88px;
   padding: var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--stroke);
-  background: var(--elevated);
   color: var(--text);
   font-weight: 600;
   text-align: center;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 7%, transparent), transparent 46%),
+    var(--elevated);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+}
+
+.search {
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+}
+
+.inbox {
+  box-shadow:
+    inset 3px 0 0 var(--success),
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+}
+
+.chat {
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--accent) 40%, #c4b5fd),
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
 }
 
 .card:hover {
@@ -25,4 +47,19 @@
 .card:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
 }

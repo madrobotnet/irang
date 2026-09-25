@@ -1,3 +1,7 @@
+import { E6_PUBLIC_PWA_PATHS } from "./e6-gate-paths";
+
+const PUBLIC_PWA_PATHS: ReadonlySet<string> = new Set(E6_PUBLIC_PWA_PATHS);
+
 export function isPublicPath(pathname: string): boolean {
   if (pathname === "/login" || pathname.startsWith("/login/")) {
     return true;
@@ -21,6 +25,10 @@ export function isPublicPath(pathname: string): boolean {
     return true;
   }
   if (pathname === "/favicon.ico") {
+    return true;
+  }
+  // Manifest and home-screen icons stay public, same as favicon.ico.
+  if (PUBLIC_PWA_PATHS.has(pathname)) {
     return true;
   }
   return false;

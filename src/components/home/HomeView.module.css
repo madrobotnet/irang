@@ -1,0 +1,121 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-1) 0 var(--space-3);
+  background:
+    radial-gradient(120% 70% at 0% -10%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 52%),
+    transparent;
+  touch-action: pan-y;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.command {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch-min);
+  min-height: var(--touch-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 6%, transparent), transparent 60%),
+    var(--elevated);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.command:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.skeletonCard {
+  min-height: 88px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--stroke);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 5%, transparent), transparent 50%),
+    var(--elevated);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--touch-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--stroke);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, white 4%, transparent), transparent 55%),
+    color-mix(in srgb, var(--elevated) 92%, var(--bg));
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rowTitle {
+  font-weight: 600;
+}
+
+.rowMeta,
+.rowSummary {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.rowSummary {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}

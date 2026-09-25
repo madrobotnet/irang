@@ -1,0 +1,15 @@
+export const HOME_COPY = {
+  greeting: "안녕 · 오늘",
+  emptyVault: "첫 캡처를 남겨 보세요",
+  capture: "캡처",
+  homeError: "불러오지 못했어요 · 다시",
+  retry: "다시",
+  recent: "최근 노트",
+  preview: "Inbox 미리보기",
+  command: "⌘K",
+  commandTitle: "명령 팔레트 (준비 중)",
+  install: "홈 화면에 추가",
+  installDismiss: "나중에",
+  installIos: "공유 메뉴에서 홈 화면에 추가할 수 있어요",
+  loading: "불러오는 중",
+} as const;

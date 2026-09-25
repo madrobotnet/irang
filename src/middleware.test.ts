@@ -15,6 +15,11 @@ import { E2_PROTECTED_API_ROUTES } from "@/lib/auth/e2-gate-paths";
 import { E3_PROTECTED_API_ROUTES, E3_PROTECTED_PAGE_ROUTES } from "@/lib/auth/e3-gate-paths";
 import { E4_PROTECTED_API_ROUTES, E4_PROTECTED_PAGE_ROUTES } from "@/lib/auth/e4-gate-paths";
 import { E5_PROTECTED_API_ROUTES, E5_PROTECTED_PAGE_ROUTES } from "@/lib/auth/e5-gate-paths";
+import {
+  E6_PROTECTED_API_ROUTES,
+  E6_PROTECTED_PAGE_ROUTES,
+  E6_PUBLIC_PWA_PATHS,
+} from "@/lib/auth/e6-gate-paths";
 
 function installRuntime() {
   const sessions = new InMemorySessionRepository();
@@ -320,6 +325,85 @@ describe("middleware gate", () => {
         }),
       );
       expect(response.status).toBe(401);
+    }
+  });
+
+  it("allows a verified session through middleware for the home page and summary API", async () => {
+    const { service } = installRuntime();
+    const login = await service.login({ password: "ok-password", clientKey: "test" });
+    expect(login.kind).toBe("ok");
+    if (login.kind !== "ok") {
+      return;
+    }
+    const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
+    for (const path of [...E6_PROTECTED_PAGE_ROUTES, ...E6_PROTECTED_API_ROUTES]) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie },
+        }),
+      );
+      expect(response.status).toBe(200);
+    }
+  });
+
+  it("redirects unauthenticated home and returns 401 for the home summary API", async () => {
+    for (const path of E6_PROTECTED_PAGE_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(302);
+      expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
+        "/login",
+      );
+    }
+    for (const path of E6_PROTECTED_API_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({
+        ok: false,
+        authenticated: false,
+        code: "unauthorized",
+      });
+    }
+  });
+
+  it("returns 401 for the home summary API with a forged session cookie", async () => {
+    installRuntime();
+    const forged = `${"g".repeat(43)}`;
+    for (const path of E6_PROTECTED_API_ROUTES) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${forged}` },
+        }),
+      );
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({
+        ok: false,
+        authenticated: false,
+        code: "unauthorized",
+      });
+    }
+  });
+
+  it("redirects the home page when the session cookie is forged", async () => {
+    installRuntime();
+    const forged = `${"h".repeat(43)}`;
+    for (const path of E6_PROTECTED_PAGE_ROUTES) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie: `${SESSION_COOKIE_NAME}=${forged}` },
+        }),
+      );
+      expect(response.status).toBe(302);
+      expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
+        "/login",
+      );
+    }
+  });
+
+  it("serves the manifest and icons without a session", async () => {
+    for (const path of E6_PUBLIC_PWA_PATHS) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
     }
   });
 

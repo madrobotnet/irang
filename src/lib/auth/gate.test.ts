@@ -14,6 +14,13 @@ import {
   e5ChatProposeEditPath,
   e5ChatThreadPath,
 } from "./e5-gate-paths";
+import {
+  E6_GATED_PATHS,
+  E6_HOME_SUMMARY_PATH,
+  E6_PROTECTED_API_ROUTES,
+  E6_PROTECTED_PAGE_ROUTES,
+  E6_PUBLIC_PWA_PATHS,
+} from "./e6-gate-paths";
 import { decideAuthGate, isPublicPath } from "./gate";
 
 describe("auth gate", () => {
@@ -179,6 +186,48 @@ describe("auth gate", () => {
         action: "redirect_login",
       });
       expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("lists the home page and home summary API on the E6 gate", () => {
+    expect([...E6_PROTECTED_PAGE_ROUTES]).toEqual(["/"]);
+    expect([...E6_PROTECTED_API_ROUTES]).toEqual(["/api/home"]);
+    expect(E6_HOME_SUMMARY_PATH).toBe("/api/home");
+    expect([...E6_GATED_PATHS]).toEqual(["/", "/api/home"]);
+    expect([...E6_PUBLIC_PWA_PATHS]).toEqual([
+      "/manifest.webmanifest",
+      "/icons/icon-192.png",
+      "/icons/icon-512.png",
+    ]);
+  });
+
+  it("does not treat the E6 home summary API as public", () => {
+    for (const pathname of E6_PROTECTED_API_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "unauthorized",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("redirects an unauthenticated home page to login", () => {
+    for (const pathname of E6_PROTECTED_PAGE_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "redirect_login",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("leaves the web manifest and home-screen icons public", () => {
+    for (const pathname of E6_PUBLIC_PWA_PATHS) {
+      expect(E6_GATED_PATHS).not.toContain(pathname);
+      expect(isPublicPath(pathname)).toBe(true);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "next",
+      });
     }
   });
 });
