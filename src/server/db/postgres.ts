@@ -1,11 +1,9 @@
 import { Pool } from "pg";
+import { validateDatabaseUrl } from "./database-url";
 
+/** Idempotent auth DDL only — never DROP sessions (or other live tables) on boot. */
 const SCHEMA_SQL = `
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
-DROP TABLE IF EXISTS login_failures;
-DROP TABLE IF EXISTS lockouts;
-DROP TABLE IF EXISTS sessions CASCADE;
 
 CREATE TABLE IF NOT EXISTS users (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -61,6 +59,7 @@ let pool: Pool | null = null;
 let schemaReady: Promise<void> | null = null;
 
 export function getPool(databaseUrl: string): Pool {
+  validateDatabaseUrl(databaseUrl);
   if (!pool) {
     pool = new Pool({ connectionString: databaseUrl });
   }
@@ -69,10 +68,18 @@ export function getPool(databaseUrl: string): Pool {
 
 export async function ensureAuthSchema(databaseUrl: string): Promise<void> {
   if (!schemaReady) {
-    schemaReady = (async () => {
+    const pending = (async () => {
       const client = getPool(databaseUrl);
       await client.query(SCHEMA_SQL);
     })();
+    schemaReady = pending;
+    try {
+      await pending;
+    } catch (error) {
+      schemaReady = null;
+      throw error;
+    }
+    return;
   }
   await schemaReady;
 }

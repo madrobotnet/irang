@@ -28,7 +28,8 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://second_brain:${POSTGRES_APP_PASSWORD}@db:5432/second_brain
+      # Set DATABASE_URL in .env (percent-encoded password). Do not interpolate POSTGRES_APP_PASSWORD here.
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env — use: node scripts/build-database-url.mjs}
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:?set AUTH_PASSWORD_HASH in .env}
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env}
       TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}

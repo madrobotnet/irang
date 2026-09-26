@@ -19,8 +19,11 @@ Oak VPS may still run an older `pg16` stack until cutover; this Compose file is 
 Copy `.env.example` to `.env` and set at least:
 
 - `POSTGRES_PASSWORD` — superuser password (init only; do not use in `DATABASE_URL`).
-- `POSTGRES_APP_PASSWORD` — password for the `second_brain` role.
-- `DATABASE_URL` — `postgres://second_brain:<POSTGRES_APP_PASSWORD>@db:5432/second_brain` (Compose) or `127.0.0.1` when port-forwarding.
+- `POSTGRES_APP_PASSWORD` — password for the `second_brain` role (used by Postgres init only; **do not** interpolate into `DATABASE_URL` in Compose).
+- `DATABASE_URL` — full postgres URL with a **percent-encoded** password. Generate without committing secrets:
+  - Compose host: `node scripts/build-database-url.mjs db 5432 second_brain`
+  - Local port-forward: `node scripts/build-database-url.mjs 127.0.0.1 5432 second_brain`
+  Raw `#` in a password makes `DATABASE_URL` an invalid URL and breaks auth until encoded.
 - `AUTH_PASSWORD_HASH`, `SESSION_SECRET` — see `.env.example`.
 
 No database passwords are committed in `docker-compose.yml`.

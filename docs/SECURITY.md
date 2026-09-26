@@ -6,6 +6,8 @@ Hostnames stay in the edge config. This repository does not hardcode a public do
 - Cookie: `sb_session` is HttpOnly, Secure, SameSite=Lax, Path=/, with a 7 day Max-Age. The database stores the SHA-256 hash of the token. The raw token is not stored.
 - Env: `AUTH_PASSWORD_HASH`, `DATABASE_URL`, `SESSION_SECRET`, and `TYPESAFE_API_KEY` come from the environment. Do not commit them or write them to logs. `AUTH_PASSWORD_HASH` is an Argon2id hash of the gate password (`npm run hash-password`), not the password itself.
 - Missing gate hash: login returns 503 `{ "ok": false, "code": "misconfigured" }`. There is no keyword fallback.
+- Invalid `DATABASE_URL` (unencoded `#` etc.): auth routes return 503 `misconfigured` with a JSON body; server logs a redacted message (never the password).
+- Postgres/schema unavailable: auth routes return 503 `storage_unavailable` (JSON). See `docs/AUTH_OPS.md` for the full matrix and Oak env checklist.
 - Lockout: 5 failures from the same client inside 15 minutes locks that client for 15 minutes. The HTTP status is 429. Further failures during an active lock do not extend it. Workers serialize that decision with `pg_advisory_xact_lock` on `brain:login:` plus the client key.
 - Sessions: TTL is 7 days and the cap is 5 concurrent sessions. A new login revokes the oldest sessions above the cap and keeps the new session. Workers serialize that cap with `pg_advisory_xact_lock` on `brain:sessions`.
 - Uploads: a `Content-Length` above 100MB returns 413 `payload_too_large` before the multipart body is parsed. `experimental.middlewareClientMaxBodySize` is `102mb` (Next 15's name for the proxy body cap, at least 101mb).

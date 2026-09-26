@@ -22,7 +22,7 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-export DATABASE_URL="postgres://second_brain:${POSTGRES_APP_PASSWORD}@127.0.0.1:5432/second_brain"
+export DATABASE_URL="$(node scripts/build-database-url.mjs 127.0.0.1 5432 second_brain)"
 export RUN_PG_INTEGRATION=1
 export AUTH_PASSWORD_HASH="${AUTH_PASSWORD_HASH:-}"
 export SESSION_SECRET="${SESSION_SECRET:-integration-test-secret-at-least-32-chars}"

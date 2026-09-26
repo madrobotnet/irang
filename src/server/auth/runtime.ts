@@ -12,7 +12,9 @@ import {
   opaqueSessionTokens,
   sha256TokenHasher,
 } from "./crypto";
+import { DatabaseUrlConfigError, validateDatabaseUrl } from "../db/database-url";
 import { ensureAuthSchema, getPool } from "../db/postgres";
+import { AuthStorageInitError } from "./init-errors";
 import {
   PostgresAuditRepository,
   PostgresLockoutRepository,
@@ -39,10 +41,33 @@ export async function createAuthDepsFromEnv(): Promise<AuthDeps> {
   }
 
   if (env.databaseUrl) {
-    await ensureAuthSchema(env.databaseUrl);
+    try {
+      validateDatabaseUrl(env.databaseUrl);
+    } catch (error) {
+      if (error instanceof DatabaseUrlConfigError) {
+        throw new AuthStorageInitError("invalid_database_url", error.message);
+      }
+      throw error;
+    }
+    try {
+      await ensureAuthSchema(env.databaseUrl);
+    } catch {
+      throw new AuthStorageInitError(
+        "storage_unavailable",
+        "auth storage schema initialization failed",
+      );
+    }
     const pool = getPool(env.databaseUrl);
     const users = new PostgresUserRepository(pool);
-    const userId = await users.ensureBootstrap(env.passwordHash);
+    let userId: string;
+    try {
+      userId = await users.ensureBootstrap(env.passwordHash);
+    } catch {
+      throw new AuthStorageInitError(
+        "storage_unavailable",
+        "auth storage bootstrap failed",
+      );
+    }
     return {
       userId,
       config,
@@ -117,9 +142,19 @@ export async function getAuthRuntime(): Promise<{ service: AuthService; deps: Au
     runtime = { service: new AuthService(deps), deps };
     return runtime;
   }
-  const deps = await createAuthDepsFromEnv();
-  runtime = { service: new AuthService(deps), deps };
-  return runtime;
+  try {
+    const deps = await createAuthDepsFromEnv();
+    runtime = { service: new AuthService(deps), deps };
+    return runtime;
+  } catch (error) {
+    if (error instanceof AuthStorageInitError) {
+      throw error;
+    }
+    if (error instanceof DatabaseUrlConfigError) {
+      throw new AuthStorageInitError("invalid_database_url", error.message);
+    }
+    throw new AuthStorageInitError("storage_unavailable", "auth storage initialization failed");
+  }
 }
 
 export function setAuthRuntimeForTests(next: { service: AuthService; deps: AuthDeps } | null): void {

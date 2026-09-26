@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as authRuntime from "./runtime";
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS } from "@/domain/auth/constants";
 import {
   InMemoryAuditRepository,
   InMemoryLockoutRepository,
   InMemorySessionRepository,
 } from "./memory";
+import { AuthStorageInitError } from "./init-errors";
 import { createAuthService, createMemoryAuthDeps, setAuthRuntimeForTests } from "./runtime";
 import { sha256TokenHasher } from "./crypto";
 import { handleLogin, handleLogout, handleMe } from "./http";
@@ -39,8 +41,23 @@ function installRuntime() {
   return { audit };
 }
 
+const envSnapshot = {
+  databaseUrl: process.env.DATABASE_URL,
+  passwordHash: process.env.AUTH_PASSWORD_HASH,
+};
+
 afterEach(() => {
   setAuthRuntimeForTests(null);
+  if (envSnapshot.databaseUrl === undefined) {
+    delete process.env.DATABASE_URL;
+  } else {
+    process.env.DATABASE_URL = envSnapshot.databaseUrl;
+  }
+  if (envSnapshot.passwordHash === undefined) {
+    delete process.env.AUTH_PASSWORD_HASH;
+  } else {
+    process.env.AUTH_PASSWORD_HASH = envSnapshot.passwordHash;
+  }
 });
 
 function cookieFrom(response: Response): string | null {
@@ -244,5 +261,55 @@ describe("auth HTTP handlers (API_AUTH_CONTRACT)", () => {
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
       expect(response.headers.get(key)).toBe(value);
     }
+  });
+
+  it("storage_unavailable init returns 503 storage_unavailable JSON", async () => {
+    setAuthRuntimeForTests(null);
+    const spy = vi
+      .spyOn(authRuntime, "getAuthRuntime")
+      .mockRejectedValueOnce(new AuthStorageInitError("storage_unavailable", "db down"));
+    const me = await handleMe(new Request("http://brain.madrobot.net/api/auth/me"));
+    expect(me.status).toBe(503);
+    expect(await me.json()).toEqual({ ok: false, code: "storage_unavailable" });
+    spy.mockRestore();
+  });
+
+  it("invalid DATABASE_URL returns 503 misconfigured JSON (not empty 500)", async () => {
+    setAuthRuntimeForTests(null);
+    process.env.AUTH_PASSWORD_HASH = "stored-hash";
+    process.env.DATABASE_URL = "postgres://second_brain:p#ass@db:5432/second_brain";
+
+    const me = await handleMe(new Request("http://brain.madrobot.net/api/auth/me"));
+    expect(me.status).toBe(503);
+    const text = await me.text();
+    expect(text.length).toBeGreaterThan(0);
+    expect(JSON.parse(text)).toEqual({ ok: false, code: "misconfigured" });
+
+    const login = await handleLogin(
+      new Request("http://brain.madrobot.net/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: "wrong" }),
+      }),
+    );
+    expect(login.status).toBe(503);
+    expect(await login.json()).toEqual({ ok: false, code: "misconfigured" });
+  });
+
+  it("unauthenticated me and bad password stay contract 401 with JSON body", async () => {
+    installRuntime();
+    const me = await handleMe(new Request("http://brain.madrobot.net/api/auth/me"));
+    expect(me.status).toBe(401);
+    expect(await me.text()).not.toBe("");
+
+    const bad = await handleLogin(
+      new Request("http://brain.madrobot.net/api/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password: "wrong" }),
+      }),
+    );
+    expect(bad.status).toBe(401);
+    expect(await bad.json()).toEqual({ ok: false, code: "bad_password" });
   });
 });

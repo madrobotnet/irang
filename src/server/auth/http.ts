@@ -7,7 +7,14 @@ import {
 import { formatLockRetryCopy } from "@/domain/auth/lockout";
 import { errorBody, lockedBody as contractLockedBody, meOkBody, unauthorizedBody } from "@/lib/auth/api-contract";
 import { clientKeyFromForwardedHeaders, trustedProxyHopsFromEnv } from "./client-ip";
-import { getAuthRuntime } from "./runtime";
+import {
+  authInitFailureBody,
+  authInitFailureStatus,
+  logAuthInitFailure,
+} from "./init-response";
+import { AuthStorageInitError } from "./init-errors";
+import { getAuthRuntime, loadAuthEnv } from "./runtime";
+import type { AuthService } from "./service";
 
 function headersWithSecurity(init?: HeadersInit): Headers {
   const headers = new Headers(init);
@@ -71,6 +78,35 @@ function toIso(ms: number): string {
   return new Date(ms).toISOString();
 }
 
+function storageUnavailableResponse(): Response {
+  return json(errorBody("storage_unavailable"), authInitFailureStatus());
+}
+
+async function withAuthRuntime(
+  run: (service: AuthService) => Promise<Response>,
+): Promise<Response> {
+  const env = loadAuthEnv();
+  try {
+    const { service } = await getAuthRuntime();
+    try {
+      return await run(service);
+    } catch (error) {
+      if (error instanceof AuthStorageInitError) {
+        logAuthInitFailure(error, env.databaseUrl);
+        return json(authInitFailureBody(error), authInitFailureStatus());
+      }
+      console.error("[auth] storage_unavailable: auth handler failed during request");
+      return storageUnavailableResponse();
+    }
+  } catch (error) {
+    logAuthInitFailure(error, env.databaseUrl);
+    if (error instanceof AuthStorageInitError) {
+      return json(authInitFailureBody(error), authInitFailureStatus());
+    }
+    return storageUnavailableResponse();
+  }
+}
+
 function lockedResponseBody(retryAfterMs: number, lockedUntil: number) {
   const retryAfterSec = Math.max(1, Math.ceil(retryAfterMs / 1000));
   return contractLockedBody({
@@ -81,7 +117,6 @@ function lockedResponseBody(retryAfterMs: number, lockedUntil: number) {
 }
 
 export async function handleLogin(request: Request): Promise<Response> {
-  const { service } = await getAuthRuntime();
   const password = await readPassword(request);
   const html = wantsHtml(request);
   const origin = new URL(request.url).origin;
@@ -93,72 +128,77 @@ export async function handleLogin(request: Request): Promise<Response> {
       : json(errorBody("validation"), 400);
   }
 
-  const result = await service.login({ password, clientKey });
+  return withAuthRuntime(async (service) => {
+    const result = await service.login({ password, clientKey });
 
-  if (result.kind === "misconfigured") {
-    return html
-      ? redirect(`${origin}/login?error=config`)
-      : json(errorBody("misconfigured"), 503);
-  }
-
-  if (result.kind === "validation") {
-    return html
-      ? redirect(`${origin}/login?error=invalid`)
-      : json(errorBody("validation"), 400);
-  }
-
-  if (result.kind === "locked") {
-    const body = lockedResponseBody(result.retryAfterMs, result.lockedUntil);
-    if (html) {
-      return redirect(`${origin}/login?error=locked&retry=${body.retryAfterSec}`);
+    if (result.kind === "misconfigured") {
+      return html
+        ? redirect(`${origin}/login?error=config`)
+        : json(errorBody("misconfigured"), 503);
     }
-    return json(body, 429);
-  }
 
-  if (result.kind === "bad_password") {
-    return html
-      ? redirect(`${origin}/login?error=invalid`)
-      : json(errorBody("bad_password"), 401);
-  }
+    if (result.kind === "validation") {
+      return html
+        ? redirect(`${origin}/login?error=invalid`)
+        : json(errorBody("validation"), 400);
+    }
 
-  const cookie = setCookieHeader(result.sessionToken, sessionCookieAttributes());
-  if (html) {
-    return redirect(`${origin}/`, cookie);
-  }
-  const headers = headersWithSecurity({ "content-type": "application/json; charset=utf-8" });
-  headers.append("Set-Cookie", cookie);
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+    if (result.kind === "locked") {
+      const body = lockedResponseBody(result.retryAfterMs, result.lockedUntil);
+      if (html) {
+        return redirect(`${origin}/login?error=locked&retry=${body.retryAfterSec}`);
+      }
+      return json(body, 429);
+    }
+
+    if (result.kind === "bad_password") {
+      return html
+        ? redirect(`${origin}/login?error=invalid`)
+        : json(errorBody("bad_password"), 401);
+    }
+
+    const cookie = setCookieHeader(result.sessionToken, sessionCookieAttributes());
+    if (html) {
+      return redirect(`${origin}/`, cookie);
+    }
+    const headers = headersWithSecurity({ "content-type": "application/json; charset=utf-8" });
+    headers.append("Set-Cookie", cookie);
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
+  });
 }
 
 export async function handleLogout(request: Request): Promise<Response> {
-  const { service } = await getAuthRuntime();
   const token = sessionTokenFromRequest(request);
-  await service.logout(token, clientKeyFromRequest(request));
-  const cookie = setCookieHeader("", clearedSessionCookieAttributes());
-  if (wantsHtml(request)) {
-    const origin = new URL(request.url).origin;
-    return redirect(`${origin}/login`, cookie);
-  }
-  const headers = headersWithSecurity();
-  headers.append("Set-Cookie", cookie);
-  return new Response(null, { status: 204, headers });
+  const clientKey = clientKeyFromRequest(request);
+  return withAuthRuntime(async (service) => {
+    await service.logout(token, clientKey);
+    const cookie = setCookieHeader("", clearedSessionCookieAttributes());
+    if (wantsHtml(request)) {
+      const origin = new URL(request.url).origin;
+      return redirect(`${origin}/login`, cookie);
+    }
+    const headers = headersWithSecurity();
+    headers.append("Set-Cookie", cookie);
+    return new Response(null, { status: 204, headers });
+  });
 }
 
 export async function handleMe(request: Request): Promise<Response> {
-  const { service } = await getAuthRuntime();
   const token = sessionTokenFromRequest(request);
-  const session = await service.lookup(token);
-  if (!session) {
-    return json(unauthorizedBody(), 401);
-  }
-  return json(
-    meOkBody({
-      publicId: session.publicId,
-      createdAt: toIso(session.createdAt),
-      expiresAt: toIso(session.expiresAt),
-    }),
-    200,
-  );
+  return withAuthRuntime(async (service) => {
+    const session = await service.lookup(token);
+    if (!session) {
+      return json(unauthorizedBody(), 401);
+    }
+    return json(
+      meOkBody({
+        publicId: session.publicId,
+        createdAt: toIso(session.createdAt),
+        expiresAt: toIso(session.expiresAt),
+      }),
+      200,
+    );
+  });
 }
 
 export async function handleHealth(): Promise<Response> {

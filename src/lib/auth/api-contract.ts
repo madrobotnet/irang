@@ -4,6 +4,7 @@ export type ApiErrorCode =
   | "bad_password"
   | "locked"
   | "misconfigured"
+  | "storage_unavailable"
   | "validation"
   | "unauthorized";
 

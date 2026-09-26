@@ -90,7 +90,11 @@ export function mapLoginJsonResponse(
     return lockedResult(body, nowMs);
   }
 
-  if (outcome === "misconfigured" || outcome === "ops") {
+  if (
+    outcome === "misconfigured" ||
+    outcome === "ops" ||
+    outcome === "storage_unavailable"
+  ) {
     return { kind: "misconfigured" };
   }
 
