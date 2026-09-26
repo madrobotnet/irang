@@ -107,6 +107,67 @@ describe("auth HTTP handlers (API_AUTH_CONTRACT)", () => {
     expect(await response.json()).toEqual({ ok: false, code: "bad_password" });
   });
 
+  it("html form login accepts application/x-www-form-urlencoded", async () => {
+    installRuntime();
+    const body = new URLSearchParams({ password: "ok-password" });
+    const response = await handleLogin(
+      new Request("http://brain.madrobot.net/api/auth/login", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          accept: "text/html",
+        },
+        body: body.toString(),
+      }),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("http://brain.madrobot.net/");
+    expect(response.headers.get("set-cookie")).toContain(SESSION_COOKIE_NAME);
+  });
+
+  describe("non-JSON login Content-Type → 400 validation (not 500)", () => {
+    async function expectValidationNot500(headers: Record<string, string>, body: string) {
+      installRuntime();
+      const response = await handleLogin(
+        new Request("http://brain.madrobot.net/api/auth/login", {
+          method: "POST",
+          headers: { accept: "application/json", ...headers },
+          body,
+        }),
+      );
+      expect(response.status).toBe(400);
+      expect(response.status).not.toBe(500);
+      const text = await response.text();
+      expect(text.length).toBeGreaterThan(0);
+      expect(JSON.parse(text)).toEqual({ ok: false, code: "validation" });
+    }
+
+    it("text/plain", async () => {
+      await expectValidationNot500(
+        { "content-type": "text/plain" },
+        "password=ok-password",
+      );
+    });
+
+    it("application/xml", async () => {
+      await expectValidationNot500(
+        { "content-type": "application/xml" },
+        "<password>secret</password>",
+      );
+    });
+
+    it("missing Content-Type", async () => {
+      await expectValidationNot500({}, "not-json-body");
+    });
+
+    it("application/octet-stream", async () => {
+      await expectValidationNot500(
+        { "content-type": "application/octet-stream" },
+        "binary-payload",
+      );
+    });
+  });
+
   it("empty password returns 400 validation", async () => {
     installRuntime();
     const response = await handleLogin(

@@ -55,7 +55,14 @@ export function clientKeyFromRequest(request: Request): string {
   );
 }
 
-async function readPassword(request: Request): Promise<string | null> {
+function isLoginFormContentType(contentType: string): boolean {
+  return (
+    contentType.includes("application/x-www-form-urlencoded") ||
+    contentType.includes("multipart/form-data")
+  );
+}
+
+async function readPassword(request: Request): Promise<string> {
   const contentType = request.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     try {
@@ -65,9 +72,32 @@ async function readPassword(request: Request): Promise<string | null> {
       return "";
     }
   }
-  const form = await request.formData();
-  const value = form.get("password");
-  return typeof value === "string" ? value : "";
+  if (isLoginFormContentType(contentType)) {
+    try {
+      const form = await request.formData();
+      const value = form.get("password");
+      return typeof value === "string" ? value : "";
+    } catch {
+      return "";
+    }
+  }
+  if (!contentType) {
+    try {
+      const text = (await request.text()).trim();
+      if (!text) {
+        return "";
+      }
+      if (text.startsWith("{")) {
+        const body = JSON.parse(text) as { password?: unknown };
+        return typeof body.password === "string" ? body.password : "";
+      }
+      const value = new URLSearchParams(text).get("password");
+      return value ?? "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }
 
 function sessionTokenFromRequest(request: Request): string | null {
@@ -117,16 +147,17 @@ function lockedResponseBody(retryAfterMs: number, lockedUntil: number) {
 }
 
 export async function handleLogin(request: Request): Promise<Response> {
-  const password = await readPassword(request);
   const html = wantsHtml(request);
   const origin = new URL(request.url).origin;
-  const clientKey = clientKeyFromRequest(request);
-
-  if (password === null) {
+  let password: string;
+  try {
+    password = await readPassword(request);
+  } catch {
     return html
       ? redirect(`${origin}/login?error=invalid`)
       : json(errorBody("validation"), 400);
   }
+  const clientKey = clientKeyFromRequest(request);
 
   return withAuthRuntime(async (service) => {
     const result = await service.login({ password, clientKey });

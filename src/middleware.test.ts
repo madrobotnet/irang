@@ -49,11 +49,13 @@ function installRuntime() {
   return { service };
 }
 
-function wireSessionFetch() {
+function wireInternalSessionFetch() {
   vi.stubGlobal(
     "fetch",
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:3000\/api\/auth\/me/);
+      expect(url).not.toContain("brain.madrobot.net");
       if (url.includes("/api/auth/me")) {
         return handleMe(new Request(url, init));
       }
@@ -63,7 +65,7 @@ function wireSessionFetch() {
 }
 
 beforeEach(() => {
-  wireSessionFetch();
+  wireInternalSessionFetch();
 });
 
 afterEach(() => {
@@ -71,17 +73,35 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("middleware gate", () => {
+describe("middleware gate (P0: GET / with session cookie)", () => {
+  it("Ada/Quinn P0#1: fake sb_session + GET / is not 500 and does not self-fetch", async () => {
+    const fetchSpy = vi.fn(async () => {
+      throw new TypeError("fetch failed");
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+    const response = await middleware(
+      new NextRequest("https://brain.madrobot.net/", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=any-fake-session-value` },
+      }),
+    );
+    expect(response.status).not.toBe(500);
+    expect(response.status).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("redirects unauthenticated pages to /login", async () => {
     const response = await middleware(new NextRequest("https://brain.madrobot.net/"));
     expect(response.status).toBe(302);
     expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
       "/login",
     );
+    const csp = response.headers.get("Content-Security-Policy") ?? "";
+    expect(csp).toMatch(/'nonce-[^']+'/);
+    expect(csp).toContain("'strict-dynamic'");
+    expect(csp).not.toBe(SECURITY_HEADERS["Content-Security-Policy"]);
   });
 
-  it("redirects protected AppShell routes with a forged session cookie", async () => {
-    installRuntime();
+  it("passes forged session cookies on pages to in-process layout gate (middleware 200)", async () => {
     const forged = `${"a".repeat(43)}`;
     for (const path of ["/chat", "/search", "/inbox", "/notes"]) {
       const response = await middleware(
@@ -89,11 +109,50 @@ describe("middleware gate", () => {
           headers: { cookie: `${SESSION_COOKIE_NAME}=${forged}` },
         }),
       );
-      expect(response.status).toBe(302);
-      expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
-        "/login",
-      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
     }
+  });
+
+  it("API routes return 401 when loopback me fetch fails (no 500)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("fetch failed");
+      }),
+    );
+    const response = await middleware(
+      new NextRequest("https://brain.madrobot.net/api/notes", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=any-fake-session-value` },
+      }),
+    );
+    expect(response.status).toBe(401);
+    expect(response.status).not.toBe(500);
+  });
+
+  it("loopbacks API session check to http://127.0.0.1:3000 (not public https)", async () => {
+    const { service } = installRuntime();
+    const login = await service.login({ password: "ok-password", clientKey: "test" });
+    expect(login.kind).toBe("ok");
+    if (login.kind !== "ok") {
+      return;
+    }
+    const seenUrls: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      seenUrls.push(url);
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:3000\/api\/auth\/me/);
+      return handleMe(new Request(url, init));
+    });
+    const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
+    const response = await middleware(
+      new NextRequest("https://brain.madrobot.net/api/notes", {
+        headers: { cookie },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(seenUrls.some((u) => u.includes("/api/auth/me"))).toBe(true);
+    expect(seenUrls.every((u) => !u.startsWith("https://brain.madrobot.net"))).toBe(true);
   });
 
   it("allows protected pages when the session is verified via auth lookup", async () => {
@@ -140,6 +199,9 @@ describe("middleware gate", () => {
       authenticated: false,
       code: "unauthorized",
     });
+    const csp = response.headers.get("Content-Security-Policy") ?? "";
+    expect(csp).toMatch(/'nonce-[^']+'/);
+    expect(csp).toContain("'strict-dynamic'");
   });
 
   it("returns 401 for protected APIs with a forged session cookie", async () => {
@@ -383,8 +445,7 @@ describe("middleware gate", () => {
     }
   });
 
-  it("redirects the home page when the session cookie is forged", async () => {
-    installRuntime();
+  it("passes forged session cookies on home routes to layout gate (middleware 200)", async () => {
     const forged = `${"h".repeat(43)}`;
     for (const path of E6_PROTECTED_PAGE_ROUTES) {
       const response = await middleware(
@@ -392,10 +453,7 @@ describe("middleware gate", () => {
           headers: { cookie: `${SESSION_COOKIE_NAME}=${forged}` },
         }),
       );
-      expect(response.status).toBe(302);
-      expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
-        "/login",
-      );
+      expect(response.status).toBe(200);
     }
   });
 
@@ -410,6 +468,12 @@ describe("middleware gate", () => {
   it("sets security headers on gated responses", async () => {
     const response = await middleware(new NextRequest("https://brain.madrobot.net/"));
     for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+      if (key === "Content-Security-Policy") {
+        const csp = response.headers.get(key) ?? "";
+        expect(csp).toMatch(/'nonce-[^']+'/);
+        expect(csp).toContain("'strict-dynamic'");
+        continue;
+      }
       expect(response.headers.get(key)).toBe(value);
     }
   });

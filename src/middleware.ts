@@ -6,21 +6,19 @@ import {
   generateCspNonce,
 } from "@/lib/auth/security-headers";
 import { unauthorizedJsonResponse } from "@/lib/auth/api-errors";
-import { hasVerifiedSession } from "@/lib/auth/verify-session";
+import { hasValidSessionForMiddleware } from "@/lib/auth/middleware-session-gate";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const hasValidSessionToken = isPublicPath(pathname)
-    ? false
-    : await hasVerifiedSession(request);
+  const hasValidSessionToken = await hasValidSessionForMiddleware(request, pathname);
 
   const decision = decideAuthGate({
     pathname,
     hasValidSessionToken,
   });
 
+  const cspNonce = generateCspNonce();
   let response: NextResponse;
-  let cspNonce: string | undefined;
 
   if (decision.action === "redirect_login") {
     const url = request.nextUrl.clone();
@@ -34,7 +32,6 @@ export async function middleware(request: NextRequest) {
       headers: body.headers,
     });
   } else {
-    cspNonce = generateCspNonce();
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set(CSP_NONCE_HEADER, cspNonce);
     response = NextResponse.next({
