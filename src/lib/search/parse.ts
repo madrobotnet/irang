@@ -1,3 +1,4 @@
+import { SEARCH_INDEX_STATUSES, type SearchIndexStatus } from "@/domain/search/index-status";
 import { E4_SEARCH_COLLECTION_PATH } from "@/lib/auth/e4-gate-paths";
 import type {
   EvidenceNoteDto,
@@ -14,17 +15,14 @@ import type {
   SearchResultsOk,
 } from "./dto";
 
-/** UI surface for a TypeSafe envelope failure. Hits are never attached. */
 export type SearchUiFailure = "jev_error" | "key_missing" | "error";
 
-/** Search call outcome. `indexing` is a 503 with no keyword rows. */
 export type SearchCallFailure = SearchUiFailure | "indexing";
 
 export type ParsedSearch =
   | { ok: true; envelope: SearchResultsOk }
   | { ok: false; reason: SearchCallFailure };
 
-/** Optional query params Rex already reads. Not a fallback switch. */
 export const SEARCH_STATUS_FILTERS = ["draft", "confirmed", "archived"] as const;
 export type SearchStatusFilter = (typeof SEARCH_STATUS_FILTERS)[number];
 export type SearchRequestFilters = {
@@ -101,7 +99,6 @@ function readLegend(value: unknown): Record<string, string> | null {
   return out;
 }
 
-/** Noul has no confidence. A confidence field rejects the answer. */
 function readNoul(value: unknown): NoulJudgmentDto | null {
   if (!isRecord(value) || value.type !== "noul") return null;
   if ("confidence" in value) return null;
@@ -153,6 +150,21 @@ function readHit(value: unknown): SearchHitDto | "forbidden" | null {
   };
 }
 
+function readIndexStatus(value: unknown): SearchIndexStatus | null {
+  if (typeof value !== "string") return null;
+  for (const status of SEARCH_INDEX_STATUSES) {
+    if (value === status) return status;
+  }
+  return null;
+}
+
+function indexStatusOrReady(record: Record<string, unknown>): SearchIndexStatus | null {
+  if (!("indexStatus" in record) || record.indexStatus == null) {
+    return "ready";
+  }
+  return readIndexStatus(record.indexStatus);
+}
+
 function readErrorBody(record: Record<string, unknown>): SearchErrorBody | null {
   if (record.ok !== false) return null;
   const code = readCode(record);
@@ -163,10 +175,11 @@ function readErrorBody(record: Record<string, unknown>): SearchErrorBody | null 
 function readResults(record: Record<string, unknown>): SearchResultsOk | "forbidden" | null {
   if (hasForbiddenKey(record)) return "forbidden";
   if (record.ok !== true) return null;
+  const indexStatus = indexStatusOrReady(record);
   const query = readString(record.query);
   const answersQuery = readNoul(record.answersQuery);
   const ranking = readChoice(record.ranking);
-  if (!query || !answersQuery || !ranking || !Array.isArray(record.results)) return null;
+  if (!indexStatus || !query || !answersQuery || !ranking || !Array.isArray(record.results)) return null;
   const results: SearchHitDto[] = [];
   for (const entry of record.results) {
     const hit = readHit(entry);
@@ -174,7 +187,7 @@ function readResults(record: Record<string, unknown>): SearchResultsOk | "forbid
     if (!hit) return null;
     results.push(hit);
   }
-  return { ok: true, query, answersQuery, ranking, results };
+  return { ok: true, indexStatus, query, answersQuery, ranking, results };
 }
 
 function readEvidenceNote(value: unknown): EvidenceNoteDto | "forbidden" | null {
@@ -196,8 +209,9 @@ function readEvidenceNote(value: unknown): EvidenceNoteDto | "forbidden" | null 
 function readEvidence(record: Record<string, unknown>): EvidenceNotesOk | "forbidden" | null {
   if (hasForbiddenKey(record)) return "forbidden";
   if (record.ok !== true) return null;
+  const indexStatus = indexStatusOrReady(record);
   const query = readString(record.query);
-  if (!query || !Array.isArray(record.notes)) return null;
+  if (!indexStatus || !query || !Array.isArray(record.notes)) return null;
   const notes: EvidenceNoteDto[] = [];
   for (const entry of record.notes) {
     const note = readEvidenceNote(entry);
@@ -205,7 +219,7 @@ function readEvidence(record: Record<string, unknown>): EvidenceNotesOk | "forbi
     if (!note) return null;
     notes.push(note);
   }
-  return { ok: true, query, notes };
+  return { ok: true, indexStatus, query, notes };
 }
 
 function interpret(
@@ -226,18 +240,12 @@ function interpret(
   return { ok: true, envelope };
 }
 
-/**
- * Accepts a search-result envelope.
- * `judgment_failed`, `typesafe_misconfigured`, and keyword-fallback fields
- * return a failure and no hits.
- */
 export function interpretSearchBody(status: number, body: unknown): ParsedSearch {
   const parsed = interpret(status, body, readResults);
   if (!parsed.ok) return parsed;
   return { ok: true, envelope: parsed.envelope as SearchResultsOk };
 }
 
-/** Accepts an evidence-note envelope. Failures carry no notes. */
 export function interpretEvidenceBody(status: number, body: unknown): ParsedEvidence {
   const parsed = interpret(status, body, readEvidence);
   if (!parsed.ok) {

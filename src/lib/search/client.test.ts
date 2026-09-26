@@ -10,6 +10,7 @@ afterEach(() => {
 
 const ranked: SearchResultsOk = {
   ok: true,
+  indexStatus: "ready",
   query: "소유",
   answersQuery: { type: "noul", noul: 0.8 },
   ranking: {
@@ -76,6 +77,7 @@ describe("judgeEvidence", () => {
       init = options;
       return jsonResponse(200, {
         ok: true,
+        indexStatus: "ready",
         query: "소유",
         notes: [
           {

@@ -10,6 +10,7 @@ import {
 
 const envelope: SearchResultsOk = {
   ok: true,
+  indexStatus: "ready",
   query: "소유",
   answersQuery: { type: "noul", noul: 0.9 },
   ranking: {
@@ -50,6 +51,7 @@ describe("searchReducer", () => {
       type: "evidence_ok",
       envelope: {
         ok: true,
+        indexStatus: "ready",
         query: "소유",
         notes: [
           {
@@ -80,5 +82,16 @@ describe("searchReducer", () => {
       { type: "succeed", envelope },
     );
     expect(loaded.route).toBeNull();
+  });
+
+  it("keeps hits on succeed when the corpus is still indexing", () => {
+    const loaded = searchReducer(initialSearchModel, {
+      type: "succeed",
+      envelope: { ...envelope, indexStatus: "indexing" },
+    });
+    expect(loaded.surface).toBe("results");
+    expect(loaded.envelope?.indexStatus).toBe("indexing");
+    expect(loaded.envelope?.results).toHaveLength(1);
+    expect(showsJevOn(loaded.surface, loaded.evidence.status)).toBe(true);
   });
 });

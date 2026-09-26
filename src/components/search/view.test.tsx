@@ -8,6 +8,7 @@ import { SearchView, type SearchViewProps } from "./SearchView";
 
 const envelope: SearchResultsOk = {
   ok: true,
+  indexStatus: "ready",
   query: "소유",
   answersQuery: { type: "noul", noul: 0.93 },
   ranking: {
@@ -24,6 +25,7 @@ const envelope: SearchResultsOk = {
 
 const evidence: EvidenceNotesOk = {
   ok: true,
+  indexStatus: "ready",
   query: "소유",
   notes: [
     {
@@ -132,15 +134,68 @@ describe("SearchView", () => {
     });
     expect(html).toContain(SEARCH_COPY.empty);
     expect(html).not.toContain(SEARCH_COPY.evidenceCta);
+    expect(html).not.toContain(SEARCH_COPY.indexing);
   });
 
-  it("shows the indexing banner and no keyword rows", () => {
+  it("hides the index banner when indexStatus is ready", () => {
+    const html = view({
+      ...initialSearchModel,
+      surface: "results",
+      envelope,
+    });
+    expect(html).toContain("소유권");
+    expect(html).toContain('data-index-status="ready"');
+    expect(html).not.toContain(SEARCH_COPY.indexing);
+    expect(html).not.toContain(JEV_COPY.jevErrorRetry);
+  });
+
+  it("shows the index banner with keyword rows when indexStatus is indexing", () => {
+    const html = view({
+      ...initialSearchModel,
+      surface: "results",
+      envelope: { ...envelope, indexStatus: "indexing" },
+    });
+    expect(html).toContain(SEARCH_COPY.indexing);
+    expect(html).toContain("소유권");
+    expect(html).toContain("내 노트입니다");
+    expect(html).toContain('data-search-state="results"');
+    expect(html).toContain('data-index-status="indexing"');
+    expect(html).toContain('data-jev-on="true"');
+    expect(html).not.toContain(SEARCH_COPY.retry);
+    expect(html).not.toContain(JEV_COPY.jevErrorRetry);
+  });
+
+  it("shows the same index banner when indexStatus is keyword_only", () => {
+    const html = view({
+      ...initialSearchModel,
+      surface: "results",
+      envelope: { ...envelope, indexStatus: "keyword_only" },
+    });
+    expect(html).toContain(SEARCH_COPY.indexing);
+    expect(html).toContain("소유권");
+    expect(html).toContain('data-index-status="keyword_only"');
+    expect(html).not.toContain(JEV_COPY.jevErrorRetry);
+  });
+
+  it("shows the index banner on an empty judged list that is still indexing", () => {
+    const html = view({
+      ...initialSearchModel,
+      surface: "empty",
+      envelope: { ...envelope, indexStatus: "indexing", results: [] },
+    });
+    expect(html).toContain(SEARCH_COPY.indexing);
+    expect(html).toContain(SEARCH_COPY.empty);
+    expect(html).not.toContain(SEARCH_COPY.evidenceCta);
+  });
+
+  it("shows the indexing failure banner and no keyword rows", () => {
     const html = view({
       ...initialSearchModel,
       surface: "indexing",
       envelope,
     });
     expect(html).toContain(SEARCH_COPY.indexing);
+    expect(html).toContain(SEARCH_COPY.retry);
     expect(html).toContain('data-jev-on="false"');
     expect(html).not.toContain("소유권");
     expect(html).not.toContain("내 노트입니다");
@@ -154,6 +209,7 @@ describe("SearchView", () => {
       envelope,
     });
     expect(html).toContain(JEV_COPY.jevErrorRetry);
+    expect(html).not.toContain(SEARCH_COPY.indexing);
     expect(html).not.toContain("소유권");
     expect(html).not.toContain(SEARCH_COPY.evidenceCta);
   });

@@ -4,6 +4,7 @@ import { interpretEvidenceBody, interpretSearchBody, searchCollectionUrl } from 
 
 const ranked: SearchResultsOk = {
   ok: true,
+  indexStatus: "ready",
   query: "who owns uploaded notes?",
   answersQuery: { type: "noul", noul: 0.93 },
   ranking: {
@@ -28,6 +29,7 @@ const similarity = {
 
 const evidence: EvidenceNotesOk = {
   ok: true,
+  indexStatus: "ready",
   query: "which note answers this?",
   notes: [
     {
@@ -88,6 +90,7 @@ describe("interpretSearchBody", () => {
     expect(
       interpretSearchBody(200, {
         ok: true,
+        indexStatus: "ready",
         query: ranked.query,
         answersQuery: ranked.answersQuery,
         ranking: ranked.ranking,
@@ -128,6 +131,40 @@ describe("interpretSearchBody", () => {
     ).toEqual({ ok: false, reason: "error" });
   });
 
+  it("keeps indexStatus and does not turn a Jev failure into that field", () => {
+    expect(interpretSearchBody(200, { ...ranked, indexStatus: "indexing" })).toEqual({
+      ok: true,
+      envelope: { ...ranked, indexStatus: "indexing" },
+    });
+    expect(interpretSearchBody(200, { ...ranked, indexStatus: "keyword_only" })).toEqual({
+      ok: true,
+      envelope: { ...ranked, indexStatus: "keyword_only" },
+    });
+    expect(
+      interpretSearchBody(502, {
+        ok: false,
+        code: "judgment_failed",
+        indexStatus: "indexing",
+        results: ranked.results,
+      }),
+    ).toEqual({ ok: false, reason: "jev_error" });
+  });
+
+  it("treats a missing indexStatus as ready", () => {
+    const { indexStatus: _indexStatus, ...withoutStatus } = ranked;
+    expect(interpretSearchBody(200, withoutStatus)).toEqual({
+      ok: true,
+      envelope: { ...ranked, indexStatus: "ready" },
+    });
+  });
+
+  it("rejects an unknown indexStatus", () => {
+    expect(interpretSearchBody(200, { ...ranked, indexStatus: "pending" })).toEqual({
+      ok: false,
+      reason: "error",
+    });
+  });
+
   it("treats an empty judged result list as success with no rows", () => {
     const empty: SearchResultsOk = {
       ...ranked,
@@ -160,6 +197,14 @@ describe("interpretEvidenceBody", () => {
         notes: evidence.notes,
       }),
     ).toEqual({ ok: false, reason: "jev_error" });
+  });
+
+  it("treats a missing indexStatus as ready", () => {
+    const { indexStatus: _indexStatus, ...withoutStatus } = evidence;
+    expect(interpretEvidenceBody(200, withoutStatus)).toEqual({
+      ok: true,
+      envelope: { ...evidence, indexStatus: "ready" },
+    });
   });
 });
 

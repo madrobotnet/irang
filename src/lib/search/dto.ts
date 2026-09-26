@@ -1,20 +1,6 @@
-/**
- * E4 search envelopes (DTO seat only).
- *
- * Shapes follow TypeSafe Judgment answers:
- * - Choice: `choice`, `probabilities`, `confidence`
- * - Score: `score`, `legend`, `probabilities`, `confidence`
- * - Noul: `noul` (probability of yes). No confidence field.
- *
- * Confidence summarizes how peaked a Choice or Score distribution is.
- * It is not a Noul probability and not permission to act.
- *
- * Store Jev output as returned. Do not add a second model pass that
- * re-verifies the judgment.
- *
- * TypeSafe or key failure is `SearchErrorBody`. There is no keyword-search
- * success variant and no silent fallback field.
- */
+import type { SearchIndexStatus } from "@/domain/search/index-status";
+
+export type { SearchIndexStatus } from "@/domain/search/index-status";
 
 /** Choice or Score answer. Noul is not part of this envelope. */
 export type JudgmentConfidenceDto =
@@ -49,7 +35,6 @@ export type NoulJudgmentDto = {
 export type SearchHitDto = {
   noteId: string;
   title: string;
-  /** Optional snippet. Not a keyword score. */
   snippet: string | null;
 };
 
@@ -62,6 +47,7 @@ export type SearchHitDto = {
  */
 export type SearchResultsOk = {
   ok: true;
+  indexStatus: SearchIndexStatus;
   query: string;
   answersQuery: NoulJudgmentDto;
   ranking: Extract<JudgmentConfidenceDto, { type: "choice" }>;
@@ -87,23 +73,15 @@ export type EvidenceNoteDto = {
   similarity: ScoreJudgmentDto;
 };
 
-/** Evidence-note envelope. */
 export type EvidenceNotesOk = {
   ok: true;
+  indexStatus: SearchIndexStatus;
   query: string;
   notes: EvidenceNoteDto[];
 };
 
-/**
- * Key missing, blank, or not injected for this environment.
- * Callers show the error. They do not run keyword search instead.
- */
 export type SearchKeyErrorCode = "typesafe_misconfigured";
 
-/**
- * System One call failed.
- * Callers show the error. They do not run keyword search instead.
- */
 export type SearchJudgmentErrorCode = "judgment_failed";
 
 export type SearchTypesafeErrorCode = SearchKeyErrorCode | SearchJudgmentErrorCode;
@@ -127,7 +105,6 @@ export type SearchResponse = SearchResultsOk | SearchErrorBody;
 
 export type EvidenceNotesResponse = EvidenceNotesOk | SearchErrorBody;
 
-/** `GET /api/search` query seat. No fallback switch. */
 export type SearchQueryDto = {
   query: string;
 };

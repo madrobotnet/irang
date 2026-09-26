@@ -51,6 +51,7 @@ const answersQuery: NoulJudgmentDto = { type: "noul", noul: 0.93 };
 function resultsEnvelope(): SearchResultsOk {
   return {
     ok: true,
+    indexStatus: "ready",
     query: "who owns uploaded notes?",
     answersQuery,
     ranking,
@@ -84,6 +85,7 @@ function evidenceEnvelope(): EvidenceNotesOk {
   };
   return {
     ok: true,
+    indexStatus: "ready",
     query: "which note answers this?",
     notes: [
       {

@@ -5,6 +5,7 @@ import { resetNotesRuntimeForTests, setNotesStoreForTests } from "@/server/notes
 import { setSystemOneInvokerForTests } from "@/server/typesafe/runtime";
 import type { SystemOneInvoker } from "@/server/typesafe/ports";
 import { handleCreateNote } from "@/server/notes/http";
+import { OVERNIGHT_INDEX_LIMIT } from "@/domain/search/dev-process-gates";
 import { runOvernightIndexBatch } from "./batch";
 import { handleEvidence, handleSearch } from "./http";
 import { MemorySearchIndex } from "./memory-index";
@@ -145,6 +146,7 @@ describe("search API", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       ok: true;
+      indexStatus: string;
       query: string;
       answersQuery: { type: string; noul: number; confidence?: number };
       ranking: { type: string; choice: string; confidence: number; probabilities: Record<string, number> };
@@ -166,6 +168,8 @@ describe("search API", () => {
     expect(body).not.toHaveProperty("fallback");
     expect(body).not.toHaveProperty("keywordScore");
     expect(body).not.toHaveProperty("mode");
+    expect(body).not.toHaveProperty("code");
+    expect(body.indexStatus).toBe("ready");
   });
 
   it("accepts POST /api/search with the same envelope", async () => {
@@ -179,7 +183,8 @@ describe("search API", () => {
       }),
     );
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { results: { noteId: string }[] };
+    const body = (await response.json()) as { indexStatus: string; results: { noteId: string }[] };
+    expect(body.indexStatus).toBe("ready");
     expect(body.results[0]?.noteId).toBe(id);
   });
 
@@ -204,6 +209,7 @@ describe("search API", () => {
     const body = (await response.json()) as { ok: false; code: string; results?: unknown };
     expect(body).toEqual({ ok: false, code: "judgment_failed" });
     expect(body).not.toHaveProperty("results");
+    expect(body).not.toHaveProperty("indexStatus");
   });
 
   it("applies a note status filter before Jev ranks", async () => {
@@ -248,6 +254,26 @@ describe("search API", () => {
     );
     expect(semantic[0]?.id).toBe(id);
   });
+
+  it("returns indexing when the embed batch leaves a capture pending and still keyword-matches it", async () => {
+    const marker = "prebatch-marker";
+    const pendingId = await createNote("pending capture", `keyword ${marker} before the rest`);
+    for (let n = 0; n < OVERNIGHT_INDEX_LIMIT; n += 1) {
+      await createNote(`filled ${n}`, "already queued filler");
+    }
+    setSystemOneInvokerForTests(searchInvoker(pendingId));
+    const response = await handleSearch(
+      new Request(`http://localhost/api/search?query=${marker}`),
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      indexStatus: string;
+      results: { noteId: string; snippet: string | null }[];
+    };
+    expect(body.indexStatus).toBe("indexing");
+    expect(body.results.some((hit) => hit.noteId === pendingId)).toBe(true);
+    expect(body.results.find((hit) => hit.noteId === pendingId)?.snippet).toContain(marker);
+  });
 });
 
 describe("evidence API", () => {
@@ -268,6 +294,7 @@ describe("evidence API", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       ok: true;
+      indexStatus: string;
       query: string;
       notes: {
         noteId: string;
@@ -286,6 +313,7 @@ describe("evidence API", () => {
     expect(body.notes[0]?.similarity.type).toBe("score");
     expect(body.notes[0]?.similarity.confidence).toBe(0.66);
     expect(body).not.toHaveProperty("keywordFallback");
+    expect(body.indexStatus).toBe("keyword_only");
   });
 
   it("preserves provided id order among the notes that pass", async () => {
@@ -333,7 +361,9 @@ describe("evidence API", () => {
       }),
     );
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ ok: false, code: "judgment_failed" });
+    const body = (await response.json()) as { ok: false; code: string };
+    expect(body).toEqual({ ok: false, code: "judgment_failed" });
+    expect(body).not.toHaveProperty("indexStatus");
   });
 
   it("rejects unknown candidate ids", async () => {

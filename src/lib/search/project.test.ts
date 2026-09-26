@@ -4,6 +4,7 @@ import { projectRows } from "./project";
 
 const envelope: SearchResultsOk = {
   ok: true,
+  indexStatus: "ready",
   query: "소유",
   answersQuery: { type: "noul", noul: 0.93 },
   ranking: {
@@ -20,6 +21,7 @@ const envelope: SearchResultsOk = {
 
 const evidence: EvidenceNotesOk = {
   ok: true,
+  indexStatus: "ready",
   query: "소유",
   notes: [
     {

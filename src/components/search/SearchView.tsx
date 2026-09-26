@@ -1,3 +1,4 @@
+import { showsKeywordIndexBanner } from "@/domain/search/index-status";
 import { JEV_LOW_CONFIDENCE_THRESHOLD } from "@/lib/jev/jev-state";
 import { projectRows } from "@/lib/search/project";
 import { JEV_COPY } from "@/components/jev/copy";
@@ -52,9 +53,17 @@ export function SearchView({
       : [];
   const lowRank = confidence !== null && confidence < JEV_LOW_CONFIDENCE_THRESHOLD;
   const showRoute = model.route !== null && (model.surface === "results" || model.surface === "empty");
+  const showIndexBanner =
+    (model.surface === "results" || model.surface === "empty") &&
+    showsKeywordIndexBanner(model.envelope?.indexStatus);
 
   return (
-    <div className={styles.page} data-search-state={model.surface} data-evidence-state={model.evidence.status}>
+    <div
+      className={styles.page}
+      data-search-state={model.surface}
+      data-evidence-state={model.evidence.status}
+      data-index-status={model.envelope?.indexStatus}
+    >
       <h1 className={styles.title}>{SEARCH_COPY.title}</h1>
       <SearchBar
         draft={model.draft}
@@ -99,6 +108,12 @@ export function SearchView({
         <div aria-live="assertive">
           <ErrorBanner message={SEARCH_COPY.indexing} onRetry={onRetry} retryLabel={SEARCH_COPY.retry} />
         </div>
+      ) : null}
+
+      {showIndexBanner ? (
+        <p className={styles.indexBanner} role="status">
+          {SEARCH_COPY.indexing}
+        </p>
       ) : null}
 
       {model.surface === "results" && model.evidence.status === "jev_error" ? (

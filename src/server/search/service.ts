@@ -4,6 +4,7 @@ import {
   SEARCH_SHORTLIST,
 } from "@/domain/search/dev-process-gates";
 import { embedText } from "@/domain/search/embed";
+import { indexStatusFromCounts, type SearchIndexStatus } from "@/domain/search/index-status";
 import { reciprocalRankFusion } from "@/domain/search/fusion";
 import { buildSnippet } from "@/domain/search/snippet";
 import { selectEvidenceNotes } from "@/domain/search/select";
@@ -49,12 +50,13 @@ export async function executeSearch(
   query: string,
   filters: SearchFilters,
 ): Promise<SearchResultsOk> {
-  await runOvernightIndexBatch(OVERNIGHT_INDEX_LIMIT);
+  const batch = await runOvernightIndexBatch(OVERNIGHT_INDEX_LIMIT);
   const candidates = await retrieve(query, filters);
   const judgment = await judgeSearch(query, candidates);
   const ordered = orderSearchResults(candidates, judgment.ranking);
   return {
     ok: true,
+    indexStatus: indexStatusFromCounts(batch),
     query,
     answersQuery: judgment.answersQuery,
     ranking: judgment.ranking,
@@ -70,11 +72,15 @@ export async function executeEvidence(
   query: string,
   candidateNoteIds: readonly string[],
   filters: SearchFilters,
-): Promise<{ query: string; notes: EvidenceNoteJson[] }> {
+): Promise<{ indexStatus: SearchIndexStatus; query: string; notes: EvidenceNoteJson[] }> {
   let ids = [...candidateNoteIds];
+  let indexStatus: SearchIndexStatus;
   if (ids.length === 0) {
-    await runOvernightIndexBatch(OVERNIGHT_INDEX_LIMIT);
+    const batch = await runOvernightIndexBatch(OVERNIGHT_INDEX_LIMIT);
+    indexStatus = indexStatusFromCounts(batch);
     ids = (await retrieve(query, filters)).map((doc) => doc.id);
+  } else {
+    indexStatus = await corpusIndexStatus();
   }
   const notes = await loadNotesInOrder(ids);
   const judged = await judgeEvidence(
@@ -83,6 +89,7 @@ export async function executeEvidence(
   );
   const selected = selectEvidenceNotes(judged);
   return {
+    indexStatus,
     query,
     notes: selected.map((note) => ({
       noteId: note.noteId,
@@ -92,6 +99,13 @@ export async function executeEvidence(
       similarity: note.similarity,
     })),
   };
+}
+
+async function corpusIndexStatus(): Promise<SearchIndexStatus> {
+  const store = await getNotesStore();
+  const index = await getSearchIndex();
+  await index.sync(await loadActiveNotes(store));
+  return indexStatusFromCounts(await index.counts());
 }
 
 async function loadNotesInOrder(ids: readonly string[]): Promise<SearchSourceDoc[]> {
@@ -109,7 +123,6 @@ async function loadNotesInOrder(ids: readonly string[]): Promise<SearchSourceDoc
   return notes;
 }
 
-/** Hybrid shortlist for another Jev pass. Retrieval order is not a chat rank. */
 export async function retrieveSearchCandidates(query: string): Promise<SearchSourceDoc[]> {
   await runOvernightIndexBatch(OVERNIGHT_INDEX_LIMIT);
   return retrieve(query, OPEN_SEARCH_FILTERS);
