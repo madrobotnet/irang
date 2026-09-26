@@ -19,9 +19,14 @@ export function BrainShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { openCapture } = useCapture();
   const mobileTool = showMobileToolRow(pathname);
+  const graphPage = pathname === "/graph" || pathname.startsWith("/graph/");
 
   return (
-    <div className={styles.root} data-mobile-tool={mobileTool ? "on" : "off"}>
+    <div
+      className={styles.root}
+      data-mobile-tool={mobileTool ? "on" : "off"}
+      data-graph={graphPage ? "on" : "off"}
+    >
       <header className={styles.instrument} aria-label="앱 도구">
         <details className={styles.wordmarkMenu}>
           <summary className={styles.wordmark}>

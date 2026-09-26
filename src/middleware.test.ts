@@ -20,6 +20,7 @@ import {
   E6_PROTECTED_PAGE_ROUTES,
   E6_PUBLIC_PWA_PATHS,
 } from "@/lib/auth/e6-gate-paths";
+import { E7_PROTECTED_API_ROUTES, E7_PROTECTED_PAGE_ROUTES } from "@/lib/auth/e7-gate-paths";
 
 function installRuntime() {
   const sessions = new InMemorySessionRepository();
@@ -462,6 +463,43 @@ describe("middleware gate (P0: GET / with session cookie)", () => {
       const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("location")).toBeNull();
+    }
+  });
+
+  it("redirects an unauthenticated graph page and returns 401 for graph APIs", async () => {
+    for (const path of E7_PROTECTED_PAGE_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(302);
+      expect(new URL(response.headers.get("location") ?? "", "https://brain.madrobot.net").pathname).toBe(
+        "/login",
+      );
+    }
+    for (const path of E7_PROTECTED_API_ROUTES) {
+      const response = await middleware(new NextRequest(`https://brain.madrobot.net${path}`));
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({
+        ok: false,
+        authenticated: false,
+        code: "unauthorized",
+      });
+    }
+  });
+
+  it("allows a verified session through middleware for graph APIs", async () => {
+    const { service } = installRuntime();
+    const login = await service.login({ password: "ok-password", clientKey: "test" });
+    expect(login.kind).toBe("ok");
+    if (login.kind !== "ok") {
+      return;
+    }
+    const cookie = `${SESSION_COOKIE_NAME}=${login.sessionToken}`;
+    for (const path of E7_PROTECTED_API_ROUTES) {
+      const response = await middleware(
+        new NextRequest(`https://brain.madrobot.net${path}`, {
+          headers: { cookie },
+        }),
+      );
+      expect(response.status).toBe(200);
     }
   });
 

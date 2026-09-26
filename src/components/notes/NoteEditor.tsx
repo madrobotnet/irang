@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import type { Note } from "@/lib/notes/types";
+import { GRAPH_COPY } from "@/lib/graph/copy";
+import { graphOpenFromNoteHref } from "@/lib/graph/query";
 import { NOTE_COPY } from "./copy";
 import styles from "./NoteEditor.module.css";
 
@@ -65,6 +68,11 @@ export function NoteEditor({
   return (
     <div className={styles.editor}>
       <div className={styles.toolbar}>
+        {!trashed ? (
+          <Link className={styles.graphLink} href={graphOpenFromNoteHref(note.id)}>
+            {GRAPH_COPY.openInGraph}
+          </Link>
+        ) : null}
         <div className={styles.toolbarActions}>
           {!trashed ? (
             <button

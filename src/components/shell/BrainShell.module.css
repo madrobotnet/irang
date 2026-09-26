@@ -188,3 +188,26 @@
 .root[data-mobile-tool="off"] {
   --shell-mobile-tool-height: 0px;
 }
+
+.root[data-graph="on"] .stage {
+  padding: 0;
+  padding-bottom: var(--shell-mobile-tool-height, 0px);
+  justify-content: stretch;
+}
+
+.root[data-graph="on"] .main {
+  max-width: none;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 1024px) {
+  .root[data-graph="on"] .instrument {
+    display: none;
+  }
+
+  .root[data-graph="on"] .stage {
+    padding-bottom: 0;
+  }
+}

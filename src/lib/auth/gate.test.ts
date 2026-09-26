@@ -21,6 +21,7 @@ import {
   E6_PROTECTED_PAGE_ROUTES,
   E6_PUBLIC_PWA_PATHS,
 } from "./e6-gate-paths";
+import { E7_PROTECTED_API_ROUTES, E7_PROTECTED_PAGE_ROUTES } from "./e7-gate-paths";
 import { decideAuthGate, isPublicPath } from "./gate";
 
 describe("auth gate", () => {
@@ -214,6 +215,26 @@ describe("auth gate", () => {
 
   it("redirects an unauthenticated home page to login", () => {
     for (const pathname of E6_PROTECTED_PAGE_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "redirect_login",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("does not treat E7 graph APIs as public", () => {
+    for (const pathname of E7_PROTECTED_API_ROUTES) {
+      expect(isPublicPath(pathname)).toBe(false);
+      expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
+        action: "unauthorized",
+      });
+      expect(decideAuthGate({ pathname, hasValidSessionToken: true }).action).toBe("next");
+    }
+  });
+
+  it("redirects an unauthenticated graph page to login", () => {
+    for (const pathname of E7_PROTECTED_PAGE_ROUTES) {
       expect(isPublicPath(pathname)).toBe(false);
       expect(decideAuthGate({ pathname, hasValidSessionToken: false })).toEqual({
         action: "redirect_login",

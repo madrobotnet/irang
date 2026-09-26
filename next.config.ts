@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   serverExternalPackages: ["argon2", "pg"],
+  transpilePackages: ["three"],
   experimental: {
     // Next 15 name for the proxy body cap (Next 16: proxyClientMaxBodySize). 102mb >= 101mb.
     middlewareClientMaxBodySize: ATTACHMENT_UPLOAD_BODY_SIZE_LIMIT,
