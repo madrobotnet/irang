@@ -142,3 +142,9 @@
   color: var(--text-muted);
   font-size: 0.8125rem;
 }
+
+@media (max-width: 1023px) {
+  .header {
+    display: none;
+  }
+}

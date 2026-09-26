@@ -1,9 +1,14 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCapture } from "@/components/capture/CaptureContext";
 import { CAPTURE_COPY } from "@/components/capture/copy";
+import { MobileStackHeader } from "./MobileStackHeader";
+import { MobileTopChrome } from "./MobileTopChrome";
+import { MoreSheet } from "./MoreSheet";
+import { mobileChromeKind, stackTitleForPath } from "./mobile-nav";
 import styles from "./BrainShell.module.css";
 
 const MOBILE_TOOL_ROUTES_HIDE = ["/chat"];
@@ -20,12 +25,28 @@ export function BrainShell({ children }: { children: React.ReactNode }) {
   const { openCapture } = useCapture();
   const mobileTool = showMobileToolRow(pathname);
   const graphPage = pathname === "/graph" || pathname.startsWith("/graph/");
+  const chrome = mobileChromeKind(pathname);
+  const stackTitle = stackTitleForPath(pathname);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  const toggleMenu = useCallback(() => {
+    setMenuOpen((open) => !open);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
 
   return (
     <div
       className={styles.root}
       data-mobile-tool={mobileTool ? "on" : "off"}
       data-graph={graphPage ? "on" : "off"}
+      data-mobile-chrome={chrome}
     >
       <header className={styles.instrument} aria-label="앱 도구">
         <details className={styles.wordmarkMenu}>
@@ -51,6 +72,17 @@ export function BrainShell({ children }: { children: React.ReactNode }) {
         </button>
       </header>
 
+      {chrome === "top" ? (
+        <MobileTopChrome menuOpen={menuOpen} onToggleMenu={toggleMenu} />
+      ) : null}
+      {chrome === "stack" && stackTitle ? (
+        <MobileStackHeader
+          title={stackTitle}
+          menuOpen={menuOpen}
+          onToggleMenu={toggleMenu}
+        />
+      ) : null}
+
       <div className={styles.stage}>
         <main className={styles.main}>{children}</main>
       </div>
@@ -70,6 +102,8 @@ export function BrainShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       ) : null}
+
+      <MoreSheet open={menuOpen} onClose={closeMenu} />
     </div>
   );
 }

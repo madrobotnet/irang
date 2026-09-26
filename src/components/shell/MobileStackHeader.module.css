@@ -1,0 +1,28 @@
+.header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 52px;
+  height: 52px;
+  padding: 0 8px 0 4px;
+  border-bottom: 1px solid var(--vn-hairline);
+  background: var(--vn-canvas);
+}
+
+.title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px;
+}
+
+@media (min-width: 1024px) {
+  .header {
+    display: none;
+  }
+}

@@ -189,6 +189,16 @@
   --shell-mobile-tool-height: 0px;
 }
 
+@media (max-width: 1023px) {
+  .root[data-mobile-chrome="top"] .stage {
+    padding-top: 8px;
+  }
+
+  .root[data-mobile-chrome="stack"] .stage {
+    padding-top: 14px;
+  }
+}
+
 .root[data-graph="on"] .stage {
   padding: 0;
   padding-bottom: var(--shell-mobile-tool-height, 0px);
