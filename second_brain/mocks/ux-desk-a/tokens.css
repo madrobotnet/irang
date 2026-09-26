@@ -1,0 +1,95 @@
+/* Second Brain · ux-desk-a · Direction A 「검색이 책상」
+   Elevated from ux-blank-v0/dir-a — parchment desk · terracotta · charcoal rail */
+@font-face {
+  font-family: "Pretendard";
+  src: local("Pretendard"), local("Pretendard Regular"),
+       url("./fonts/Pretendard-Regular.otf") format("opentype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: local("Pretendard Medium"),
+       url("./fonts/Pretendard-Medium.otf") format("opentype");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: local("Pretendard SemiBold"),
+       url("./fonts/Pretendard-SemiBold.otf") format("opentype");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Pretendard";
+  src: local("Pretendard Bold"),
+       url("./fonts/Pretendard-Bold.otf") format("opentype");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* Surfaces */
+  --canvas: #efe8dc;
+  --desk: #f7f2ea;
+  --card: #fffcf7;
+  --selected: #f6ebe3;
+  --selected-line: #edd5c4;
+
+  /* Ink */
+  --ink: #1c1917;
+  --ink-soft: #44403c;
+  --mute: #78716c;
+  --mute-2: #a8a29e;
+
+  /* Lines / elevation */
+  --line: #e7e0d4;
+  --line-strong: #d6cec0;
+  --shadow: 0 8px 28px rgba(28, 25, 23, 0.07), 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-sm: 0 2px 10px rgba(28, 25, 23, 0.05);
+
+  /* Accent — terracotta only (NOT KB yellow · NOT v3 lavender) */
+  --accent: #c45c26;
+  --accent-soft: #f3e0d4;
+  --accent-ink: #fff;
+
+  /* Charcoal utility rail */
+  --rail: #2a2622;
+  --rail-fg: #cfc7bc;
+  --rail-fg-on: #ffffff;
+  --rail-active: rgba(255, 255, 255, 0.1);
+
+  /* Type type */
+  --ico-n: #3d5a80;
+  --ico-m: #6b705c;
+  --ico-w: #9a3412;
+  --ico-c: #57534e;
+  --ico-g: #7c6a4a;
+
+  /* Geometry */
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-xs: 9px;
+  --radius-pill: 999px;
+
+  /* Type */
+  --font: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --t-display: 28px;
+  --t-title: 22px;
+  --t-screen: 17px;
+  --t-ui: 14px;
+  --t-list: 13.5px;
+  --t-meta: 12px;
+  --t-micro: 11px;
+
+  /* Selective glass (B hint — capture sheet / focus moment only) */
+  --glass: rgba(255, 252, 247, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-blur: blur(18px) saturate(1.12);
+  --scrim: rgba(28, 25, 23, 0.28);
+
+  /* Rails */
+  --d-w: 1440px;
+  --d-h: 900px;
+  --m-w: 390px;
+  --m-h: 844px;
+  --rail-w: 72px;
+  --dock-h: 64px;
+}

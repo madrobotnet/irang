@@ -29,7 +29,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get(CSP_NONCE_HEADER) ?? undefined;
 
   return (
-    <html lang="ko" data-theme="dark" suppressHydrationWarning nonce={nonce}>
+    <html lang="ko" data-theme="light" suppressHydrationWarning nonce={nonce}>
       <body className={notoSansKr.variable}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>

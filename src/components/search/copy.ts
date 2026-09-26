@@ -1,6 +1,6 @@
 export const SEARCH_COPY = {
   title: "검색",
-  placeholder: "노트 검색",
+  placeholder: "노트, 클립, 대화에서 검색하거나 질문하기…",
   idleHint: "제목·경로·본문 단어를 입력해 주세요",
   filter: "필터",
   filterApply: "적용",

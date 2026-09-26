@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
+import { SEARCH_COPY } from "@/components/search/copy";
 import SearchPage from "./page";
 
 describe("search route", () => {
@@ -15,7 +16,8 @@ describe("search route", () => {
     const html = renderToStaticMarkup(<SearchPage />);
     expect(html).toContain('data-search-state="idle"');
     expect(html).toContain("검색");
-    expect(html).toContain("노트 검색");
+    expect(html).toContain("data-desk-command-bar");
+    expect(html).toContain(SEARCH_COPY.placeholder.slice(0, 8));
     expect(html).not.toContain("P1 준비 중");
   });
 });

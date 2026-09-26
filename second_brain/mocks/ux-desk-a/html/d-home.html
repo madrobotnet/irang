@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>세컨드 브레인 · 홈 — desk-a</title>
+<link rel="stylesheet" href="../tokens.css" />
+<link rel="stylesheet" href="../shell.css" />
+<style>
+.grid-home{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;flex:1;min-height:0}
+.synth{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+.synth .composer{margin-top:auto}
+.card-list{display:flex;flex-direction:column;overflow:hidden}
+</style>
+</head>
+<body>
+
+<div class="app-d" role="application" aria-label="세컨드 브레인 홈">
+  <nav class="rail" aria-label="유틸 레일">
+    <div class="mark" aria-hidden="true">SB</div>
+    <button class="active" aria-current="page" type="button"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg><span>홈</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>검색</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><path d="M5 6h14v13H5z"/><path d="M9 6V4h6v2"/></svg><span>수집</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><path d="M5 18V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 4z"/></svg><span>채팅</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2.2"/><circle cx="17" cy="7" r="2.2"/><circle cx="12" cy="16" r="2.2"/><path d="M8.8 9.5 15 8.2M8.5 9.8l2.8 5M15.2 8.6l-2.4 5.4"/></svg><span>관계</span></button>
+    <div class="spacer"></div>
+    <button class="settings" type="button" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M4.9 6.3l1.6 1.6M17.5 16.1l1.6 1.6M3 12h2.2M18.8 12H21M4.9 17.7l1.6-1.6M17.5 7.9l1.6-1.6"/></svg></button>
+    <div class="avatar" aria-hidden="true"></div>
+  </nav>
+  <main class="main-d">
+    <header class="topbar">
+      <div class="greet">
+        <div class="eyebrow">일요일 · 9월 27일</div>
+        <h1>무엇을 찾을까요?</h1>
+      </div>
+      <div class="top-actions">
+        <button class="btn" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> 빠른 캡처</button>
+        <button class="btn btn-primary" type="button">합성 시작</button>
+      </div>
+    </header>
+    <section class="cmd-surface" aria-label="검색 커맨드">
+      <span class="label">검색 · 커맨드</span>
+      <div class="search-bar lg" role="search">
+        <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.2"/></svg>
+        <div class="q">노트, 클립, 대화에서 검색하거나 질문하기…</div>
+        <span class="kbd">⌘ K</span>
+      </div>
+      <div class="chips" aria-label="최근 검색">
+        <span class="chip hot"><strong>디자인 토큰</strong></span>
+        <span class="chip">Q2 인터뷰</span>
+        <span class="chip">에이전트 프롬프트</span>
+        <span class="chip"><strong>소스</strong> · 웹</span>
+        <span class="chip"><strong>기간</strong> · 이번 주</span>
+      </div>
+    </section>
+    <div class="grid-home">
+      <section class="panel panel-pad" aria-label="최근 라이브러리">
+        <div class="panel-head"><h2>최근 라이브러리</h2><span class="more">전체 보기</span></div>
+        <div class="card-list">
+          <article class="lib-card"><div class="ico n">노</div><div><div class="row-t">디자인 시스템 컬러 토큰 정리</div><div class="row-m">노트 · 캔버스·액센트·대비 규칙 초안</div></div><div class="row-meta">오늘 10:21</div></article>
+          <article class="lib-card"><div class="ico m">인</div><div><div class="row-t">Q2 사용자 인터뷰 인사이트</div><div class="row-m">메모 · 검색 우선순위가 높다는 피드백</div></div><div class="row-meta">오늘 09:47</div></article>
+          <article class="lib-card"><div class="ico w">웹</div><div><div class="row-t">AI 에이전트 프롬프트 실험 로그</div><div class="row-m">클립 · 브라우저에서 저장</div></div><div class="row-meta">어제 21:05</div></article>
+          <article class="lib-card"><div class="ico c">채</div><div><div class="row-t">주간 리뷰 — 수집함 정리 패턴</div><div class="row-m">채팅 요약 · 미처리 3건 기준</div></div><div class="row-meta">어제 18:40</div></article>
+        </div>
+        <div class="stat-row">
+          <div class="stat"><div class="n">128</div><div class="l">전체 노트</div></div>
+          <div class="stat"><div class="n">3</div><div class="l">미처리 수집</div></div>
+          <div class="stat"><div class="n">42</div><div class="l">연결 관계</div></div>
+        </div>
+      </section>
+      <aside class="panel panel-pad" aria-label="인접 합성">
+        <div class="panel-head"><h2>합성 · 채팅</h2><span class="more">새 대화</span></div>
+        <div class="synth">
+          <div class="bubble ai"><div class="tag">세컨드 브레인</div>오늘 캡처한 항목을 토큰·인터뷰·프롬프트 세 갈래로 묶을 수 있어요. 어디부터 볼까요?</div>
+          <div class="bubble me">디자인 토큰부터 요약해 줘.</div>
+          <div class="bubble ai">컬러는 캔버스·서피스·액센트 3층. 대비는 본문 7:1 목표, 액센트는 CTA에만.</div>
+          <div class="composer"><span>이어서 질문하기…</span><button class="send" type="button" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

@@ -4,16 +4,43 @@
   width: 100%;
   min-height: 100%;
   flex: 1;
-  background: #110e16;
-  color: var(--vn-text);
+  background: var(--canvas);
+  color: var(--ink);
 }
 
 .top {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
-  padding: 10px 14px 4px;
+  padding: 20px clamp(16px, 3vw, 36px) 12px;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--mute);
+  font-weight: 500;
+}
+
+.topActions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mapSearch {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm-desk);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
 }
 
 .wordmarkMenu {

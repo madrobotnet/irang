@@ -64,35 +64,19 @@ export function GraphView({
   return (
     <div className={styles.view} data-graph-view={surface} data-inspector={showInspector ? "on" : "off"}>
       <header className={styles.top}>
-        <details className={styles.wordmarkMenu}>
-          <summary className={styles.wordmark}>
-            <span className={styles.mark} aria-hidden="true" />
-            <span className={styles.brandText}>세컨드 브레인</span>
-          </summary>
-          <div className={styles.menuPanel} role="menu">
-            <Link href="/notes" className={styles.menuItem} role="menuitem">
-              노트
-            </Link>
-            <Link href="/graph" className={styles.menuItem} role="menuitem">
-              그래프
-            </Link>
-            <Link href="/settings" className={styles.menuItem} role="menuitem">
-              설정
-            </Link>
-            <form method="post" action="/api/auth/logout" className={styles.menuLogout}>
-              <button type="submit" className={styles.menuItem} role="menuitem">
-                나가기
-              </button>
-            </form>
-          </div>
-        </details>
         <div className={styles.titleBlock}>
+          <p className={styles.eyebrow}>지식 지도 · 2D</p>
           <h1 className={styles.title}>{GRAPH_COPY.title}</h1>
           <p className={styles.meta}>{meta}</p>
         </div>
-        <button type="button" className={styles.capture} onClick={onCapture}>
-          {GRAPH_COPY.capture}
-        </button>
+        <div className={styles.topActions}>
+          <Link href="/search" className={styles.mapSearch}>
+            지도에서 찾기
+          </Link>
+          <button type="button" className={styles.capture} onClick={onCapture}>
+            {GRAPH_COPY.capture}
+          </button>
+        </div>
       </header>
       <GraphFilters
         query={model.query}

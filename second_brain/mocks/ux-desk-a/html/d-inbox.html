@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>세컨드 브레인 · 수집 — desk-a</title>
+<link rel="stylesheet" href="../tokens.css" />
+<link rel="stylesheet" href="../shell.css" />
+<style>
+.inbox-layout{display:grid;grid-template-columns:380px 1fr;gap:16px;flex:1;min-height:0}
+.inbox-list{padding:10px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.inbox-row{grid-template-columns:40px 1fr auto}
+.act{height:28px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);font-size:11px;font-weight:700;color:var(--mute)}
+.act.ok{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.paper{padding:28px 32px;display:flex;flex-direction:column;min-height:0}
+.paper h3{font-size:22px;font-weight:700;letter-spacing:-.025em;margin:10px 0 8px}
+.paper .when{font-size:12px;color:var(--mute);margin-bottom:18px}
+.paper .body{font-size:14px;line-height:1.7;color:var(--ink-soft);flex:1}
+.paper .foot{display:flex;gap:8px;margin-top:20px}
+</style>
+</head>
+<body>
+
+<div class="app-d" role="application" aria-label="세컨드 브레인 수집">
+  <nav class="rail" aria-label="유틸 레일">
+    <div class="mark" aria-hidden="true">SB</div>
+    <button type="button"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg><span>홈</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>검색</span></button>
+    <button class="active" aria-current="page" type="button"><svg viewBox="0 0 24 24"><path d="M5 6h14v13H5z"/><path d="M9 6V4h6v2"/></svg><span>수집</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><path d="M5 18V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 4z"/></svg><span>채팅</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2.2"/><circle cx="17" cy="7" r="2.2"/><circle cx="12" cy="16" r="2.2"/><path d="M8.8 9.5 15 8.2M8.5 9.8l2.8 5M15.2 8.6l-2.4 5.4"/></svg><span>관계</span></button>
+    <div class="spacer"></div>
+    <button class="settings" type="button" aria-label="설정"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M4.9 6.3l1.6 1.6M17.5 16.1l1.6 1.6M3 12h2.2M18.8 12H21M4.9 17.7l1.6-1.6M17.5 7.9l1.6-1.6"/></svg></button>
+    <div class="avatar" aria-hidden="true"></div>
+  </nav>
+  <main class="main-d tight">
+    <header class="topbar" style="margin-bottom:16px">
+      <div class="greet"><div class="eyebrow">인박스</div><h1 style="font-size:22px">수집 · 미처리 3</h1></div>
+      <div class="top-actions">
+        <button class="btn" type="button">모두 스캔</button>
+        <button class="btn btn-primary" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> 캡처</button>
+      </div>
+    </header>
+    <div class="inbox-layout">
+      <section class="panel" aria-label="수집 목록">
+        <div class="panel-head bordered"><h2 class="sm">대기열</h2><span class="count">오늘 · 3</span></div>
+        <div class="inbox-list">
+          <article class="inbox-row active" aria-current="true">
+            <div class="ico w">웹</div>
+            <div><div class="row-t">Glass Notes — calm focus 패턴</div><div class="row-m">safari · 방금 전</div></div>
+            <div><button class="act ok" type="button">보관</button></div>
+          </article>
+          <article class="inbox-row">
+            <div class="ico m">메</div>
+            <div><div class="row-t">회의 중 메모 — 검색이 책상</div><div class="row-m">빠른 캡처 · 12분 전</div></div>
+            <div><button class="act" type="button">열기</button></div>
+          </article>
+          <article class="inbox-row">
+            <div class="ico n">노</div>
+            <div><div class="row-t">레퍼 흡수 체크리스트 초안</div><div class="row-m">공유 시트 · 1시간 전</div></div>
+            <div><button class="act" type="button">열기</button></div>
+          </article>
+        </div>
+      </section>
+      <section class="panel paper" aria-label="수집 상세">
+        <span class="badge">웹 클립</span>
+        <h3>Glass Notes — calm focus 패턴</h3>
+        <div class="when">방금 전 · dribbble 저장 · 태그 미지정</div>
+        <div class="body">
+          <p>선택적 글래스는 <strong>포커스 순간</strong>에만. 일상 목록·본문은 매트 카드로 두고, 캡처 시트·확인 모달처럼 한 번에 하나의 결정만 강조할 때 글래스를 씁니다.</p>
+          <p style="margin-top:12px">방향 A 톤에 흡수: 패치먼트 위 따뜻한 글래스(백색 72% · blur 18) — 쿨 미스트 셸은 이식하지 않음.</p>
+        </div>
+        <div class="foot">
+          <button class="btn btn-primary" type="button">라이브러리에 보관</button>
+          <button class="btn" type="button">태그 추가</button>
+          <button class="btn btn-ghost" type="button">버리기</button>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

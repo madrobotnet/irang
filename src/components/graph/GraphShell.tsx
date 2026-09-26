@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   DEFAULT_GRAPH_MODE,
@@ -14,12 +13,8 @@ import { fetchGraph } from "@/lib/graph/client";
 import { graphPageHref, graphQueryFromSearch, toggleKind, toggleRelation } from "@/lib/graph/query";
 import type { GraphViewModel } from "@/lib/graph/view-model";
 import { useCapture } from "@/components/capture/CaptureContext";
+import { GraphCanvas2D } from "./GraphCanvas2D";
 import { GraphView } from "./GraphView";
-
-const GraphCanvas3D = dynamic(
-  () => import("./GraphCanvas3D").then((mod) => mod.GraphCanvas3D),
-  { ssr: false },
-);
 
 function sameQuery(left: GraphQuery, right: GraphQuery): boolean {
   return (
@@ -117,7 +112,7 @@ export function GraphShell() {
 
   const canvas =
     model.payload && model.payload.nodes.length > 0 ? (
-      <GraphCanvas3D
+      <GraphCanvas2D
         nodes={model.payload.nodes}
         edges={model.payload.edges}
         selectedId={model.selectedId}

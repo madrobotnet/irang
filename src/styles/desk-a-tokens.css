@@ -1,0 +1,72 @@
+/* Desk A 「검색이 책상」 — parchment · terracotta · charcoal rail */
+:root,
+[data-theme="dark"],
+[data-theme="light"] {
+  color-scheme: light;
+
+  --canvas: #efe8dc;
+  --desk: #f7f2ea;
+  --card: #fffcf7;
+  --selected: #f6ebe3;
+  --selected-line: #edd5c4;
+  --ink: #1c1917;
+  --ink-soft: #44403c;
+  --mute: #78716c;
+  --mute-2: #a8a29e;
+  --line: #e7e0d4;
+  --line-strong: #d6cec0;
+  --shadow: 0 8px 28px rgba(28, 25, 23, 0.07), 0 1px 2px rgba(28, 25, 23, 0.04);
+  --shadow-sm: 0 2px 10px rgba(28, 25, 23, 0.05);
+  --accent: #c45c26;
+  --accent-soft: #f3e0d4;
+  --accent-ink: #fff;
+  --rail: #2a2622;
+  --rail-fg: #cfc7bc;
+  --rail-fg-on: #ffffff;
+  --rail-active: rgba(255, 255, 255, 0.1);
+  --ico-n: #3d5a80;
+  --ico-m: #6b705c;
+  --ico-w: #9a3412;
+  --ico-c: #57534e;
+  --ico-g: #7c6a4a;
+  --radius-desk: 16px;
+  --radius-sm-desk: 12px;
+  --radius-pill-desk: 999px;
+  --rail-w: 72px;
+  --dock-h: 64px;
+  --glass: rgba(255, 252, 247, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-blur: blur(18px) saturate(1.12);
+  --scrim: rgba(28, 25, 23, 0.28);
+
+  /* Legacy vn-* aliases for gradual migration */
+  --vn-canvas: var(--canvas);
+  --vn-paper: var(--desk);
+  --vn-surface: var(--card);
+  --vn-raised: var(--card);
+  --vn-text: var(--ink);
+  --vn-text-secondary: var(--ink-soft);
+  --vn-text-meta: var(--mute);
+  --vn-accent: var(--accent);
+  --vn-accent-ink: var(--accent-ink);
+  --vn-accent-wash: var(--accent-soft);
+  --vn-promote: #6b705c;
+  --vn-discard: #b45309;
+  --vn-warning: #c45c26;
+  --vn-hairline: var(--line);
+  --vn-hairline-strong: var(--line-strong);
+  --vn-font: var(--font-noto), "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+  --vn-touch: 44px;
+  --vn-tool: 52px;
+  --vn-search: 44px;
+  --vn-radius-slip: 8px;
+  --vn-radius-sheet: 16px;
+  --vn-radius-search: 14px;
+  --vn-radius-row: 12px;
+  --vn-radius-ctl: 10px;
+  --vn-radius-pill: 999px;
+  --vn-measure: 72ch;
+  --vn-index: 300px;
+  --vn-stage-max: 1280px;
+  --vn-instrument-height: 56px;
+}

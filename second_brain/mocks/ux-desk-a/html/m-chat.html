@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>세컨드 브레인 · 채팅 — desk-a MO</title>
+<link rel="stylesheet" href="../tokens.css" />
+<link rel="stylesheet" href="../shell.css" />
+<style>
+.m-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;flex:0 0 auto}
+.m-head h1{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.m-head .sub{font-size:12px;color:var(--mute);font-weight:500;margin-top:3px}
+.m-head .icon-btn{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;color:var(--ink)}
+.m-head .icon-btn svg{width:16px;height:16px}
+.m-section{margin-top:12px;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.m-section h2{font-size:13px;font-weight:700;margin-bottom:10px;flex:0 0 auto}
+.m-list{display:flex;flex-direction:column;gap:8px;overflow:hidden;flex:1}
+.m-card{display:grid;grid-template-columns:40px 1fr;gap:12px;padding:12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow-sm);border:1px solid var(--line)}
+.stack{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;overflow:hidden}
+.m-detail{padding:14px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);flex:1;min-height:0;overflow:hidden}
+.m-detail h3{font-size:15px;font-weight:700;letter-spacing:-.02em;margin:6px 0}
+.m-detail .when{font-size:11px;color:var(--mute);margin-bottom:8px}
+.m-detail .body{font-size:12.5px;line-height:1.55;color:var(--ink-soft)}
+.m-synth{padding:12px;border-radius:14px;background:var(--card);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;flex:0 0 auto}
+.m-synth .bubble{font-size:12px;padding:9px 11px;max-width:100%}
+.m-chat-thread{flex:1;display:flex;flex-direction:column;gap:10px;overflow:hidden;padding:4px 0 10px}
+.map-m{flex:1;min-height:0;border-radius:16px;background:var(--card);box-shadow:var(--shadow);overflow:hidden;position:relative}
+.map-m svg{width:100%;height:100%}
+.node-label{font-family:var(--font);font-size:11px;font-weight:600;fill:#1c1917}
+.tabs-mini{display:flex;gap:6px;margin:10px 0 8px;flex:0 0 auto;flex-wrap:wrap}
+.tabs-mini span{height:28px;padding:0 12px;border-radius:999px;background:var(--desk);border:1px solid var(--line);font-size:11px;font-weight:600;color:var(--mute);display:inline-flex;align-items:center}
+.tabs-mini span.on{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.m-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;flex:0 0 auto}
+.m-stats .stat{padding:10px 8px}
+.m-stats .n{font-size:16px}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;flex:0 0 auto}
+.inbox-actions{display:flex;gap:8px;margin-top:12px}
+.inspect-m{position:absolute;left:10px;right:10px;bottom:10px;padding:12px 14px;border-radius:14px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.inspect-m .t{font-size:13px;font-weight:700}
+.inspect-m .m{font-size:11px;color:var(--mute);margin-top:3px}
+</style>
+</head>
+<body>
+
+<div class="app-m" role="application" aria-label="세컨드 브레인 채팅 모바일">
+  <div class="status-m" aria-hidden="true"><span>9:41</span><span class="icons">LTE · 84%</span></div>
+  <main class="main-m">
+    <div class="m-head">
+      <div><h1 style="font-size:18px">토큰 리뷰 요약</h1><div class="sub">소스 3 · 오늘</div></div>
+      <button class="icon-btn" type="button" aria-label="새 대화"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+    <div class="tabs-mini"><span class="on">대화</span><span>소스</span><span>관계</span></div>
+    <div class="m-chat-thread">
+      <div class="bubble ai"><div class="who">세컨드 브레인</div>선택하신 노트·클립 기준으로 토큰 규칙을 정리했어요.</div>
+      <div class="bubble me">액센트 사용 범위를 사례로.</div>
+      <div class="bubble ai">CTA·활성 칩·포커스 링에만 terracotta. 홈 「합성 시작」과 검색 pill이 대표 사례예요.</div>
+      <div class="bubble me">관련 관계도.</div>
+      <div class="bubble ai">타이포 · 매트 vs 글래스 · 대비 7:1 — 지도에서 열 수 있어요.</div>
+    </div>
+    <div class="composer m-composer"><span>이어서 묻기…</span><button class="send" type="button" aria-label="보내기"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
+  </main>
+  <nav class="dock" aria-label="하단 독">
+    <button type="button"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg><span>홈</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><path d="M5 6h14v13H5z"/><path d="M9 6V4h6v2"/></svg><span>수집</span></button>
+    <button class="primary" type="button" aria-label="검색">
+      <div class="fab"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+      <span>검색</span>
+    </button>
+    <button class="active" aria-current="page" type="button"><svg viewBox="0 0 24 24"><path d="M5 18V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 4z"/></svg><span>채팅</span></button>
+    <button type="button"><svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2.2"/><circle cx="17" cy="7" r="2.2"/><circle cx="12" cy="16" r="2.2"/><path d="M8.8 9.5 15 8.2M8.5 9.8l2.8 5M15.2 8.6l-2.4 5.4"/></svg><span>관계</span></button>
+  </nav>
+</div>
+
+</body>
+</html>

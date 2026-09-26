@@ -1,16 +1,16 @@
-@import "../styles/vn-tokens.css";
+@import "../styles/desk-a-tokens.css";
 
 :root,
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: var(--vn-canvas);
-  --elevated: var(--vn-surface);
-  --stroke: var(--vn-hairline-strong);
-  --text: var(--vn-text);
-  --text-muted: var(--vn-text-meta);
-  --accent: var(--vn-accent);
-  --danger: #f2b4bc;
-  --success: var(--vn-promote);
+[data-theme="dark"],
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: var(--canvas);
+  --elevated: var(--card);
+  --stroke: var(--line-strong);
+  --text: var(--ink);
+  --text-muted: var(--mute);
+  --danger: #b45309;
+  --success: #6b705c;
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 16px;
@@ -22,18 +22,6 @@
   --line-height: 1.7;
   --touch-min: var(--vn-touch);
   --shell-tab-height: var(--vn-tool);
-}
-
-[data-theme="light"] {
-  color-scheme: light;
-  --bg: #f4f5f7;
-  --elevated: #ffffff;
-  --stroke: #d8dde5;
-  --text: #1a1d23;
-  --text-muted: #5c6570;
-  --accent: #2563eb;
-  --danger: #dc2626;
-  --success: #16a34a;
 }
 
 *,
@@ -49,8 +37,8 @@ body {
   min-height: 100%;
   font-family: var(--font-sans);
   line-height: var(--line-height);
-  background: var(--vn-canvas);
-  color: var(--vn-text);
+  background: var(--canvas);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
 

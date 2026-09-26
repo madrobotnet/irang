@@ -2,27 +2,17 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { HomeTop3 } from "@/components/home/HomeTop3";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { GRAPH_COPY } from "@/lib/graph/copy";
 
 describe("graph entry", () => {
-  it("keeps graph out of Home Top3", () => {
-    const html = renderToStaticMarkup(<HomeTop3 />);
-    expect(html).toContain('href="/search"');
-    expect(html).toContain('href="/inbox"');
-    expect(html).toContain('href="/chat"');
-    expect(html).not.toContain("/graph");
-    expect(html).not.toContain("그래프");
-  });
-
-  it("links 그래프 from the more menu", () => {
-    const shell = readFileSync(
-      fileURLToPath(new URL("../shell/BrainShell.tsx", import.meta.url)),
+  it("links 관계 from desk rail nav", () => {
+    const nav = readFileSync(
+      fileURLToPath(new URL("../shell/desk-nav.ts", import.meta.url)),
       "utf8",
     );
-    expect(shell).toContain('href="/graph"');
-    expect(shell).toContain("그래프");
+    expect(nav).toContain('href: "/graph"');
+    expect(nav).toContain('label: "관계"');
   });
 
   it("opens the current note in the graph from the notes editor", () => {

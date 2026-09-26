@@ -10,7 +10,7 @@ export const PWA_INSTALL_COPY = {
   cta: "홈 화면에 추가",
   dismiss: "나중에",
   banner_title: "설치하면 홈·독에서 바로 열 수 있어요",
-  banner_sub: "탭 없이 Vault Night 전체 화면 · 언제든 해제 가능",
+  banner_sub: "탭 없이 책상 전체 화면 · 언제든 해제 가능",
   hide_banner: "배너 숨기기",
   ios_hint: "공유 버튼 → 「홈 화면에 추가」",
   status_eligible: "이 브라우저는 설치 가능 · 아직 추가되지 않음",

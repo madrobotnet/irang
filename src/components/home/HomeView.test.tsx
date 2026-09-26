@@ -19,30 +19,6 @@ const preview: HomeInboxRowView[] = [
     createdAt: "2026-09-25T01:21:00.000Z",
     url: null,
   },
-  {
-    id: "i2",
-    title: "받은 둘",
-    summary: "요약 둘",
-    source: "file",
-    createdAt: "2026-09-25T00:47:00.000Z",
-    url: null,
-  },
-  {
-    id: "i3",
-    title: "받은 셋",
-    summary: "",
-    source: "web",
-    createdAt: "2026-09-24T21:05:00.000Z",
-    url: null,
-  },
-  {
-    id: "i4",
-    title: "받은 넷",
-    summary: "넘침",
-    source: "web",
-    createdAt: "2026-09-24T21:05:00.000Z",
-    url: null,
-  },
 ];
 
 function render(model: HomePageModel, extra: Partial<HomeViewProps> = {}) {
@@ -59,106 +35,53 @@ function render(model: HomePageModel, extra: Partial<HomeViewProps> = {}) {
   );
 }
 
-describe("home view", () => {
-  it("shows Top3, inbox hero, three preview rows, and organize when inbox has work", () => {
+describe("home view Desk A", () => {
+  it("shows search hero, library, and synthesis when vault has notes", () => {
     const html = render(
       homeReadyOk(4, [
         note("n1", "하나"),
         note("n2", "둘"),
         note("n3", "셋"),
         note("n4", "넷"),
-        note("n5", "다섯"),
-        note("n6", "여섯"),
       ]),
       { preview },
     );
     expect(html).toContain('data-home-state="ready"');
+    expect(html).toContain("무엇을 찾을까요?");
     expect(html).toContain('href="/search"');
+    expect(html).toContain("⌘ K");
+    expect(html).toContain("최근 라이브러리");
+    expect(html).toContain("합성 · 채팅");
+    expect(html).toContain("하나");
     expect(html).toContain('href="/inbox"');
-    expect(html).toContain('href="/chat"');
-    expect(html).toContain("검색");
-    expect(html).toContain("Inbox");
-    expect(html).toContain("AI 채팅");
-    expect(html).toContain('aria-label="미처리 4"');
-    expect(html).toContain("미처리");
-    expect(html).toContain("정리");
-    expect(html).toContain("받은 셋");
-    expect(html).not.toContain("받은 넷");
-    expect(html).toContain("이어서");
-    expect(html).toContain("더 보기");
-    expect(html).toContain('href="/notes"');
-    expect(html).not.toContain('href="/notes?note=');
-    expect(html).toContain("클립");
-    expect(html).not.toContain("최근 노트");
-    expect(html).not.toContain("⌘K");
-    expect(html).not.toContain("Jev");
-    expect(html).not.toContain("온라인에서만 동작해요");
+    expect(html).not.toContain("Top3");
+    expect(html).not.toContain("Inbox");
   });
 
-  it("hides the badge and shows empty inbox copy when count is zero but notes exist", () => {
-    const html = render(homeReadyOk(0, [note("n1", "하나")]), { preview });
-    expect(html).toContain('href="/inbox"');
-    expect(html).not.toContain("미처리");
-    expect(html).toContain("쌓인 캡처가 없어요");
-    expect(html).toContain("캡처");
-    expect(html).not.toContain("받은 하나");
-  });
-
-  it("shows Top3 and empty vault copy without continue line", () => {
+  it("shows empty desk state when vault is empty", () => {
     const html = render(homeEmptyVaultOk(0));
     expect(html).toContain('data-home-state="empty_vault"');
+    expect(html).toContain("책상이 비어 있어요");
+    expect(html).toContain("첫 캡처");
     expect(html).toContain('href="/search"');
-    expect(html).toContain('href="/chat"');
-    expect(html).toContain("쌓인 캡처가 없어요");
-    expect(html).toContain("캡처");
-    expect(html).not.toContain("이어서");
-    expect(html).not.toContain("미처리");
   });
 
-  it("shows an error banner with retry and still offers Top3", () => {
+  it("shows error banner with retry", () => {
     const html = render({ state: "error", error: homeErrorBody("summary_failed") });
     expect(html).toContain('data-home-state="error"');
     expect(html).toContain("불러오지 못했어요 · 다시");
-    expect(html).toContain("다시");
-    expect(html).toContain('href="/search"');
-    expect(html).not.toContain("미처리");
-    expect(html).not.toContain(" · 0");
   });
 
-  it("shows skeletons while loading without Top3 links", () => {
+  it("shows skeleton while loading", () => {
     const html = render({ state: "loading" });
     expect(html).toContain('data-home-state="loading"');
     expect(html).toContain("불러오는 중");
-    expect(html).not.toContain('href="/search"');
-    expect(html).not.toContain("미처리");
   });
 
-  it("shows a dismissible install prompt or an iOS hint without the offline sentence", () => {
+  it("shows install prompt without Vault Night copy", () => {
     const prompt = render(homeEmptyVaultOk(0), { install: "eligible" });
     expect(prompt).toContain('data-pwa-install="banner"');
-    expect(prompt).toContain('data-pwa-install="sheet"');
-    expect(prompt).toContain("설치하면 홈·독에서 바로 열 수 있어요");
-    expect(prompt).toContain("탭 없이 Vault Night 전체 화면 · 언제든 해제 가능");
-    expect(prompt).toContain("추가");
-    expect(prompt).toContain("홈 화면에 추가");
-    expect(prompt).toContain("나중에");
-    expect(prompt).toContain("/icons/icon-192.png");
-    expect(prompt).not.toContain("온라인에서만 동작해요");
-    expect(prompt).not.toContain("오프라인");
-    expect(prompt).not.toContain("App Store");
-
-    const ios = render(homeEmptyVaultOk(0), { install: "ios-share-hint" });
-    expect(ios).toContain("공유 버튼 → 「홈 화면에 추가」");
-    expect(ios).toContain("나중에");
-    expect(ios).not.toContain('data-pwa-cta="add"');
-    expect(ios).not.toContain("온라인에서만 동작해요");
-
-    const hidden = render(homeEmptyVaultOk(0), { install: "dismissed" });
-    expect(hidden).not.toContain('data-pwa-install="banner"');
-    expect(hidden).not.toContain('data-pwa-install="sheet"');
-
-    const installed = render(homeEmptyVaultOk(0), { install: "already-installed" });
-    expect(installed).not.toContain('data-pwa-install="banner"');
-    expect(installed).not.toContain('data-pwa-install="sheet"');
+    expect(prompt).toContain("책상 전체 화면");
+    expect(prompt).not.toContain("Vault Night");
   });
 });

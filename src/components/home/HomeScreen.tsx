@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCapture } from "@/components/capture/CaptureContext";
 import { usePwaInstall } from "@/components/pwa/PwaInstallProvider";
 import type { HomePageModel } from "@/lib/home/dto";
-import { HOME_COPY } from "./copy";
 import { HomeView } from "./HomeView";
 import { loadHomeSummary } from "./home-client";
 import { loadHomeInboxRowViews, type HomeInboxRowView } from "./home-inbox-rows-ui";
@@ -70,22 +68,6 @@ export function HomeScreen() {
         onInstall={promptInstall}
         onDismissInstall={dismiss}
       />
-      <nav className={styles.pager} aria-label="화면">
-        <LinkDot href="/search" label={HOME_COPY.pagerSearch} active={false} />
-        <span className={styles.dotActive} aria-current="page">{HOME_COPY.pagerHome}</span>
-        <LinkDot href="/chat" label={HOME_COPY.pagerChat} active={false} />
-      </nav>
     </div>
-  );
-}
-
-function LinkDot({ href, label, active }: { href: string; label: string; active: boolean }) {
-  if (active) {
-    return <span className={styles.dotActive} aria-current="page">{label}</span>;
-  }
-  return (
-    <Link href={href} className={styles.dot} aria-label={label}>
-      <span className="sr-only">{label}</span>
-    </Link>
   );
 }

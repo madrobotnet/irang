@@ -7,14 +7,8 @@ import type { HomePageModel, RecentNoteListItemDto } from "@/lib/home/dto";
 import type { PwaInstallState } from "@/lib/pwa/install";
 import { homeInstallMode } from "@/lib/pwa/install-ui";
 import { HOME_COPY } from "./copy";
-import { HomeInboxRow } from "./HomeInboxRow";
-import { HomeTop3 } from "./HomeTop3";
 import type { HomeInboxRowView } from "./home-inbox-rows-ui";
-import {
-  INBOX_PREVIEW_LIMIT,
-  inboxBadgeCount,
-  showInboxPreview,
-} from "./home-model";
+import { inboxBadgeCount } from "./home-model";
 import styles from "./HomeView.module.css";
 
 export type HomeViewProps = {
@@ -27,16 +21,26 @@ export type HomeViewProps = {
   onDismissInstall: () => void;
 };
 
-function continueNote(model: HomePageModel): RecentNoteListItemDto | null {
-  if (model.state !== "ready") return null;
-  return model.recentNotes[0] ?? null;
+function formatNoteMeta(updatedAt: string): string {
+  try {
+    const d = new Date(updatedAt);
+    const now = new Date();
+    const sameDay =
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate();
+    if (sameDay) {
+      return `오늘 ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+    }
+    return "어제";
+  } catch {
+    return "";
+  }
 }
 
-function inboxEmptyCopy(model: HomePageModel): { title: string; body?: string } {
-  if (model.state === "empty_vault") {
-    return { title: HOME_COPY.emptyVault, body: HOME_COPY.inboxEmptyBody };
-  }
-  return { title: HOME_COPY.inboxEmptyTitle, body: HOME_COPY.inboxEmptyBody };
+function recentNotes(model: HomePageModel): RecentNoteListItemDto[] {
+  if (model.state !== "ready") return [];
+  return [...model.recentNotes].slice(0, 4);
 }
 
 export function HomeView({
@@ -49,22 +53,28 @@ export function HomeView({
   onDismissInstall,
 }: HomeViewProps) {
   const badge = inboxBadgeCount(model);
-  const count = badge ?? 0;
-  const showHeroList = showInboxPreview(model, preview);
-  const note = continueNote(model);
+  const inboxCount = badge ?? 0;
+  const notes = recentNotes(model);
+  const isEmptyVault = model.state === "empty_vault" || (model.state === "ready" && notes.length === 0);
   const mode = homeInstallMode(install);
-  const showContinue =
-    mode === null && note !== null && model.state !== "error" && model.state !== "loading";
+  const noteTotal = model.state === "ready" ? model.recentNotes.length : 0;
 
   return (
     <div className={styles.screen} data-home-state={model.state}>
-      {model.state === "loading" ? (
-        <div className={styles.skeletonTop3} aria-busy="true" aria-label={HOME_COPY.loading}>
-          <SkeletonBlock />
+      <header className={styles.topbar}>
+        <div>
+          <div className={styles.eyebrow}>{HOME_COPY.eyebrow}</div>
+          <h1 className={styles.heroTitle}>{HOME_COPY.heroTitle}</h1>
         </div>
-      ) : (
-        <HomeTop3 inboxCount={badge} />
-      )}
+        <div className={styles.topActions}>
+          <button type="button" className={styles.btn} onClick={onCapture}>
+            + {HOME_COPY.quickCapture}
+          </button>
+          <Link href="/chat" className={`${styles.btn} ${styles.btnPrimary}`}>
+            {HOME_COPY.startSynth}
+          </Link>
+        </div>
+      </header>
 
       {mode ? (
         <PwaInstallBanner mode={mode} onAdd={onInstall} onDismiss={onDismissInstall} />
@@ -75,66 +85,101 @@ export function HomeView({
       ) : null}
 
       {model.state === "loading" ? (
-        <div className={styles.skeletonHero} aria-hidden="true">
-          <SkeletonBlock />
-          <SkeletonBlock />
+        <div className={styles.skeletonBlock} aria-busy="true" aria-label={HOME_COPY.loading}>
+          <SkeletonBlock lines={4} />
         </div>
       ) : null}
 
-      {model.state !== "loading" && model.state !== "error" && count > 0 ? (
-        <section className={styles.hero} aria-label={HOME_COPY.inboxHeroTitle}>
-          <h1 className={styles.heroTitle}>
-            {HOME_COPY.inboxHeroTitle}
-            <span className={styles.heroCount}> · {count}</span>
-          </h1>
-          {showHeroList ? (
-            <ul className={styles.list}>
-              {preview.slice(0, INBOX_PREVIEW_LIMIT).map((row) => (
-                <HomeInboxRow key={row.id} row={row} />
-              ))}
-            </ul>
-          ) : null}
-          <div className={styles.footerRow}>
-            <Link className={styles.primaryBtn} href="/inbox">{HOME_COPY.organize}</Link>
-            {showContinue && note ? (
-              <p className={styles.continueDesk}>
-                {HOME_COPY.continuePrefix} · <strong>{note.title}</strong>
-                <Link className={styles.continueMore} href="/notes">{HOME_COPY.continueMore}</Link>
-              </p>
-            ) : null}
-          </div>
-          {showContinue && note ? (
-            <p className={styles.continueMob}>
-              {HOME_COPY.continuePrefix} · <strong>{note.title}</strong>
-              {" · "}
-              <Link href="/notes">{HOME_COPY.continueMore}</Link>
-            </p>
-          ) : null}
-        </section>
-      ) : null}
+      {model.state !== "loading" && model.state !== "error" ? (
+        <>
+          <section className={styles.cmdSurface} aria-label="검색 커맨드">
+            <span className={styles.cmdLabel}>{HOME_COPY.cmdLabel}</span>
+            <Link href="/search" className={styles.searchLink}>
+              <span className={styles.searchIcon} aria-hidden="true">✦</span>
+              <span className={styles.searchPlaceholder}>
+                {isEmptyVault ? HOME_COPY.cmdPlaceholderEmpty : HOME_COPY.cmdPlaceholder}
+              </span>
+              <span className={styles.kbd}>{HOME_COPY.cmdKbd}</span>
+            </Link>
+          </section>
 
-      {model.state !== "loading" && model.state !== "error" && count === 0 ? (
-        <section className={styles.emptyHero} aria-label={HOME_COPY.capture}>
-          <h1 className={styles.emptyTitle}>{inboxEmptyCopy(model).title}</h1>
-          {inboxEmptyCopy(model).body ? (
-            <p className={styles.emptyBody}>{inboxEmptyCopy(model).body}</p>
-          ) : null}
-          <button type="button" className={styles.primaryBtnStandalone} onClick={onCapture}>
-            {HOME_COPY.capture}
-          </button>
-        </section>
+          <div className={styles.grid}>
+            {isEmptyVault ? (
+              <section className={`${styles.panel} ${styles.emptyPanel}`} aria-label={HOME_COPY.emptyDeskTitle}>
+                <div className={styles.emptyGlyph} aria-hidden="true">+</div>
+                <h2 className={styles.emptyTitle}>{HOME_COPY.emptyDeskTitle}</h2>
+                <p className={styles.emptyBody}>{HOME_COPY.emptyDeskBody}</p>
+                <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={onCapture}>
+                  + {HOME_COPY.firstCapture}
+                </button>
+              </section>
+            ) : (
+              <section className={styles.panel} aria-label={HOME_COPY.recentLibrary}>
+                <div className={styles.panelHead}>
+                  <h2>{HOME_COPY.recentLibrary}</h2>
+                  <Link href="/notes" className={styles.moreLink}>{HOME_COPY.viewAll}</Link>
+                </div>
+                {notes.map((note, index) => (
+                  <Link key={note.id} href={`/notes/${note.id}`} className={styles.libCard}>
+                    <div className={index % 2 === 0 ? `${styles.ico} ${styles.icoN}` : `${styles.ico} ${styles.icoM}`}>
+                      {index % 2 === 0 ? "노" : "메"}
+                    </div>
+                    <div>
+                      <div className={styles.rowT}>{note.title}</div>
+                      <div className={styles.rowM}>노트 · {formatNoteMeta(note.updatedAt)}</div>
+                    </div>
+                    <div className={styles.rowMeta}>{formatNoteMeta(note.updatedAt).startsWith("오늘") ? "오늘" : "어제"}</div>
+                  </Link>
+                ))}
+                {preview.length > 0 && inboxCount > 0 ? (
+                  <Link href="/inbox" className={styles.libCard}>
+                    <div className={`${styles.ico} ${styles.icoM}`}>웹</div>
+                    <div>
+                      <div className={styles.rowT}>{preview[0]?.title ?? HOME_COPY.inboxHeroTitle}</div>
+                      <div className={styles.rowM}>수집 · 미처리 {inboxCount}</div>
+                    </div>
+                    <div className={styles.rowMeta}>대기</div>
+                  </Link>
+                ) : null}
+                <div className={styles.statRow}>
+                  <div className={styles.stat}>
+                    <div className={styles.statN}>{noteTotal > 0 ? noteTotal : "—"}</div>
+                    <div className={styles.statL}>{HOME_COPY.statNotes}</div>
+                  </div>
+                  <div className={styles.stat}>
+                    <div className={styles.statN}>{inboxCount}</div>
+                    <div className={styles.statL}>{HOME_COPY.statInbox}</div>
+                  </div>
+                  <div className={styles.stat}>
+                    <div className={styles.statN}>—</div>
+                    <div className={styles.statL}>{HOME_COPY.statGraph}</div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <aside className={styles.panel} aria-label={HOME_COPY.synthTitle}>
+              <div className={styles.panelHead}>
+                <h2>{HOME_COPY.synthTitle}</h2>
+                <Link href="/chat" className={styles.moreLink}>{HOME_COPY.newChat}</Link>
+              </div>
+              <div className={styles.synth}>
+                <div className={styles.bubbleAi}>
+                  <div className={styles.tag}>{HOME_COPY.synthTag}</div>
+                  {isEmptyVault ? HOME_COPY.synthIdle : HOME_COPY.synthPrompt}
+                </div>
+                <div className={styles.composer}>
+                  <span>{HOME_COPY.synthComposer}</span>
+                  <Link href="/chat" className={styles.send} aria-label="채팅 열기">→</Link>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </>
       ) : null}
 
       {mode ? (
         <PwaInstallSheet mode={mode} onAdd={onInstall} onDismiss={onDismissInstall} />
-      ) : null}
-
-      {showContinue && note && count === 0 ? (
-        <p className={styles.continue}>
-          {HOME_COPY.continuePrefix} · <strong>{note.title}</strong>
-          {" · "}
-          <Link href="/notes">{HOME_COPY.continueMore}</Link>
-        </p>
       ) : null}
     </div>
   );

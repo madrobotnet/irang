@@ -2,6 +2,7 @@ import { showsKeywordIndexBanner } from "@/domain/search/index-status";
 import { JEV_LOW_CONFIDENCE_THRESHOLD } from "@/lib/jev/jev-state";
 import { projectRows } from "@/lib/search/project";
 import { JEV_COPY } from "@/components/jev/copy";
+import { JevBadge } from "@/components/jev/JevBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
@@ -9,7 +10,9 @@ import { SEARCH_COPY } from "./copy";
 import { EvidencePicker } from "./EvidencePicker";
 import { FilterSheet } from "./FilterSheet";
 import { RouteHint } from "./RouteHint";
-import { SearchBar } from "./SearchBar";
+import { DeskCommandBar } from "@/components/desk/DeskCommandBar";
+import { SynthPanel } from "@/components/desk/SynthPanel";
+import splitStyles from "@/components/desk/DeskSplitLayout.module.css";
 import {
   evidenceChatReady,
   hasActiveFilters,
@@ -59,26 +62,42 @@ export function SearchView({
 
   return (
     <div
-      className={styles.page}
+      className={splitStyles.host}
       data-search-state={model.surface}
       data-evidence-state={model.evidence.status}
       data-index-status={model.envelope?.indexStatus}
+      data-desk-search-layout
     >
       <h1 className={styles.title}>{SEARCH_COPY.title}</h1>
-      <SearchBar
-        draft={model.draft}
-        badge={badge}
-        showOn={showOn}
-        filtersOpen={model.filtersOpen}
-        filtersActive={hasActiveFilters(model.filters)}
-        onDraft={onDraft}
+      <DeskCommandBar
+        value={model.draft}
+        placeholder={SEARCH_COPY.placeholder}
+        onChange={onDraft}
         onSubmit={onSubmit}
-        onToggleFilters={onToggleFilters}
+        kbdHint={model.draft ? "esc" : "cmd-k"}
+        filled={model.draft.length > 0}
       />
+      <div className={styles.bar}>
+        <button
+          type="button"
+          className={hasActiveFilters(model.filters) ? styles.filterActive : styles.filter}
+          aria-expanded={model.filtersOpen}
+          aria-controls="search-filters"
+          onClick={onToggleFilters}
+        >
+          {SEARCH_COPY.filter}
+        </button>
+        <div className={styles.jev} data-jev-on={showOn ? "true" : "false"}>
+          <JevBadge state={badge} />
+          {showOn ? <span className={styles.onWord}>· {SEARCH_COPY.on}</span> : null}
+        </div>
+      </div>
       {model.filtersOpen ? (
         <FilterSheet filters={model.filters} onChange={onFilters} onApply={onApplyFilters} />
       ) : null}
 
+      <div className={splitStyles.grid}>
+        <div className={splitStyles.primary}>
       {model.surface === "idle" ? <p className={styles.hint}>{SEARCH_COPY.idleHint}</p> : null}
 
       {model.surface === "loading" ? (
@@ -156,6 +175,16 @@ export function SearchView({
           onToggle={onToggleEvidence}
         />
       ) : null}
+        </div>
+        <div className={splitStyles.aside}>
+          <SynthPanel
+            title="합성"
+            placeholder={
+              model.surface === "results" ? "결과 기준으로 묻기…" : "이어서 질문하기…"
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }
