@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Second Brain icon C3 — Eclipse">
+  <!-- Orbit-core C3 Eclipse: oversized solid core + ONE heavy incomplete ring + 2 nodes -->
+  <rect width="512" height="512" fill="#110e16"/>
+  <!-- single heavy incomplete ring -->
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#c4b5fd" stroke-width="52"
+          stroke-dasharray="680 430" stroke-linecap="round" transform="rotate(-60 256 256)"/>
+  <!-- two punchy nodes at gap ends -->
+  <circle cx="412" cy="156" r="46" fill="#c4b5fd"/>
+  <circle cx="118" cy="384" r="40" fill="#c4b5fd"/>
+  <!-- oversized solid eclipse core · diameter ~210 ≈ 41% -->
+  <circle cx="256" cy="256" r="105" fill="#c4b5fd"/>
+  <circle cx="256" cy="256" r="44" fill="#1a1228"/>
+  <circle cx="256" cy="256" r="20" fill="#c4b5fd"/>
+</svg>

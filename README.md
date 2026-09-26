@@ -7,3 +7,5 @@ Tests: `npm test`. Postgres round-trip (auth + notes E2): `npm run test:postgres
 E2 API (session required): `/api/notes`, `/api/capture`, `/api/capture/share`, `/api/attachments`, `/api/inbox` (list/promote/discard hooks).
 
 Capture/share also require `TYPESAFE_API_KEY` (Jev tag **suggestions** + `duplicateHint` proposals only — never auto-applied). Missing key → `503 typesafe_misconfigured`; TypeSafe failure → `502 judgment_failed`. Typed client seat for Rex follow-up: `src/lib/jev/`.
+
+PWA icons `public/icons/icon-192.png` and `public/icons/icon-512.png` are C3 Eclipse. `public/icons/icon-48.png` is the favicon and the apple touch icon. The source drawing is `src/lib/pwa/c3-eclipse.svg`. `src/app/manifest.ts` serves the manifest, including `share_target.action` `/api/capture/share`. There is no service worker.

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,12 +9,20 @@ import manifest from "@/app/manifest";
 
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-function pngSize(publicPath: string): { width: number; height: number } {
+function readPublic(publicPath: string): Buffer {
   const relative = publicPath.replace(/^\//, "");
-  const buf = readFileSync(path.join(process.cwd(), "public", relative));
+  return readFileSync(path.join(process.cwd(), "public", relative));
+}
+
+function pngSize(publicPath: string): { width: number; height: number } {
+  const buf = readPublic(publicPath);
   expect(buf.subarray(0, 8)).toEqual(PNG_SIGNATURE);
   expect(buf.subarray(12, 16).toString("ascii")).toBe("IHDR");
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+}
+
+function sha256(publicPath: string): string {
+  return createHash("sha256").update(readPublic(publicPath)).digest("hex");
 }
 
 describe("E6 PWA manifest seat", () => {
@@ -48,6 +57,13 @@ describe("E6 PWA manifest seat", () => {
     }
     expect(pngSize("/icons/icon-192.png")).toEqual({ width: 192, height: 192 });
     expect(pngSize("/icons/icon-512.png")).toEqual({ width: 512, height: 512 });
+    expect(pngSize("/icons/icon-48.png")).toEqual({ width: 48, height: 48 });
+    expect(sha256("/icons/icon-192.png")).toBe(
+      "62a84ac1cbcc4f8b8ebe1e4a7a6ff1c43ea5a5d5a95f6aab857e500e97e91105",
+    );
+    expect(sha256("/icons/icon-512.png")).toBe(
+      "0670285fbd70bc6a0f6d21b6678a7b30cc40e845ef469c4f460186a71ff73fe2",
+    );
   });
 
   it("seats the online-only banner copy", () => {

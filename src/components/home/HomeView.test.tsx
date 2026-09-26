@@ -50,7 +50,7 @@ function render(model: HomePageModel, extra: Partial<HomeViewProps> = {}) {
     <HomeView
       model={model}
       preview={extra.preview ?? []}
-      install={extra.install ?? { kind: "hidden" }}
+      install={extra.install ?? null}
       onRetry={() => undefined}
       onCapture={() => undefined}
       onInstall={() => undefined}
@@ -134,18 +134,31 @@ describe("home view", () => {
   });
 
   it("shows a dismissible install prompt or an iOS hint without the offline sentence", () => {
-    const prompt = render(homeEmptyVaultOk(0), { install: { kind: "prompt" } });
+    const prompt = render(homeEmptyVaultOk(0), { install: "eligible" });
+    expect(prompt).toContain('data-pwa-install="banner"');
+    expect(prompt).toContain('data-pwa-install="sheet"');
+    expect(prompt).toContain("설치하면 홈·독에서 바로 열 수 있어요");
+    expect(prompt).toContain("탭 없이 Vault Night 전체 화면 · 언제든 해제 가능");
+    expect(prompt).toContain("추가");
     expect(prompt).toContain("홈 화면에 추가");
     expect(prompt).toContain("나중에");
+    expect(prompt).toContain("/icons/icon-192.png");
     expect(prompt).not.toContain("온라인에서만 동작해요");
+    expect(prompt).not.toContain("오프라인");
+    expect(prompt).not.toContain("App Store");
 
-    const ios = render(homeEmptyVaultOk(0), { install: { kind: "ios" } });
-    expect(ios).toContain("공유 메뉴에서 홈 화면에 추가할 수 있어요");
+    const ios = render(homeEmptyVaultOk(0), { install: "ios-share-hint" });
+    expect(ios).toContain("공유 버튼 → 「홈 화면에 추가」");
     expect(ios).toContain("나중에");
+    expect(ios).not.toContain('data-pwa-cta="add"');
     expect(ios).not.toContain("온라인에서만 동작해요");
 
-    const hidden = render(homeEmptyVaultOk(0), { install: { kind: "hidden" } });
-    expect(hidden).not.toContain("홈 화면에 추가");
-    expect(hidden).not.toContain('aria-label="홈 화면에 추가"');
+    const hidden = render(homeEmptyVaultOk(0), { install: "dismissed" });
+    expect(hidden).not.toContain('data-pwa-install="banner"');
+    expect(hidden).not.toContain('data-pwa-install="sheet"');
+
+    const installed = render(homeEmptyVaultOk(0), { install: "already-installed" });
+    expect(installed).not.toContain('data-pwa-install="banner"');
+    expect(installed).not.toContain('data-pwa-install="sheet"');
   });
 });

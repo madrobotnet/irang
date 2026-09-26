@@ -9,8 +9,7 @@ import {
   type RecentNoteListItemDto,
 } from "@/lib/home/dto";
 import { ONLINE_ONLY_BANNER_COPY } from "@/lib/pwa/copy";
-
-export const INSTALL_DISMISS_KEY = "sb-install-dismissed";
+import { resolvePwaInstallState, type PwaInstallSignals } from "@/lib/pwa/install";
 export const RECENT_NOTE_LIMIT = 5;
 export const INBOX_PREVIEW_LIMIT = 3;
 
@@ -135,20 +134,11 @@ export function homeSwipeHref(deltaX: number, deltaY = 0): HomeSwipeTarget | nul
   return "/search";
 }
 
-export function installOffer(input: {
-  dismissed: boolean;
-  standalone: boolean;
-  ios: boolean;
-  hasPrompt: boolean;
-}): InstallOffer {
-  if (input.dismissed || input.standalone) return { kind: "hidden" };
-  if (input.hasPrompt) return { kind: "prompt" };
-  if (input.ios) return { kind: "ios" };
+export function installOffer(input: PwaInstallSignals): InstallOffer {
+  const state = resolvePwaInstallState(input);
+  if (state === "eligible") return { kind: "prompt" };
+  if (state === "ios-share-hint") return { kind: "ios" };
   return { kind: "hidden" };
-}
-
-export function isIosDevice(userAgent: string): boolean {
-  return /iPad|iPhone|iPod/.test(userAgent);
 }
 
 export function offlineBannerMessage(online: boolean): string | null {

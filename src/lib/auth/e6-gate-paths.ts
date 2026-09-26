@@ -39,4 +39,5 @@ export const E6_PUBLIC_PWA_PATHS = [
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/icon-48.png",
 ] as const;

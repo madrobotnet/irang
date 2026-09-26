@@ -15,6 +15,10 @@ const notoSansKr = Noto_Sans_KR({
 export const metadata: Metadata = {
   title: "Second Brain",
   description: "brain.madrobot.net",
+  icons: {
+    icon: "/icons/icon-48.png",
+    apple: "/icons/icon-48.png",
+  },
 };
 
 export default async function RootLayout({

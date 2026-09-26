@@ -1,24 +1,26 @@
 import Link from "next/link";
+import { PwaInstallBanner } from "@/components/pwa/PwaInstallBanner";
+import { PwaInstallSheet } from "@/components/pwa/PwaInstallSheet";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 import type { HomePageModel, RecentNoteListItemDto } from "@/lib/home/dto";
+import type { PwaInstallState } from "@/lib/pwa/install";
+import { homeInstallMode } from "@/lib/pwa/install-ui";
 import { HOME_COPY } from "./copy";
 import { HomeInboxRow } from "./HomeInboxRow";
 import { HomeTop3 } from "./HomeTop3";
-import { InstallBanner } from "./InstallBanner";
 import type { HomeInboxRowView } from "./home-inbox-rows-ui";
 import {
   INBOX_PREVIEW_LIMIT,
   inboxBadgeCount,
   showInboxPreview,
-  type InstallOffer,
 } from "./home-model";
 import styles from "./HomeView.module.css";
 
 export type HomeViewProps = {
   model: HomePageModel;
   preview: readonly HomeInboxRowView[];
-  install: InstallOffer;
+  install: PwaInstallState | null;
   onRetry: () => void;
   onCapture: () => void;
   onInstall: () => void;
@@ -50,9 +52,9 @@ export function HomeView({
   const count = badge ?? 0;
   const showHeroList = showInboxPreview(model, preview);
   const note = continueNote(model);
+  const mode = homeInstallMode(install);
   const showContinue =
-    install.kind === "hidden" && note !== null && model.state !== "error" && model.state !== "loading";
-  const showInstall = install.kind !== "hidden";
+    mode === null && note !== null && model.state !== "error" && model.state !== "loading";
 
   return (
     <div className={styles.screen} data-home-state={model.state}>
@@ -63,6 +65,10 @@ export function HomeView({
       ) : (
         <HomeTop3 inboxCount={badge} />
       )}
+
+      {mode ? (
+        <PwaInstallBanner mode={mode} onAdd={onInstall} onDismiss={onDismissInstall} />
+      ) : null}
 
       {model.state === "error" ? (
         <ErrorBanner message={HOME_COPY.homeError} onRetry={onRetry} retryLabel={HOME_COPY.retry} />
@@ -119,8 +125,8 @@ export function HomeView({
         </section>
       ) : null}
 
-      {showInstall ? (
-        <InstallBanner offer={install} onInstall={onInstall} onDismiss={onDismissInstall} />
+      {mode ? (
+        <PwaInstallSheet mode={mode} onAdd={onInstall} onDismiss={onDismissInstall} />
       ) : null}
 
       {showContinue && note && count === 0 ? (
