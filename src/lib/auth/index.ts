@@ -3,6 +3,7 @@ export type { GateDecision } from "./gate";
 export {
   SECURITY_HEADERS,
   SECURITY_HEADER_LIST,
+  CSP_NONCE_HEADER,
   applySecurityHeaders,
 } from "./security-headers";
 export {

@@ -413,4 +413,14 @@ describe("middleware gate", () => {
       expect(response.headers.get(key)).toBe(value);
     }
   });
+
+  it("sets nonce CSP on document pass-through for App Router scripts", async () => {
+    const response = await middleware(new NextRequest("https://brain.madrobot.net/login"));
+    expect(response.status).toBe(200);
+    const csp = response.headers.get("Content-Security-Policy") ?? "";
+    const nonceMatch = csp.match(/'nonce-([^']+)'/);
+    expect(nonceMatch).not.toBeNull();
+    expect(csp).toContain("'strict-dynamic'");
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+  });
 });

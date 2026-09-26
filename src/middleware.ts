@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { decideAuthGate, isPublicPath } from "@/lib/auth/gate";
-import { applySecurityHeaders } from "@/lib/auth/security-headers";
+import {
+  applySecurityHeaders,
+  CSP_NONCE_HEADER,
+  generateCspNonce,
+} from "@/lib/auth/security-headers";
 import { unauthorizedJsonResponse } from "@/lib/auth/api-errors";
 import { hasVerifiedSession } from "@/lib/auth/verify-session";
 
@@ -16,6 +20,8 @@ export async function middleware(request: NextRequest) {
   });
 
   let response: NextResponse;
+  let cspNonce: string | undefined;
+
   if (decision.action === "redirect_login") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -28,9 +34,17 @@ export async function middleware(request: NextRequest) {
       headers: body.headers,
     });
   } else {
-    response = NextResponse.next();
+    cspNonce = generateCspNonce();
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(CSP_NONCE_HEADER, cspNonce);
+    response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   }
-  applySecurityHeaders(response.headers);
+
+  applySecurityHeaders(response.headers, { cspNonce });
   return response;
 }
 

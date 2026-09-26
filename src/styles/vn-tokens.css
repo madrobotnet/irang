@@ -16,8 +16,7 @@
   --vn-hairline: color-mix(in oklch, var(--vn-text) 12%, transparent);
   --vn-hairline-strong: color-mix(in oklch, var(--vn-text) 16%, transparent);
   --vn-inset: inset 0 1px 0 color-mix(in oklch, white 8%, transparent);
-  --vn-font: "Pretendard", var(--font-noto), "Noto Sans KR", "Apple SD Gothic Neo", system-ui,
-    sans-serif;
+  --vn-font: var(--font-noto), "Noto Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
   --vn-touch: 44px;
   --vn-tool: 52px;
   --vn-search: 44px;
