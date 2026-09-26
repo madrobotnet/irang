@@ -1,28 +1,28 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@import "../styles/vn-tokens.css";
 
 :root,
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0f1114;
-  --elevated: #1a1d23;
-  --stroke: #2a2f38;
-  --text: #e8eaed;
-  --text-muted: #9aa3af;
-  --accent: #6b9fff;
-  --danger: #f07178;
-  --success: #7fd99a;
+  --bg: var(--vn-canvas);
+  --elevated: var(--vn-surface);
+  --stroke: var(--vn-hairline-strong);
+  --text: var(--vn-text);
+  --text-muted: var(--vn-text-meta);
+  --accent: var(--vn-accent);
+  --danger: #f2b4bc;
+  --success: var(--vn-promote);
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 16px;
   --space-4: 24px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-sm: var(--vn-radius-ctl);
+  --radius-md: var(--vn-radius-row);
   --motion: 160ms ease;
-  --font-sans: "Pretendard", var(--font-noto), "Noto Sans KR", system-ui, sans-serif;
+  --font-sans: var(--vn-font);
   --line-height: 1.7;
-  --touch-min: 44px;
-  --shell-rail-width: 240px;
-  --shell-tab-height: 56px;
+  --touch-min: var(--vn-touch);
+  --shell-tab-height: var(--vn-tool);
 }
 
 [data-theme="light"] {
@@ -50,8 +50,8 @@ body {
   min-height: 100%;
   font-family: var(--font-sans);
   line-height: var(--line-height);
-  background: var(--bg);
-  color: var(--text);
+  background: var(--vn-canvas);
+  color: var(--vn-text);
   -webkit-font-smoothing: antialiased;
 }
 

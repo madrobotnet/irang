@@ -19,8 +19,8 @@ export const WEB_APP_MANIFEST: MetadataRoute.Manifest = {
   start_url: "/",
   scope: "/",
   display: "standalone",
-  background_color: "#0f1114",
-  theme_color: "#0f1114",
+  background_color: "#110e16",
+  theme_color: "#110e16",
   icons: [
     {
       src: "/icons/icon-192.png",

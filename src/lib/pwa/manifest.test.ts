@@ -32,8 +32,8 @@ describe("E6 PWA manifest seat", () => {
     expect(WEB_APP_MANIFEST.short_name).toBe("Second Brain");
     expect(WEB_APP_MANIFEST.start_url).toBe("/");
     expect(WEB_APP_MANIFEST.display).toBe("standalone");
-    expect(WEB_APP_MANIFEST.background_color).toBe("#0f1114");
-    expect(WEB_APP_MANIFEST.theme_color).toBe("#0f1114");
+    expect(WEB_APP_MANIFEST.background_color).toBe("#110e16");
+    expect(WEB_APP_MANIFEST.theme_color).toBe("#110e16");
     expect(WEB_APP_MANIFEST).not.toHaveProperty("serviceworker");
     expect(JSON.stringify(WEB_APP_MANIFEST)).not.toMatch(/serviceWorker|workbox|offline/i);
   });

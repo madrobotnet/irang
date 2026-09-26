@@ -124,9 +124,9 @@ describe("home display rules", () => {
     expect(showInboxPreview({ state: "loading" }, [row])).toBe(false);
   });
 
-  it("sends a left swipe to inbox and ignores right, short, and vertical moves", () => {
-    expect(homeSwipeHref(-80, 10)).toBe("/inbox");
-    expect(homeSwipeHref(80, 0)).toBeNull();
+  it("sends home swipes to chat or search and ignores short and vertical moves", () => {
+    expect(homeSwipeHref(-80, 10)).toBe("/chat");
+    expect(homeSwipeHref(80, 0)).toBe("/search");
     expect(homeSwipeHref(-40, 0)).toBeNull();
     expect(homeSwipeHref(-90, 120)).toBeNull();
   });

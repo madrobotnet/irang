@@ -1,19 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCapture } from "@/components/capture/CaptureContext";
 import type { HomePageModel } from "@/lib/home/dto";
+import { HOME_COPY } from "./copy";
 import { HomeView } from "./HomeView";
-import { loadHomeSummary, loadInboxPreview } from "./home-client";
+import { loadHomeSummary } from "./home-client";
+import { loadHomeInboxRowViews, type HomeInboxRowView } from "./home-inbox-rows-ui";
 import {
   INSTALL_DISMISS_KEY,
   homeSwipeHref,
   installOffer,
   isIosDevice,
-  type InboxPreviewRow,
   type InstallOffer,
 } from "./home-model";
+import styles from "./HomeScreen.module.css";
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -30,7 +33,7 @@ export function HomeScreen() {
   const router = useRouter();
   const { openCapture } = useCapture();
   const [model, setModel] = useState<HomePageModel>({ state: "loading" });
-  const [preview, setPreview] = useState<InboxPreviewRow[]>([]);
+  const [preview, setPreview] = useState<HomeInboxRowView[]>([]);
   const [install, setInstall] = useState<InstallOffer>({ kind: "hidden" });
   const promptRef = useRef<DeferredInstallPrompt | null>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
@@ -54,7 +57,7 @@ export function HomeScreen() {
     setModel(next);
     if (next.state !== "ready" && next.state !== "empty_vault") return;
     if (next.inboxBadge.count <= 0) return;
-    setPreview(await loadInboxPreview());
+    setPreview(await loadHomeInboxRowViews());
   }, []);
 
   useEffect(() => {
@@ -89,19 +92,14 @@ export function HomeScreen() {
     setInstall({ kind: "hidden" });
   };
 
-  const onCommand = () => {
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
-    );
-  };
-
   return (
     <div
+      className={styles.host}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
         const target = event.target;
         if (!(target instanceof Element)) return;
-        if (target.closest("a, button, input, textarea, select")) return;
+        if (target.closest("a, button, input, textarea, select, summary")) return;
         origin.current = { x: event.clientX, y: event.clientY };
         event.currentTarget.setPointerCapture(event.pointerId);
       }}
@@ -116,6 +114,8 @@ export function HomeScreen() {
         origin.current = null;
       }}
     >
+      <span className={styles.peekLeft} aria-hidden="true" />
+      <span className={styles.peekRight} aria-hidden="true" />
       <HomeView
         model={model}
         preview={preview}
@@ -124,10 +124,25 @@ export function HomeScreen() {
           void load();
         }}
         onCapture={() => openCapture()}
-        onCommand={onCommand}
         onInstall={onInstall}
         onDismissInstall={onDismissInstall}
       />
+      <nav className={styles.pager} aria-label="화면">
+        <LinkDot href="/search" label={HOME_COPY.pagerSearch} active={false} />
+        <span className={styles.dotActive} aria-current="page">{HOME_COPY.pagerHome}</span>
+        <LinkDot href="/chat" label={HOME_COPY.pagerChat} active={false} />
+      </nav>
     </div>
+  );
+}
+
+function LinkDot({ href, label, active }: { href: string; label: string; active: boolean }) {
+  if (active) {
+    return <span className={styles.dotActive} aria-current="page">{label}</span>;
+  }
+  return (
+    <Link href={href} className={styles.dot} aria-label={label}>
+      <span className="sr-only">{label}</span>
+    </Link>
   );
 }

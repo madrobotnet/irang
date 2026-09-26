@@ -1,71 +1,40 @@
 import Link from "next/link";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
 import type { HomePageModel, RecentNoteListItemDto } from "@/lib/home/dto";
-import { formatInboxTime } from "@/components/inbox/format-time";
 import { HOME_COPY } from "./copy";
+import { HomeInboxRow } from "./HomeInboxRow";
 import { HomeTop3 } from "./HomeTop3";
 import { InstallBanner } from "./InstallBanner";
+import type { HomeInboxRowView } from "./home-inbox-rows-ui";
 import {
   INBOX_PREVIEW_LIMIT,
   inboxBadgeCount,
   showInboxPreview,
-  visibleRecentNotes,
-  type InboxPreviewRow,
   type InstallOffer,
 } from "./home-model";
 import styles from "./HomeView.module.css";
 
 export type HomeViewProps = {
   model: HomePageModel;
-  preview: readonly InboxPreviewRow[];
+  preview: readonly HomeInboxRowView[];
   install: InstallOffer;
   onRetry: () => void;
   onCapture: () => void;
-  onCommand: () => void;
   onInstall: () => void;
   onDismissInstall: () => void;
 };
 
-export function RecentNotesList({ notes }: { notes: readonly RecentNoteListItemDto[] }) {
-  const visible = visibleRecentNotes(notes);
-  return (
-    <section className={styles.section} aria-label={HOME_COPY.recent}>
-      <h2 className={styles.sectionTitle}>{HOME_COPY.recent}</h2>
-      <ul className={styles.list}>
-        {visible.map((note) => (
-          <li key={note.id}>
-            <Link className={styles.row} href={`/notes?note=${encodeURIComponent(note.id)}`}>
-              <span className={styles.rowTitle}>{note.title}</span>
-              <time className={styles.rowMeta} dateTime={note.updatedAt}>
-                {formatInboxTime(note.updatedAt)}
-              </time>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+function continueNote(model: HomePageModel): RecentNoteListItemDto | null {
+  if (model.state !== "ready") return null;
+  return model.recentNotes[0] ?? null;
 }
 
-export function InboxPreview({ rows }: { rows: readonly InboxPreviewRow[] }) {
-  const visible = rows.slice(0, INBOX_PREVIEW_LIMIT);
-  return (
-    <section className={styles.section} aria-label={HOME_COPY.preview}>
-      <h2 className={styles.sectionTitle}>{HOME_COPY.preview}</h2>
-      <ul className={styles.list}>
-        {visible.map((row) => (
-          <li key={row.id}>
-            <Link className={styles.row} href="/inbox">
-              <span className={styles.rowTitle}>{row.title}</span>
-              {row.summary ? <span className={styles.rowSummary}>{row.summary}</span> : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
+function inboxEmptyCopy(model: HomePageModel): { title: string; body?: string } {
+  if (model.state === "empty_vault") {
+    return { title: HOME_COPY.emptyVault, body: HOME_COPY.inboxEmptyBody };
+  }
+  return { title: HOME_COPY.inboxEmptyTitle, body: HOME_COPY.inboxEmptyBody };
 }
 
 export function HomeView({
@@ -74,61 +43,93 @@ export function HomeView({
   install,
   onRetry,
   onCapture,
-  onCommand,
   onInstall,
   onDismissInstall,
 }: HomeViewProps) {
   const badge = inboxBadgeCount(model);
+  const count = badge ?? 0;
+  const showHeroList = showInboxPreview(model, preview);
+  const note = continueNote(model);
+  const showContinue =
+    install.kind === "hidden" && note !== null && model.state !== "error" && model.state !== "loading";
+  const showInstall = install.kind !== "hidden";
 
   return (
     <div className={styles.screen} data-home-state={model.state}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>{HOME_COPY.greeting}</h1>
-        <button
-          type="button"
-          className={styles.command}
-          title={HOME_COPY.commandTitle}
-          aria-keyshortcuts="Meta+K"
-          onClick={onCommand}
-        >
-          {HOME_COPY.command}
-        </button>
-      </header>
-
-      {install.kind === "hidden" ? null : (
-        <InstallBanner offer={install} onInstall={onInstall} onDismiss={onDismissInstall} />
-      )}
-
       {model.state === "loading" ? (
-        <div className={styles.skeletonGrid} aria-busy="true" aria-label={HOME_COPY.loading}>
-          <div className={styles.skeletonCard}>
-            <SkeletonBlock />
-          </div>
-          <div className={styles.skeletonCard}>
-            <SkeletonBlock />
-          </div>
-          <div className={styles.skeletonCard}>
-            <SkeletonBlock />
-          </div>
+        <div className={styles.skeletonTop3} aria-busy="true" aria-label={HOME_COPY.loading}>
+          <SkeletonBlock />
         </div>
       ) : (
         <HomeTop3 inboxCount={badge} />
       )}
 
-      {model.state === "ready" ? <RecentNotesList notes={model.recentNotes} /> : null}
-
-      {model.state === "empty_vault" ? (
-        <EmptyState
-          message={HOME_COPY.emptyVault}
-          primaryAction={{ label: HOME_COPY.capture, onClick: onCapture }}
-        />
-      ) : null}
-
       {model.state === "error" ? (
         <ErrorBanner message={HOME_COPY.homeError} onRetry={onRetry} retryLabel={HOME_COPY.retry} />
       ) : null}
 
-      {showInboxPreview(model, preview) ? <InboxPreview rows={preview} /> : null}
+      {model.state === "loading" ? (
+        <div className={styles.skeletonHero} aria-hidden="true">
+          <SkeletonBlock />
+          <SkeletonBlock />
+        </div>
+      ) : null}
+
+      {model.state !== "loading" && model.state !== "error" && count > 0 ? (
+        <section className={styles.hero} aria-label={HOME_COPY.inboxHeroTitle}>
+          <h1 className={styles.heroTitle}>
+            {HOME_COPY.inboxHeroTitle}
+            <span className={styles.heroCount}> · {count}</span>
+          </h1>
+          {showHeroList ? (
+            <ul className={styles.list}>
+              {preview.slice(0, INBOX_PREVIEW_LIMIT).map((row) => (
+                <HomeInboxRow key={row.id} row={row} />
+              ))}
+            </ul>
+          ) : null}
+          <div className={styles.footerRow}>
+            <Link className={styles.primaryBtn} href="/inbox">{HOME_COPY.organize}</Link>
+            {showContinue && note ? (
+              <p className={styles.continueDesk}>
+                {HOME_COPY.continuePrefix} · <strong>{note.title}</strong>
+                <Link className={styles.continueMore} href="/notes">{HOME_COPY.continueMore}</Link>
+              </p>
+            ) : null}
+          </div>
+          {showContinue && note ? (
+            <p className={styles.continueMob}>
+              {HOME_COPY.continuePrefix} · <strong>{note.title}</strong>
+              {" · "}
+              <Link href="/notes">{HOME_COPY.continueMore}</Link>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {model.state !== "loading" && model.state !== "error" && count === 0 ? (
+        <section className={styles.emptyHero} aria-label={HOME_COPY.capture}>
+          <h1 className={styles.emptyTitle}>{inboxEmptyCopy(model).title}</h1>
+          {inboxEmptyCopy(model).body ? (
+            <p className={styles.emptyBody}>{inboxEmptyCopy(model).body}</p>
+          ) : null}
+          <button type="button" className={styles.primaryBtnStandalone} onClick={onCapture}>
+            {HOME_COPY.capture}
+          </button>
+        </section>
+      ) : null}
+
+      {showInstall ? (
+        <InstallBanner offer={install} onInstall={onInstall} onDismiss={onDismissInstall} />
+      ) : null}
+
+      {showContinue && note && count === 0 ? (
+        <p className={styles.continue}>
+          {HOME_COPY.continuePrefix} · <strong>{note.title}</strong>
+          {" · "}
+          <Link href="/notes">{HOME_COPY.continueMore}</Link>
+        </p>
+      ) : null}
     </div>
   );
 }

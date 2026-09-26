@@ -1,51 +1,42 @@
 .top3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-2);
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--vn-hairline);
+  background: var(--vn-surface);
 }
 
-.card {
+.door {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-1);
-  min-height: 88px;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--stroke);
-  color: var(--text);
+  gap: 8px;
+  min-height: var(--vn-touch);
+  border-radius: 10px;
+  color: var(--vn-text-meta);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition:
+    background var(--motion),
+    color var(--motion);
+}
+
+.door:hover {
+  color: var(--vn-text-secondary);
+}
+
+.doorActive {
+  background: var(--vn-raised);
+  color: var(--vn-text);
   font-weight: 600;
-  text-align: center;
-  background:
-    linear-gradient(180deg, color-mix(in srgb, white 7%, transparent), transparent 46%),
-    var(--elevated);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
+  box-shadow: var(--vn-inset);
 }
 
-.search {
-  box-shadow:
-    inset 3px 0 0 var(--accent),
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
-}
-
-.inbox {
-  box-shadow:
-    inset 3px 0 0 var(--success),
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
-}
-
-.chat {
-  box-shadow:
-    inset 3px 0 0 color-mix(in srgb, var(--accent) 40%, #c4b5fd),
-    inset 0 1px 0 color-mix(in srgb, white 10%, transparent);
-}
-
-.card:hover {
-  border-color: var(--accent);
-}
-
-.card:focus-visible {
-  outline: 2px solid var(--accent);
+.door:focus-visible {
+  outline: 2px solid var(--vn-accent);
   outline-offset: 2px;
 }
 
@@ -53,13 +44,34 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5rem;
-  height: 1.5rem;
+  min-width: 20px;
+  height: 20px;
   padding: 0 6px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--bg);
-  font-size: 0.75rem;
+  border-radius: var(--vn-radius-pill);
+  background: var(--vn-accent);
+  color: var(--vn-accent-ink);
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
+}
+
+@media (max-width: 1023px) {
+  .top3 {
+    border-radius: 12px;
+    padding: 3px;
+    margin-bottom: 4px;
+  }
+
+  .door {
+    min-height: 40px;
+    font-size: 12px;
+    border-radius: 9px;
+  }
+
+  .badge {
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+  }
 }

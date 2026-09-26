@@ -1,0 +1,68 @@
+.host {
+  position: relative;
+}
+
+.peekLeft,
+.peekRight {
+  display: none;
+}
+
+@media (max-width: 1023px) and (orientation: portrait) {
+  .peekLeft,
+  .peekRight {
+    display: block;
+    position: fixed;
+    top: 96px;
+    bottom: calc(96px + var(--shell-mobile-tool-height, 52px));
+    width: 8px;
+    z-index: 2;
+    background: var(--vn-raised);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
+  .peekLeft {
+    left: 0;
+    border-radius: 0 10px 10px 0;
+    box-shadow: 2px 0 12px color-mix(in srgb, var(--vn-accent) 12%, transparent);
+  }
+
+  .peekRight {
+    right: 0;
+    border-radius: 10px 0 0 10px;
+    box-shadow: -2px 0 12px color-mix(in srgb, var(--vn-accent) 12%, transparent);
+  }
+
+  .pager {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 0 4px;
+  }
+
+  .dot,
+  .dotActive {
+    display: block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--vn-text-meta);
+    opacity: 0.45;
+  }
+
+  .dotActive {
+    width: 18px;
+    border-radius: 4px;
+    background: var(--vn-accent);
+    opacity: 1;
+    font-size: 0;
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 1024px), (orientation: landscape) {
+  .pager {
+    display: none;
+  }
+}

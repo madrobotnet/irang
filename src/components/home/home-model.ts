@@ -16,6 +16,8 @@ export const INBOX_PREVIEW_LIMIT = 3;
 
 export const HOME_SWIPE_THRESHOLD_PX = 72;
 
+export type HomeSwipeTarget = "/search" | "/chat";
+
 export type InboxPreviewRow = {
   id: string;
   title: string;
@@ -125,10 +127,12 @@ export function showInboxPreview(model: HomePageModel, preview: readonly InboxPr
   return count !== null && count > 0 && preview.length > 0;
 }
 
-export function homeSwipeHref(deltaX: number, deltaY = 0): "/inbox" | null {
+/** Home portrait swipe: right → search, left → chat. */
+export function homeSwipeHref(deltaX: number, deltaY = 0): HomeSwipeTarget | null {
   if (Math.abs(deltaX) < HOME_SWIPE_THRESHOLD_PX) return null;
   if (Math.abs(deltaY) > Math.abs(deltaX)) return null;
-  return deltaX < 0 ? "/inbox" : null;
+  if (deltaX < 0) return "/chat";
+  return "/search";
 }
 
 export function installOffer(input: {
