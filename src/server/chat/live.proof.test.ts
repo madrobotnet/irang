@@ -18,18 +18,18 @@ type NoQuietFallback = Extract<HookKeys, "fallback" | "citedReply" | "approved">
 const noQuietFallback: NoQuietFallback = true;
 
 describe("E5 Codex re-proof hook", () => {
-  it("keeps live cite and ApproveModal pending until CODEX_API_KEY is injected", () => {
+  it("keeps live cite and ApproveModal pending until a Codex server auth file is mounted", () => {
     expect(noQuietFallback).toBe(true);
     expect(E5_CODEX_REPROOF_HOOK).toEqual({
-      env: "CODEX_API_KEY",
+      env: "CODEX_HOME",
       targets: ["live_cite", "approve_modal"],
-      status: "pending_codex_key",
+      status: "pending_server_auth",
     });
   });
 });
 
 /**
- * Quoting stub so the Jev live path can run without CODEX_API_KEY.
+ * Quoting stub so the Jev live path can run without a Codex auth file.
  * E5_CODEX_REPROOF_HOOK is the later seat: inject the key, then re-prove
  * live citation and AiApproveModal with the real generator. Leave the
  * hook pending. This stub is not that proof and is not a quiet success.

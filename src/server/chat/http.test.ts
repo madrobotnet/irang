@@ -151,6 +151,7 @@ beforeEach(() => {
   delete process.env.TYPESAFE_PROD_API_KEY;
   delete process.env.CODEX_API_KEY;
   delete process.env.OPENAI_API_KEY;
+  process.env.CODEX_HOME = "/tmp/second-brain-no-codex-auth";
   chatStore = new MemoryChatStore();
   codexCalls.length = 0;
   setNotesStoreForTests(new MemoryNotesStore());
@@ -177,6 +178,7 @@ afterEach(() => {
   setCodexGeneratorForTests(null);
   delete process.env.TYPESAFE_API_KEY;
   delete process.env.TYPESAFE_PROD_API_KEY;
+  delete process.env.CODEX_HOME;
   resetNotesRuntimeForTests();
   resetChatRuntimeForTests();
   resetSearchRuntimeForTests();
