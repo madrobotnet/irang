@@ -1,8 +1,8 @@
 import { afterAll, describe, expect, test } from "bun:test";
 import { closeDb, query } from "@/server/db";
-import { useTestDatabase } from "@/server/test/db";
+import { connectTestDatabase } from "@/server/test/db";
 
-useTestDatabase();
+connectTestDatabase();
 afterAll(closeDb);
 
 describe("migrations", () => {

@@ -44,7 +44,7 @@ src/
 - `src/server/auth/session.ts`: `getSession()`; cookie `sb_session`.
 - `src/server/jev/client.ts`: `getJev()` returns a TypeSafe client or `null`. **Jev is optional: null or a thrown error must never fail a user action.**
 - `src/lib/types.ts`: every API response type. `src/lib/api-client.ts`: `api<T>(path, { method, json })`, `fetcher` for SWR, `ApiClientError`.
-- `src/server/test/db.ts`: `useTestDatabase()`, `resetData()`, `closeDb()` for integration tests.
+- `src/server/test/db.ts`: `connectTestDatabase()`, `resetData()`, `closeDb()` for integration tests.
 
 ## Data model (Postgres, compatible with v1 production tables)
 
