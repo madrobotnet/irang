@@ -1,0 +1,91 @@
+import { NextResponse } from "next/server";
+import { ZodError, type ZodType } from "zod";
+import { getSession } from "@/server/auth/session";
+
+export type ApiErrorCode =
+  | "unauthorized"
+  | "validation"
+  | "not_found"
+  | "conflict"
+  | "rate_limited"
+  | "payload_too_large"
+  | "unavailable"
+  | "upstream_failed"
+  | "internal";
+
+const STATUS: Record<ApiErrorCode, number> = {
+  unauthorized: 401,
+  validation: 400,
+  not_found: 404,
+  conflict: 409,
+  rate_limited: 429,
+  payload_too_large: 413,
+  unavailable: 503,
+  upstream_failed: 502,
+  internal: 500,
+};
+
+export class ApiError extends Error {
+  constructor(
+    readonly code: ApiErrorCode,
+    message: string,
+    readonly extra?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export function json<T>(data: T, init?: ResponseInit): NextResponse {
+  return NextResponse.json(data, init);
+}
+
+export function errorResponse(code: ApiErrorCode, message: string, extra?: Record<string, unknown>): NextResponse {
+  return NextResponse.json({ error: { code, message, ...extra } }, { status: STATUS[code] });
+}
+
+/** Parse a JSON request body with a zod schema; throws ApiError("validation"). */
+export async function parseJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    throw new ApiError("validation", "Request body must be JSON");
+  }
+  return schema.parse(raw);
+}
+
+type Handler<C> = (request: Request, context: C) => Promise<Response>;
+
+function toResponse(error: unknown): Response {
+  if (error instanceof ApiError) return errorResponse(error.code, error.message, error.extra);
+  if (error instanceof ZodError) {
+    return errorResponse("validation", error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; "));
+  }
+  console.error("[api] unhandled error", error);
+  return errorResponse("internal", "Something went wrong");
+}
+
+/** Session-protected route handler with uniform error mapping. */
+export function withApi<C = unknown>(handler: Handler<C>): Handler<C> {
+  return async (request, context) => {
+    try {
+      const session = await getSession();
+      if (!session) return errorResponse("unauthorized", "Login required");
+      return await handler(request, context);
+    } catch (error) {
+      return toResponse(error);
+    }
+  };
+}
+
+/** Public route handler (no session) with uniform error mapping. */
+export function withPublicApi<C = unknown>(handler: Handler<C>): Handler<C> {
+  return async (request, context) => {
+    try {
+      return await handler(request, context);
+    } catch (error) {
+      return toResponse(error);
+    }
+  };
+}

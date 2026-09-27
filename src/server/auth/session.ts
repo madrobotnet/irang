@@ -1,0 +1,64 @@
+import { createHash, randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
+import { query, queryOne } from "@/server/db";
+import { SESSION_COOKIE, sessionTtlDays } from "./config";
+
+export type Session = { id: string; userId: string; expiresAt: string };
+
+function hashToken(token: string): Buffer {
+  return createHash("sha256").update(token).digest();
+}
+
+/** Single-owner app: one users row holds the current password hash. */
+async function ownerId(passwordHash: string): Promise<string> {
+  const existing = await queryOne<{ id: string }>("SELECT id FROM users ORDER BY created_at LIMIT 1");
+  if (existing) {
+    await query("UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1", [existing.id, passwordHash]);
+    return existing.id;
+  }
+  const row = await queryOne<{ id: string }>("INSERT INTO users (password_hash) VALUES ($1) RETURNING id", [passwordHash]);
+  if (!row) throw new Error("failed to create owner");
+  return row.id;
+}
+
+export async function createSession(input: {
+  passwordHash: string;
+  userAgent: string | null;
+  ip: string | null;
+}): Promise<{ token: string; expiresAt: Date }> {
+  const userId = await ownerId(input.passwordHash);
+  const token = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + sessionTtlDays() * 86_400_000);
+  await query(
+    "INSERT INTO sessions (user_id, token_hash, expires_at, user_agent, ip) VALUES ($1, $2, $3, $4, $5::inet)",
+    [userId, hashToken(token), expiresAt, input.userAgent, input.ip],
+  );
+  return { token, expiresAt };
+}
+
+export async function sessionFromToken(token: string): Promise<Session | null> {
+  const row = await queryOne<{ id: string; user_id: string; expires_at: Date }>(
+    `UPDATE sessions SET last_seen_at = now()
+      WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+      RETURNING id, user_id, expires_at`,
+    [hashToken(token)],
+  );
+  return row ? { id: row.id, userId: row.user_id, expiresAt: row.expires_at.toISOString() } : null;
+}
+
+export async function revokeToken(token: string): Promise<void> {
+  await query("UPDATE sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL", [hashToken(token)]);
+}
+
+export async function revokeAllSessions(): Promise<number> {
+  const rows = await query<{ id: string }>("UPDATE sessions SET revoked_at = now() WHERE revoked_at IS NULL RETURNING id");
+  return rows.length;
+}
+
+/** Current request's session (reads the cookie). Null when missing/expired/revoked. */
+export async function getSession(): Promise<Session | null> {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  return sessionFromToken(token);
+}
