@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
-import { query, queryOne } from "@/server/db";
+import { query, queryOne, tx } from "@/server/db";
 import { SESSION_COOKIE, sessionTtlDays } from "./config";
 
 export type Session = { id: string; userId: string; expiresAt: string };
@@ -11,14 +11,22 @@ function hashToken(token: string): Buffer {
 
 /** Single-owner app: one users row holds the current password hash. */
 async function ownerId(passwordHash: string): Promise<string> {
-  const existing = await queryOne<{ id: string }>("SELECT id FROM users ORDER BY created_at LIMIT 1");
-  if (existing) {
-    await query("UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1", [existing.id, passwordHash]);
-    return existing.id;
-  }
-  const row = await queryOne<{ id: string }>("INSERT INTO users (password_hash) VALUES ($1) RETURNING id", [passwordHash]);
-  if (!row) throw new Error("failed to create owner");
-  return row.id;
+  return tx(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(7431003)");
+    const result = await client.query<{ id: string }>("SELECT id FROM users ORDER BY created_at, id LIMIT 1");
+    const existing = result.rows[0];
+    if (existing) {
+      await client.query("UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1", [existing.id, passwordHash]);
+      return existing.id;
+    }
+    const inserted = await client.query<{ id: string }>(
+      "INSERT INTO users (password_hash) VALUES ($1) RETURNING id",
+      [passwordHash],
+    );
+    const owner = inserted.rows[0];
+    if (!owner) throw new Error("failed to create owner");
+    return owner.id;
+  });
 }
 
 export async function createSession(input: {
