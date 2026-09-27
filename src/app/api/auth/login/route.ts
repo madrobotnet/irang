@@ -1,9 +1,8 @@
-import argon2 from "argon2";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { clientIp } from "@/server/auth/client-ip";
 import { passwordHash, SESSION_COOKIE } from "@/server/auth/config";
-import { clearFailures, lockedForSeconds, recordFailure } from "@/server/auth/lockout";
+import { verifyLogin } from "@/server/auth/lockout";
 import { createSession } from "@/server/auth/session";
 import { ApiError, json, parseJson, withPublicApi } from "@/server/http";
 
@@ -16,18 +15,15 @@ export const POST = withPublicApi(async (request) => {
   const ip = clientIp(request.headers);
   const clientKey = ip ?? "unknown";
 
-  const locked = await lockedForSeconds(clientKey);
-  if (locked > 0) {
-    throw new ApiError("rate_limited", "Too many attempts", { retryAfterSeconds: locked });
+  const result = await verifyLogin({ clientKey, password, hash });
+  switch (result.kind) {
+    case "locked":
+      throw new ApiError("rate_limited", "Too many attempts", { retryAfterSeconds: result.retryAfterSeconds });
+    case "wrong_password":
+      throw new ApiError("unauthorized", "Wrong password");
+    case "accepted":
+      break;
   }
-  const ok = await argon2.verify(hash, password).catch(() => false);
-  if (!ok) {
-    await recordFailure(clientKey);
-    const nowLocked = await lockedForSeconds(clientKey);
-    if (nowLocked > 0) throw new ApiError("rate_limited", "Too many attempts", { retryAfterSeconds: nowLocked });
-    throw new ApiError("unauthorized", "Wrong password");
-  }
-  await clearFailures(clientKey);
   const session = await createSession({ passwordHash: hash, userAgent: request.headers.get("user-agent"), ip });
   const store = await cookies();
   store.set(SESSION_COOKIE, session.token, {

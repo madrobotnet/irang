@@ -1,23 +1,46 @@
-import { query, queryOne } from "@/server/db";
+import argon2 from "argon2";
+import { tx } from "@/server/db";
 import { LOGIN_FAIL_LIMIT, LOGIN_FAIL_WINDOW_MIN } from "./config";
 
-/** Seconds until the client may try again, or 0 when not locked. */
-export async function lockedForSeconds(clientKey: string): Promise<number> {
-  const row = await queryOne<{ n: string; oldest: Date | null }>(
-    `SELECT count(*)::text AS n, min(attempted_at) AS oldest FROM auth_login_failures
-      WHERE client_key = $1 AND attempted_at > now() - make_interval(mins => $2)`,
-    [clientKey, LOGIN_FAIL_WINDOW_MIN],
-  );
-  if (!row || Number(row.n) < LOGIN_FAIL_LIMIT || !row.oldest) return 0;
-  const unlockAt = row.oldest.getTime() + LOGIN_FAIL_WINDOW_MIN * 60_000;
-  return Math.max(1, Math.ceil((unlockAt - Date.now()) / 1000));
-}
+export type LoginResult =
+  | { readonly kind: "accepted" }
+  | { readonly kind: "wrong_password" }
+  | { readonly kind: "locked"; readonly retryAfterSeconds: number };
 
-export async function recordFailure(clientKey: string): Promise<void> {
-  await query("INSERT INTO auth_login_failures (client_key, attempted_at) VALUES ($1, now())", [clientKey]);
-  await query("DELETE FROM auth_login_failures WHERE attempted_at < now() - interval '1 day'");
-}
+/** The lock spans verification and the failure write, including across workers. */
+export async function verifyLogin(input: {
+  readonly clientKey: string;
+  readonly password: string;
+  readonly hash: string;
+}): Promise<LoginResult> {
+  return tx(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 7431002))", [input.clientKey]);
+    const recent = await client.query<{ attempts: number; remaining: number }>(
+      `SELECT count(*)::int attempts,
+        coalesce(ceil(extract(epoch FROM
+          min(attempted_at) + make_interval(mins => $2) - clock_timestamp())), 0)::int remaining
+       FROM auth_login_failures
+       WHERE client_key = $1 AND attempted_at > clock_timestamp() - make_interval(mins => $2)`,
+      [input.clientKey, LOGIN_FAIL_WINDOW_MIN],
+    );
+    const count = recent.rows[0]?.attempts ?? 0;
+    const remaining = Math.max(1, recent.rows[0]?.remaining ?? 1);
+    if (count >= LOGIN_FAIL_LIMIT) return { kind: "locked", retryAfterSeconds: remaining };
 
-export async function clearFailures(clientKey: string): Promise<void> {
-  await query("DELETE FROM auth_login_failures WHERE client_key = $1", [clientKey]);
+    // Malformed server-side hash configuration is an operational error, not a bad password.
+    const matches = await argon2.verify(input.hash, input.password);
+    if (matches) {
+      await client.query("DELETE FROM auth_login_failures WHERE client_key = $1", [input.clientKey]);
+      return { kind: "accepted" };
+    }
+    await client.query(
+      "INSERT INTO auth_login_failures (client_key, attempted_at) VALUES ($1, clock_timestamp())",
+      [input.clientKey],
+    );
+    await client.query("DELETE FROM auth_login_failures WHERE attempted_at < now() - interval '1 day'");
+    // Return rather than throw inside the transaction: failed attempts must commit.
+    return count + 1 >= LOGIN_FAIL_LIMIT
+      ? { kind: "locked", retryAfterSeconds: count ? remaining : LOGIN_FAIL_WINDOW_MIN * 60 }
+      : { kind: "wrong_password" };
+  });
 }
