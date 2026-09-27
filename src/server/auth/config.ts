@@ -8,6 +8,12 @@ export function sessionTtlDays(): number {
 }
 
 export function passwordHash(): string | null {
-  const value = process.env.AUTH_PASSWORD_HASH?.trim();
-  return value ? value : null;
+  const value = process.env.AUTH_PASSWORD_HASH?.trim().replaceAll("\\$", "$");
+  if (!value) return null;
+  if (!value.startsWith("$argon2")) {
+    throw new Error(
+      "AUTH_PASSWORD_HASH is not a valid Argon2 PHC string; generate a dotenv-safe value with `bun run hash-password`",
+    );
+  }
+  return value;
 }

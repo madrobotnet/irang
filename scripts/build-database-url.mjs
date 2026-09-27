@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Print a percent-encoded postgres DATABASE_URL for Compose / .env.
- * Usage: node scripts/build-database-url.mjs [host] [port] [database]
+ * Usage: bun scripts/build-database-url.mjs [host] [port] [database]
  * Reads POSTGRES_APP_USER (default second_brain) and POSTGRES_APP_PASSWORD from the environment.
- * Never prints the raw password — only the full URL on stdout (redirect to .env locally).
+ * The full URL on stdout contains credentials; keep it local and out of logs.
  */
 const user = process.env.POSTGRES_APP_USER ?? "second_brain";
 const password = process.env.POSTGRES_APP_PASSWORD ?? "";
