@@ -19,6 +19,13 @@
   min-width: 0;
 }
 
+.detail {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 @media (min-width: 1024px) {
   .grid {
     flex-direction: row;
@@ -28,11 +35,18 @@
 
   .primary {
     flex: 1.4;
+    min-width: 320px;
+  }
+
+  .detail {
+    flex: 0.9;
+    min-width: 280px;
+    max-width: 420px;
   }
 
   .aside {
-    flex: 1;
-    min-width: 280px;
+    flex: 0.95;
+    min-width: 290px;
     max-width: 420px;
     display: flex;
     flex-direction: column;

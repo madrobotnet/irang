@@ -13,6 +13,7 @@ import { RouteHint } from "./RouteHint";
 import { DeskCommandBar } from "@/components/desk/DeskCommandBar";
 import { SynthPanel } from "@/components/desk/SynthPanel";
 import splitStyles from "@/components/desk/DeskSplitLayout.module.css";
+import { SearchDetailPane } from "./SearchDetailPane";
 import {
   evidenceChatReady,
   hasActiveFilters,
@@ -54,6 +55,8 @@ export function SearchView({
     model.surface === "results" && model.envelope
       ? projectRows(model.envelope, evidenceEnvelope)
       : [];
+  const detailFocusId = model.selected[0] ?? rows[0]?.noteId ?? null;
+  const detailRow = detailFocusId ? rows.find((row) => row.noteId === detailFocusId) ?? null : null;
   const lowRank = confidence !== null && confidence < JEV_LOW_CONFIDENCE_THRESHOLD;
   const showRoute = model.route !== null && (model.surface === "results" || model.surface === "empty");
   const showIndexBanner =
@@ -176,6 +179,7 @@ export function SearchView({
         />
       ) : null}
         </div>
+        <SearchDetailPane row={detailRow} className={splitStyles.detail} />
         <div className={splitStyles.aside}>
           <SynthPanel
             title="합성"

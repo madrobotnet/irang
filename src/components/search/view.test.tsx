@@ -282,4 +282,23 @@ describe("SearchView", () => {
     expect(html).toContain(SEARCH_COPY.filterDraft);
     expect(html).toContain(SEARCH_COPY.filterApply);
   });
+
+  it("renders the search detail pane between results and synthesis", () => {
+    const idle = view(initialSearchModel);
+    expect(idle).toContain('data-search-detail');
+    expect(idle).toContain('aria-label="선택 항목"');
+    expect(idle).toContain(SEARCH_COPY.detailEmpty);
+
+    const html = view({
+      ...initialSearchModel,
+      surface: "results",
+      submittedQuery: "소유",
+      envelope,
+    });
+    expect(html).toContain('data-testid="search-detail"');
+    expect(html).toContain(SEARCH_COPY.detailTypeNote);
+    expect(html).toContain("소유권");
+    expect(html).toContain("내 노트입니다");
+    expect(html).toContain("data-desk-synth");
+  });
 });

@@ -26,4 +26,7 @@ export const SEARCH_COPY = {
   routeInbox: "Inbox",
   pickEvidence: "근거로 선택",
   on: "ON",
+  detailEmpty: "결과에서 항목을 고르면 본문이 여기에 표시됩니다",
+  detailNoSnippet: "미리보기가 없습니다",
+  detailTypeNote: "노트",
 } as const;
