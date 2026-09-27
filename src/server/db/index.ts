@@ -87,7 +87,7 @@ export async function tx<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> 
   }
 }
 
-/** Test-only: close the pool so vitest can exit. */
+/** Test-only: close the pool after database integration tests. */
 export async function closeDb(): Promise<void> {
   const pool = state.pool;
   state.pool = null;
