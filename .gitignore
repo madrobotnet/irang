@@ -4,7 +4,8 @@ node_modules/
 out/
 coverage/
 .env
-.env.local
+.env.*
+!.env.example
 .data/
 *.tsbuildinfo
 next-env.d.ts
