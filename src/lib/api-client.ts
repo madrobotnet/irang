@@ -22,7 +22,7 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
     credentials: "same-origin",
   });
   if (response.status === 401 && typeof window !== "undefined" && !path.startsWith("/api/auth/login")) {
-    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+    window.location.assign(new URL(`/login?next=${encodeURIComponent(window.location.pathname)}`, window.location.origin));
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
