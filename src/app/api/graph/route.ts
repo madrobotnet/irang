@@ -1,7 +1,7 @@
-import { handleGetGraph } from "@/server/graph/http";
+import { getGraph, parseGraphQuery } from "@/server/graph";
+import { json, withApi } from "@/server/http";
 
-export const runtime = "nodejs";
-
-export function GET(request: Request): Promise<Response> {
-  return handleGetGraph(request);
-}
+export const GET = withApi(async (request) => {
+  const options = parseGraphQuery(new URL(request.url));
+  return json(await getGraph(options));
+});

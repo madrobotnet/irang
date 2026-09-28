@@ -1,23 +1,14 @@
 import type { NextConfig } from "next";
-import { SECURITY_HEADER_LIST } from "./src/lib/auth/security-headers";
-import { ATTACHMENT_UPLOAD_BODY_SIZE_LIMIT } from "./src/domain/notes/attachment-platform-limit";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Lets several dev servers run side by side from one checkout (NEXT_DIST_DIR=.next-lane).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   poweredByHeader: false,
   serverExternalPackages: ["argon2", "pg"],
-  transpilePackages: ["three"],
   experimental: {
-    // Next 15 name for the proxy body cap (Next 16: proxyClientMaxBodySize). 102mb >= 101mb.
-    middlewareClientMaxBodySize: ATTACHMENT_UPLOAD_BODY_SIZE_LIMIT,
-  },
-  async headers() {
-    return [
-      {
-        source: "/:path*",
-        headers: SECURITY_HEADER_LIST,
-      },
-    ];
+    // Attachment uploads up to 25 MB pass through the proxy.
+    proxyClientMaxBodySize: "26mb",
   },
 };
 

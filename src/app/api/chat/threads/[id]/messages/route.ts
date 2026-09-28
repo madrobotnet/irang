@@ -1,15 +1,13 @@
-import { handleListMessages, handlePostMessage } from "@/server/chat/http";
+import { z } from "zod";
+import { createChatMessageStream } from "@/server/chat/service";
+import { parseJson, withApi } from "@/server/http";
 
 export const runtime = "nodejs";
+type Context = { params: Promise<{ id: string }> };
+const MessageBody = z.object({ content: z.string().trim().min(1).max(8_000) }).strict();
 
-type Params = { params: Promise<{ id: string }> };
-
-export async function GET(request: Request, { params }: Params) {
+export const POST = withApi<Context>(async (request, { params }) => {
   const { id } = await params;
-  return handleListMessages(id, request);
-}
-
-export async function POST(request: Request, { params }: Params) {
-  const { id } = await params;
-  return handlePostMessage(id, request);
-}
+  const input = await parseJson(request, MessageBody);
+  return createChatMessageStream(id, input.content, { signal: request.signal });
+});

@@ -1,7 +1,11 @@
 node_modules
 .next
+.next-*
 .git
 .env
-.env.local
-npm-debug.log*
+.env.*
+!.env.example
+.data
 coverage
+.omo
+.senpi

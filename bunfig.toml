@@ -1,0 +1,6 @@
+[install]
+exact = false
+
+[test]
+# Postgres integration suites share one database; bun test runs files sequentially by default.
+timeout = 20000

@@ -1,7 +1,12 @@
-import { handleHealth } from "@/server/auth/http";
+import { query } from "@/server/db";
 
-export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return handleHealth();
+export async function GET(): Promise<Response> {
+  try {
+    await query("SELECT 1");
+    return Response.json({ ok: true });
+  } catch {
+    return Response.json({ ok: false }, { status: 503 });
+  }
 }

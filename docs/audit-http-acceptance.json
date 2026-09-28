@@ -1,0 +1,481 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/notes",
+    "status": 401,
+    "headers": {
+      "connection": "keep-alive",
+      "content-encoding": "gzip",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:24:51 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding"
+    },
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Login required"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/notes",
+    "status": 401,
+    "headers": {
+      "connection": "keep-alive",
+      "content-encoding": "gzip",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:24:52 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding"
+    },
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Login required"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:42 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "set-cookie": "[session cookie received]"
+    },
+    "body": {
+      "ok": true
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/notes",
+    "status": 403,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:43 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "error": {
+        "code": "forbidden",
+        "message": "Cross-origin requests are not allowed"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/notes",
+    "status": 201,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:43 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "note": {
+        "id": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+        "title": "Audit QA Target 20260927",
+        "body": "검증용 대상 노트 #audit",
+        "excerpt": "검증용 대상 노트 #audit",
+        "tags": [
+          "audit"
+        ],
+        "aliases": [],
+        "pinned": false,
+        "archived": false,
+        "sourceUrl": null,
+        "dailyDate": null,
+        "createdAt": "2026-09-27T19:38:43.953Z",
+        "updatedAt": "2026-09-27T19:38:43.953Z",
+        "deletedAt": null
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/notes",
+    "status": 201,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:44 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "note": {
+        "id": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+        "title": "Audit QA Source 20260927",
+        "body": "지식 연결 검증 [[Audit QA Target 20260927]] #audit",
+        "excerpt": "지식 연결 검증 Audit QA Target 20260927 #audit",
+        "tags": [
+          "audit"
+        ],
+        "aliases": [],
+        "pinned": false,
+        "archived": false,
+        "sourceUrl": null,
+        "dailyDate": null,
+        "createdAt": "2026-09-27T19:38:44.213Z",
+        "updatedAt": "2026-09-27T19:38:44.213Z",
+        "deletedAt": null
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/notes/88a6820e-c1fd-40fa-b641-c08b3f5e940e/links",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:44 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "outgoing": [],
+      "backlinks": [
+        {
+          "id": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+          "title": "Audit QA Source 20260927",
+          "context": "지식 연결 검증 Audit QA Target 20260927 #audit"
+        }
+      ],
+      "unresolved": [],
+      "unlinkedMentions": []
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/capture",
+    "status": 201,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:54 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "item": {
+        "id": "a6ec5d43-e564-4481-93f6-85e7126e32f9",
+        "title": "Audit QA Capture 20260927",
+        "body": "수집 흐름 검증 [[Audit QA Target 20260927]] #audit",
+        "source": "web",
+        "url": null,
+        "createdAt": "2026-09-27T19:38:54.406Z",
+        "suggestions": null
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/inbox/a6ec5d43-e564-4481-93f6-85e7126e32f9/promote",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:55 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "note": {
+        "id": "abd3375e-207f-40b2-a644-db67c32f5a4b",
+        "title": "Audit QA Capture 20260927",
+        "body": "수집 흐름 검증 [[Audit QA Target 20260927]] #audit",
+        "excerpt": "수집 흐름 검증 Audit QA Target 20260927 #audit",
+        "tags": [
+          "audit"
+        ],
+        "aliases": [],
+        "pinned": false,
+        "archived": false,
+        "sourceUrl": null,
+        "dailyDate": null,
+        "createdAt": "2026-09-27T19:38:55.018Z",
+        "updatedAt": "2026-09-27T19:38:55.018Z",
+        "deletedAt": null
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/inbox/a6ec5d43-e564-4481-93f6-85e7126e32f9/promote",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:55 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "note": {
+        "id": "abd3375e-207f-40b2-a644-db67c32f5a4b",
+        "title": "Audit QA Capture 20260927",
+        "body": "수집 흐름 검증 [[Audit QA Target 20260927]] #audit",
+        "excerpt": "수집 흐름 검증 Audit QA Target 20260927 #audit",
+        "tags": [
+          "audit"
+        ],
+        "aliases": [],
+        "pinned": false,
+        "archived": false,
+        "sourceUrl": null,
+        "dailyDate": null,
+        "createdAt": "2026-09-27T19:38:55.018Z",
+        "updatedAt": "2026-09-27T19:38:55.018Z",
+        "deletedAt": null
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/search?q=Audit%20QA%20Capture%2020260927",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:55 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "query": "Audit QA Capture 20260927",
+      "hits": [
+        {
+          "noteId": "abd3375e-207f-40b2-a644-db67c32f5a4b",
+          "title": "Audit QA Capture 20260927",
+          "snippet": "수집 흐름 검증 Audit QA Target 20260927 #audit",
+          "tags": [
+            "audit"
+          ],
+          "updatedAt": "2026-09-27T19:38:55.018Z",
+          "score": 0.04918032786885246,
+          "matchedBy": [
+            "keyword",
+            "fuzzy",
+            "semantic"
+          ]
+        },
+        {
+          "noteId": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+          "title": "Audit QA Source 20260927",
+          "snippet": "지식 연결 검증 Audit QA Target 20260927 #audit",
+          "tags": [
+            "audit"
+          ],
+          "updatedAt": "2026-09-27T19:38:44.213Z",
+          "score": 0.03225806451612903,
+          "matchedBy": [
+            "fuzzy",
+            "semantic"
+          ]
+        },
+        {
+          "noteId": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+          "title": "Audit QA Target 20260927",
+          "snippet": "검증용 대상 노트 #audit",
+          "tags": [
+            "audit"
+          ],
+          "updatedAt": "2026-09-27T19:38:43.953Z",
+          "score": 0.031746031746031744,
+          "matchedBy": [
+            "fuzzy",
+            "semantic"
+          ]
+        }
+      ],
+      "tookMs": 23.737115999996604
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/graph?focus=88a6820e-c1fd-40fa-b641-c08b3f5e940e&depth=1&tags=1",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:55 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "nodes": [
+        {
+          "id": "abd3375e-207f-40b2-a644-db67c32f5a4b",
+          "kind": "note",
+          "label": "Audit QA Capture 20260927",
+          "tags": [
+            "audit"
+          ],
+          "degree": 2,
+          "updatedAt": "2026-09-27T19:38:55.018Z"
+        },
+        {
+          "id": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+          "kind": "note",
+          "label": "Audit QA Source 20260927",
+          "tags": [
+            "audit"
+          ],
+          "degree": 2,
+          "updatedAt": "2026-09-27T19:38:44.213Z"
+        },
+        {
+          "id": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+          "kind": "note",
+          "label": "Audit QA Target 20260927",
+          "tags": [
+            "audit"
+          ],
+          "degree": 3,
+          "updatedAt": "2026-09-27T19:38:43.953Z"
+        },
+        {
+          "id": "tag:audit",
+          "kind": "tag",
+          "label": "audit",
+          "tags": [],
+          "degree": 3,
+          "updatedAt": null
+        }
+      ],
+      "links": [
+        {
+          "source": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+          "target": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+          "kind": "link"
+        },
+        {
+          "source": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+          "target": "tag:audit",
+          "kind": "tag"
+        },
+        {
+          "source": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+          "target": "tag:audit",
+          "kind": "tag"
+        },
+        {
+          "source": "abd3375e-207f-40b2-a644-db67c32f5a4b",
+          "target": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+          "kind": "link"
+        },
+        {
+          "source": "abd3375e-207f-40b2-a644-db67c32f5a4b",
+          "target": "tag:audit",
+          "kind": "tag"
+        }
+      ],
+      "focusId": "88a6820e-c1fd-40fa-b641-c08b3f5e940e",
+      "truncated": false
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/chat/status",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:56 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "available": true
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/graph?depth=9",
+    "status": 400,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:38:56 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "error": {
+        "code": "validation",
+        "message": "depth는 1부터 3 사이여야 합니다"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/notes/1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+    "status": 200,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:39:33 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "note": {
+        "id": "1a79b9a8-86e5-4021-840d-18b9bc0b6220",
+        "title": "Audit QA Source 20260927",
+        "body": "지식 연결 검증 [[Audit QA Target 20260927]] #audit",
+        "excerpt": "지식 연결 검증 Audit QA Target 20260927 #audit",
+        "tags": [
+          "audit"
+        ],
+        "aliases": [],
+        "pinned": false,
+        "archived": false,
+        "sourceUrl": null,
+        "dailyDate": null,
+        "createdAt": "2026-09-27T19:38:44.213Z",
+        "updatedAt": "2026-09-27T19:38:44.213Z",
+        "deletedAt": null
+      }
+    }
+  }
+]
