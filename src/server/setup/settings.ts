@@ -1,103 +1,74 @@
-import {
-  ChatConnectionSchema,
-  JevConnectionSchema,
-  StoredAiSettingsSchema,
-  type AiSettingsInput,
-  type AiSettingsView,
-  type JevConnection,
-  type StoredAiSettings,
-} from "@/lib/ai-settings";
-import { queryOne, tx } from "@/server/db";
+import type { AiSettingsInput, AiSettingsView, StoredAiSettings } from "@/lib/ai-settings";
+import { tx } from "@/server/db";
 import { ApiError } from "@/server/http";
-import { loadCodexAuth } from "@/server/chat/auth";
+import { legacyChatConnection, legacyJevConnection } from "./ai-legacy";
+import {
+  AI_SETTINGS_LOCK, connectionProfiles, profileView, settingsDocument, settingsOwner,
+} from "./ai-profile-store";
+import { resolvedJevConnection } from "./ai-profile-resolve";
+import { resolveAiSettings } from "./ai-settings-resolve";
 
-/** The database is private server storage; only redacted metadata leaves this module. */
+export { resolveAiSettings } from "./ai-settings-resolve";
+
+/** Resolve active profiles; inactive secrets never become active implicitly. */
 export async function storedAiSettings(): Promise<StoredAiSettings | null> {
-  const row = await queryOne<{ ai: unknown }>("SELECT ai FROM installation_settings WHERE singleton");
-  return row ? StoredAiSettingsSchema.parse(row.ai) : null;
-}
-
-/** Only known provider endpoints can be carried into a saved UI configuration. */
-function legacyJevConnection(): JevConnection | null {
-  const apiKey = process.env.TYPESAFE_API_KEY?.trim();
-  const base = process.env.TYPESAFE_BASE_URL?.replace(/\/$/, "") || "https://api.typesafe.ai";
-  if (!apiKey || !["https://api.typesafe.ai", "https://openrouter.ai/api"].includes(base)) return null;
+  const saved = await settingsDocument();
+  if (!saved) return null;
+  const ownerId = await settingsOwner();
+  if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+  const profiles = await connectionProfiles(ownerId);
+  const chat = profiles.find((profile) => profile.id === saved.chatId && profile.purpose === "chat");
+  const jev = profiles.find((profile) => profile.id === saved.jevId && profile.purpose === "jev");
   return {
-    provider: base === "https://openrouter.ai/api" ? "openrouter" : "typesafe",
-    model: process.env.TYPESAFE_JEV_MODEL?.trim() || "jev-latest",
-    apiKey,
+    chat: saved.chatId === "environment" ? await legacyChatConnection()
+      : chat?.purpose === "chat" ? chat.connection : null,
+    jev: saved.jevId === "environment" ? legacyJevConnection()
+      : jev?.purpose === "jev" ? resolvedJevConnection(jev.connection) : null,
   };
-}
-
-export function resolveAiSettings(input: AiSettingsInput, previous: StoredAiSettings | null): StoredAiSettings {
-  let chat: StoredAiSettings["chat"] = null;
-  if (input.chat) {
-    if (!input.chatConsent) throw new ApiError("validation", "AI 데이터 전송 동의가 필요합니다.");
-    switch (input.chat.mode) {
-      case "api": {
-        const previousKey = previous?.chat?.mode === "api" && previous.chat.provider === input.chat.provider
-          ? previous.chat.apiKey : undefined;
-        const apiKey = input.chat.apiKey ?? previousKey;
-        if (!apiKey) throw new ApiError("validation", "선택한 제공자의 API 키를 입력해 주세요.");
-        chat = ChatConnectionSchema.parse({ ...input.chat, apiKey });
-        break;
-      }
-      case "auth":
-        chat = input.chat;
-        break;
-      default: {
-        const exhaustive: never = input.chat;
-        return exhaustive;
-      }
-    }
-  }
-  let jev: StoredAiSettings["jev"] = null;
-  if (input.jev) {
-    const previousKey = previous?.jev?.provider === input.jev.provider ? previous.jev.apiKey : undefined;
-    const apiKey = input.jev.apiKey ?? previousKey;
-    if (!apiKey || !input.jevConsent) {
-      throw new ApiError("validation", "선택한 Jev 제공자의 API 키와 데이터 전송 동의가 필요합니다.");
-    }
-    jev = JevConnectionSchema.parse({ ...input.jev, apiKey });
-  }
-  return { chat, jev };
 }
 
 export async function aiSettingsView(): Promise<AiSettingsView> {
-  const saved = await storedAiSettings();
-  const chat = saved?.chat ?? null;
-  const legacyChat = saved === null && (await loadCodexAuth()).kind === "chatgpt";
-  const legacyJev = saved === null ? legacyJevConnection() : null;
-  const jev = saved === null ? legacyJev : saved.jev;
+  const saved = await settingsDocument();
+  const ownerId = await settingsOwner();
+  const profiles = ownerId ? (await connectionProfiles(ownerId)).map(profileView) : [];
+  const chatId = saved?.chatId ?? (saved === null ? "environment" : null);
+  const jevId = saved?.jevId ?? (saved === null ? "environment" : null);
+  const chat = profiles.find((profile) => profile.id === chatId && profile.purpose === "chat");
+  const jev = profiles.find((profile) => profile.id === jevId && profile.purpose === "jev");
+  const legacyChat = chatId === "environment" ? await legacyChatConnection() : null;
+  const legacyJev = jevId === "environment" ? legacyJevConnection() : null;
   return {
-    chat: chat ? {
-      provider: chat.provider,
-      mode: chat.mode,
-      model: chat.model,
-      hasApiKey: chat.mode === "api",
-    } : legacyChat ? {
-      provider: "openai", mode: "auth", model: process.env.CODEX_MODEL?.trim() || "gpt-5.4-mini", hasApiKey: false,
+    chat: chat?.purpose === "chat" ? chat.connection : legacyChat ? {
+      provider: legacyChat.provider, mode: legacyChat.mode, model: legacyChat.model, hasApiKey: false,
     } : null,
-    jev: jev ? { provider: jev.provider, model: jev.model, hasApiKey: true } : null,
-    jevManagedByEnvironment: legacyJev !== null,
-    chatManagedByEnvironment: legacyChat,
+    jev: jev?.purpose === "jev" ? jev.connection : legacyJev ? {
+      provider: legacyJev.provider, model: legacyJev.model, hasApiKey: true,
+    } : null,
+    profiles,
+    chatId,
+    jevId,
+    jevManagedByEnvironment: jevId === "environment" && Boolean(process.env.TYPESAFE_API_KEY?.trim()),
+    chatManagedByEnvironment: legacyChat !== null,
   };
 }
 
-export async function saveAiSettings(input: AiSettingsInput): Promise<void> {
+export async function saveAiSettings(
+  input: AiSettingsInput,
+  options: { readonly browserHash?: string } = {},
+): Promise<void> {
   await tx(async (client) => {
-    await client.query("SELECT pg_advisory_xact_lock(7431003)");
-    const owner = await client.query<{ id: string }>("SELECT id FROM users ORDER BY created_at, id LIMIT 1");
-    const user = owner.rows[0];
-    if (!user) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
-    const result = await client.query<{ ai: unknown }>("SELECT ai FROM installation_settings WHERE singleton");
-    const row = result.rows[0];
-    const previous = row ? StoredAiSettingsSchema.parse(row.ai) : { chat: null, jev: legacyJevConnection() };
-    const ai = resolveAiSettings(input, previous);
+    await client.query("SELECT pg_advisory_xact_lock($1)", [AI_SETTINGS_LOCK]);
+    const ownerId = await settingsOwner(client);
+    if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+    const ai = await resolveAiSettings(client, input, {
+      ownerId,
+      previous: await settingsDocument(client),
+      scope: { key: `owner:${ownerId}`, browserHash: options.browserHash },
+    });
     await client.query(
       `INSERT INTO installation_settings (singleton, owner_id, ai) VALUES (true, $1, $2::jsonb)
        ON CONFLICT (singleton) DO UPDATE SET ai = EXCLUDED.ai, updated_at = now()`,
-      [user.id, JSON.stringify(ai)],
+      [ownerId, JSON.stringify(ai)],
     );
   });
 }

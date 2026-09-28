@@ -1,29 +1,64 @@
 "use client";
 
 import { AI_PROVIDERS, AiProviderSchema } from "@/lib/ai-settings";
+import type { WebAuthProvider } from "@/lib/ai-auth";
+import { isCustomProvider } from "@/lib/ai-providers";
 import { Badge } from "@/components/ui/Badge";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
-import { ConsentRow, FieldError, SecretInput } from "./AiFieldControls";
+import { AiAuthPanel, abandonAuthAttempt } from "./AiAuthPanel";
+import { ConsentRow, FieldError } from "./AiFieldControls";
+import { ChatApiFields, ChatApiFormatField, ChatModelField } from "./ChatApiFields";
 import {
-  AUTH_LOGIN_COMMANDS, chatProviderInfo,
-  type AiConnectionStatus, type AiFormErrors, type ChatFormState, type SavedAiView,
+  AUTH_LOGIN_COMMANDS,
+  chatProviderInfo,
+  type AiConnectionStatus,
+  type AiFormErrors,
+  type ChatFormState,
+  type SavedAiView,
 } from "./ai-form";
 
-export function ChatAiFields({ value: chat, onChange, disabled, saved, connections, errors, idPrefix }: {
+function selectedWebAuthProvider(provider: ChatFormState["provider"]): WebAuthProvider | null {
+  if (provider === "github-copilot" || provider === "openrouter" || provider === "xai") return provider;
+  return null;
+}
+
+export function ChatAiFields({
+  value: chat,
+  onChangeAction,
+  disabled,
+  saved,
+  connections,
+  errors,
+  idPrefix,
+  setupToken,
+  allowDisable = true,
+}: {
   readonly value: ChatFormState;
-  readonly onChange: (next: ChatFormState) => void;
+  readonly onChangeAction: (next: ChatFormState) => void;
   readonly disabled: boolean;
   readonly saved: SavedAiView;
   readonly connections?: readonly AiConnectionStatus[];
   readonly errors: AiFormErrors;
   readonly idPrefix: string;
+  readonly setupToken?: string;
+  readonly allowDisable?: boolean;
 }) {
   const info = chatProviderInfo(chat.provider);
-  const retained = saved?.chat?.mode === "api" && saved.chat.provider === chat.provider && saved.chat.hasApiKey;
-  const setChat = (patch: Partial<ChatFormState>) => onChange({ ...chat, ...patch });
+  const custom = isCustomProvider(chat.provider);
+  const retained = saved?.chat?.mode === "api"
+    && saved.chat.provider === chat.provider
+    && (saved.chat.baseUrl ?? "") === chat.baseUrl.trim()
+    && saved.chat.hasApiKey;
+  const setChat = (patch: Partial<ChatFormState>) => onChangeAction({ ...chat, ...patch });
   const authProvider = chat.provider === "openai" || chat.provider === "google" ? chat.provider : null;
+  const webAuthProvider = selectedWebAuthProvider(chat.provider);
   const status = connections?.find((entry) => entry.provider === chat.provider);
+  const abandonReadyAttempt = () => {
+    if (!chat.authAttemptId) return;
+    void abandonAuthAttempt(chat.authAttemptId, setupToken ? { setupToken } : {})
+      .catch(() => console.warn("Provider login cleanup failed; the attempt will expire."));
+  };
 
   return (
     <fieldset className="rounded-card border border-line p-4 sm:p-5" disabled={disabled}>
@@ -33,25 +68,73 @@ export function ChatAiFields({ value: chat, onChange, disabled, saved, connectio
       </p>
       {saved?.chatManagedByEnvironment ? (
         <p className="mt-2 rounded-ctl bg-warn-soft px-3 py-2 text-sm text-warn">
-          지금은 서버의 기존 Codex 연결을 사용 중이에요. 여기서 저장하면 새 설정이 적용되고, 끄고 저장하면 채팅 AI가 꺼져요.
+          지금은 서버의 기존 Codex 연결을 사용 중이에요. 저장된 연결을 선택하거나 사용을 끄기 전까지 유지돼요.
         </p>
       ) : null}
-      <label htmlFor={`${idPrefix}-chat-enabled`} className="mt-3 flex min-h-touch cursor-pointer items-center gap-2.5 text-md font-medium">
-        <input id={`${idPrefix}-chat-enabled`} type="checkbox" checked={chat.enabled}
-          onChange={(event) => setChat({ enabled: event.target.checked })} className="size-4 shrink-0 accent-accent" />
-        노트 채팅에 AI 사용
-      </label>
+      {allowDisable ? (
+        <label htmlFor={`${idPrefix}-chat-enabled`} className="mt-3 flex min-h-touch cursor-pointer items-center gap-2.5 text-md font-medium">
+          <input
+            id={`${idPrefix}-chat-enabled`}
+            type="checkbox"
+            checked={chat.enabled}
+            onChange={(event) => {
+              if (!event.target.checked) abandonReadyAttempt();
+              setChat({
+                enabled: event.target.checked,
+                ...(!event.target.checked ? { authAttemptId: undefined } : {}),
+              });
+            }}
+            className="size-4 shrink-0 accent-accent"
+          />
+          노트 채팅에 AI 사용
+        </label>
+      ) : null}
       {chat.enabled ? (
         <div className="mt-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor={`${idPrefix}-chat-name`} className="text-sm font-medium">연결 이름</label>
+            <input
+              id={`${idPrefix}-chat-name`}
+              value={chat.name}
+              maxLength={80}
+              placeholder="예: 개인 OpenAI"
+              onChange={(event) => setChat({ name: event.target.value })}
+              aria-invalid={errors["chat.name"] ? true : undefined}
+              aria-describedby={errors["chat.name"] ? `${idPrefix}-chat-name-error` : `${idPrefix}-chat-name-hint`}
+              className={inputClassName}
+            />
+            <FieldError id={`${idPrefix}-chat-name-error`} message={errors["chat.name"]} />
+            {!errors["chat.name"] ? (
+              <p id={`${idPrefix}-chat-name-hint`} className="text-sm text-mute">
+                {allowDisable ? "비워 두면 제공자 이름으로 저장해요." : "연결을 구분할 이름을 입력해 주세요."}
+              </p>
+            ) : null}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <label htmlFor={`${idPrefix}-chat-provider`} className="text-sm font-medium">제공자</label>
               <select
-                id={`${idPrefix}-chat-provider`} value={chat.provider}
+                id={`${idPrefix}-chat-provider`}
+                value={chat.provider}
                 onChange={(event) => {
+                  abandonReadyAttempt();
                   const provider = AiProviderSchema.parse(event.target.value);
                   const next = chatProviderInfo(provider);
-                  setChat({ provider, model: next.model, apiKey: "", mode: next.supportsAuth ? chat.mode : "api", consent: false });
+                  setChat({
+                    provider,
+                    model: next.model,
+                    apiKey: "",
+                    keyless: false,
+                    baseUrl: "",
+                    headersJson: "",
+                    headerAction: "retain",
+                    enterpriseDomain: "",
+                    authAttemptId: undefined,
+                    apiFormat: provider === "github-copilot" ? "responses"
+                      : provider === "anthropic-compatible" ? "anthropic-messages" : "chat-completions",
+                    mode: next.supportsAuth ? chat.mode : "api",
+                    consent: false,
+                  });
                 }}
                 aria-invalid={errors["chat.provider"] ? true : undefined}
                 aria-describedby={errors["chat.provider"] ? `${idPrefix}-chat-provider-error` : undefined}
@@ -65,42 +148,42 @@ export function ChatAiFields({ value: chat, onChange, disabled, saved, connectio
               <legend className="text-sm font-medium">연결 방식</legend>
               <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1">
                 <label className="flex min-h-touch cursor-pointer items-center gap-2 text-md">
-                  <input type="radio" name={`${idPrefix}-chat-mode`} value="api" checked={chat.mode === "api"}
-                    onChange={() => setChat({ mode: "api" })} className="size-4 accent-accent" />
+                  <input
+                    type="radio"
+                    name={`${idPrefix}-chat-mode`}
+                    value="api"
+                    checked={chat.mode === "api"}
+                    onChange={() => {
+                      abandonReadyAttempt();
+                      setChat({ mode: "api", authAttemptId: undefined, consent: false });
+                    }}
+                    className="size-4 accent-accent"
+                  />
                   API 키
                 </label>
                 {info.supportsAuth ? (
                   <label className="flex min-h-touch cursor-pointer items-center gap-2 text-md">
-                    <input type="radio" name={`${idPrefix}-chat-mode`} value="auth" checked={chat.mode === "auth"}
-                      onChange={() => setChat({ mode: "auth", apiKey: "" })} className="size-4 accent-accent" />
-                    서버 로그인 (Auth)
+                    <input
+                      type="radio"
+                      name={`${idPrefix}-chat-mode`}
+                      value="auth"
+                      checked={chat.mode === "auth"}
+                      onChange={() => setChat({ mode: "auth", apiKey: "", keyless: false, consent: false })}
+                      className="size-4 accent-accent"
+                    />
+                    Auth
                   </label>
-                ) : <p className="text-sm text-mute">Claude는 API 키 연결만 지원해요.</p>}
+                ) : <p className="text-sm text-mute">이 제공자는 API 키 연결만 지원해요.</p>}
               </div>
             </fieldset>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-chat-model`} className="text-sm font-medium">사용할 모델</label>
-            <input id={`${idPrefix}-chat-model`} list={`${idPrefix}-chat-models`} value={chat.model}
-              onChange={(event) => setChat({ model: event.target.value })}
-              aria-invalid={errors["chat.model"] ? true : undefined}
-              aria-describedby={errors["chat.model"] ? `${idPrefix}-chat-model-error` : `${idPrefix}-chat-model-hint`}
-              autoComplete="off" spellCheck={false} className={inputClassName} />
-            <datalist id={`${idPrefix}-chat-models`}><option value={info.model} /></datalist>
-            {errors["chat.model"] ? <FieldError id={`${idPrefix}-chat-model-error`} message={errors["chat.model"]} /> : (
-              <p id={`${idPrefix}-chat-model-hint`} className="text-pretty text-sm text-mute">
-                모델 ID를 직접 입력할 수 있어요. 구독과 API는 모델 권한이 달라요.
-              </p>
-            )}
-          </div>
+          <ChatModelField idPrefix={idPrefix} chat={chat} setChatAction={setChat} error={errors["chat.model"]} />
           {chat.mode === "api" ? (
-            <SecretInput id={`${idPrefix}-chat-key`} label="API 키" value={chat.apiKey} disabled={disabled}
-              onChange={(apiKey) => setChat({ apiKey })} error={errors["chat.apiKey"]}
-              hint={retained ? "저장된 키가 있어요. 바꾸지 않으려면 비워 두세요." : "키는 이 서버에 저장되며, 저장 뒤에는 화면에 다시 표시되지 않아요."} />
+            <ChatApiFields idPrefix={idPrefix} chat={chat} setChatAction={setChat} retained={retained} custom={custom} errors={errors} disabled={disabled} />
           ) : authProvider ? (
             <div className="rounded-ctl border border-line bg-desk px-3 py-3 text-sm">
-              <p className="text-pretty">앱에 제공자 비밀번호나 OAuth 토큰을 입력하지 않아요. 서버에서 공식 명령으로 로그인해 주세요.</p>
-              <p className="mt-2"><code className="block whitespace-pre-wrap rounded-ctl bg-card px-2 py-1 font-mono text-xs">{AUTH_LOGIN_COMMANDS[authProvider]}</code></p>
+              <p className="text-pretty">앱에 제공자 비밀번호나 OAuth 토큰을 입력하지 않아요. 서버에서 공식 CLI로 로그인해 주세요.</p>
+              <code className="mt-2 block whitespace-pre-wrap rounded-ctl bg-card px-2 py-1 font-mono text-xs">{AUTH_LOGIN_COMMANDS[authProvider]}</code>
               {status ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge tone={status.available ? "ok" : "warn"}>{status.available ? "로그인 파일 확인됨" : "로그인 필요"}</Badge>
@@ -108,9 +191,54 @@ export function ChatAiFields({ value: chat, onChange, disabled, saved, connectio
                 </div>
               ) : <p className="mt-2 text-mute">실제 계정 유효성과 모델 사용 권한은 첫 요청에서 확인돼요.</p>}
             </div>
+          ) : webAuthProvider ? (
+            <>
+              {webAuthProvider === "github-copilot" ? (
+                <ChatApiFormatField idPrefix={idPrefix} chat={chat} setChatAction={setChat} />
+              ) : null}
+              {webAuthProvider === "github-copilot" ? (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`${idPrefix}-chat-domain`} className="text-sm font-medium">기업 도메인 (선택)</label>
+                  <input
+                    id={`${idPrefix}-chat-domain`}
+                    value={chat.enterpriseDomain}
+                    placeholder="github.example.com"
+                    onChange={(event) => {
+                      abandonReadyAttempt();
+                      setChat({ enterpriseDomain: event.target.value, authAttemptId: undefined, consent: false });
+                    }}
+                    aria-invalid={errors["chat.enterpriseDomain"] ? true : undefined}
+                    aria-describedby={errors["chat.enterpriseDomain"] ? `${idPrefix}-chat-domain-error` : undefined}
+                    className={inputClassName}
+                  />
+                  <FieldError id={`${idPrefix}-chat-domain-error`} message={errors["chat.enterpriseDomain"]} />
+                </div>
+              ) : null}
+              <AiAuthPanel
+                key={`${webAuthProvider}:${chat.enterpriseDomain}`}
+                provider={webAuthProvider}
+                enterpriseDomain={chat.enterpriseDomain}
+                setupToken={setupToken}
+                disabled={disabled}
+                readyAttemptId={chat.authAttemptId}
+                hasSavedCredential={
+                  saved?.chat?.mode === "auth"
+                  && saved.chat.provider === webAuthProvider
+                  && (saved.chat.enterpriseDomain ?? "") === chat.enterpriseDomain.trim()
+                  && Boolean(saved.chat.hasCredential)
+                }
+                onReadyAction={(authAttemptId) => setChat({ authAttemptId })}
+              />
+              <FieldError id={`${idPrefix}-chat-auth-error`} message={errors["chat.auth"]} />
+            </>
           ) : null}
-          <ConsentRow id={`${idPrefix}-chat-consent`} checked={chat.consent} disabled={disabled}
-            onChange={(consent) => setChat({ consent })} error={errors["chat.consent"]}>
+          <ConsentRow
+            id={`${idPrefix}-chat-consent`}
+            checked={chat.consent}
+            disabled={disabled}
+          onChangeAction={(consent) => setChat({ consent })}
+            error={errors["chat.consent"]}
+          >
             질문, 최근 대화 기록, 관련 노트 일부를 선택한 제공자에게 보내는 데 동의합니다.
           </ConsentRow>
         </div>

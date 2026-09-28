@@ -69,7 +69,10 @@ const DIALOG_BASE =
   "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-hidden p-0 text-ink backdrop:bg-scrim " +
   "surface-card shadow-pop open:flex open:flex-col";
 
-export type DialogProps = ModalProps & { size?: "sm" | "md" | "lg" };
+export type DialogProps = ModalProps & {
+  size?: "sm" | "md" | "lg";
+  dismissible?: boolean;
+};
 
 const DIALOG_SIZE = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-3xl" } as const;
 
@@ -83,6 +86,7 @@ export function Dialog({
   initialFocusRef,
   hideTitle,
   size = "md",
+  dismissible = true,
   className,
   bodyClassName,
 }: DialogProps) {
@@ -93,7 +97,10 @@ export function Dialog({
     <dialog
       ref={ref}
       onClose={onClose}
-      onClick={onBackdropClick}
+      onCancel={(event) => {
+        if (!dismissible) event.preventDefault();
+      }}
+      onClick={dismissible ? onBackdropClick : undefined}
       aria-labelledby={title ? titleId : undefined}
       aria-describedby={description ? descId : undefined}
       className={cn(DIALOG_BASE, DIALOG_SIZE[size], className)}
@@ -115,7 +122,7 @@ export function Dialog({
                 ) : null}
               </div>
               {!hideTitle ? (
-                <Button variant="ghost" size="sm" iconOnly aria-label="닫기" onClick={() => onOpenChange(false)} className="-mr-2 -mt-1">
+                <Button variant="ghost" size="sm" iconOnly aria-label="닫기" disabled={!dismissible} onClick={() => onOpenChange(false)} className="-mr-2 -mt-1">
                   <X className="size-4" />
                 </Button>
               ) : null}

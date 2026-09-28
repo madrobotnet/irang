@@ -30,3 +30,23 @@ test("allows only the exact installer entry points without a session", () => {
   expect(proxy(new NextRequest("https://brain.example/api/setup/secrets")).status).toBe(401);
   expect(proxy(new NextRequest("https://brain.example/api/settings/ai")).status).toBe(401);
 });
+
+test("establishes a private browser nonce before parallel provider logins", () => {
+  const response = proxy(new NextRequest("https://brain.example/setup"));
+  const cookie = response.cookies.get("sb_ai_auth");
+  expect(cookie?.value).toMatch(/^[a-f0-9]{64}$/);
+  expect(cookie?.httpOnly).toBe(true);
+  expect(cookie?.sameSite).toBe("lax");
+  expect(cookie?.path).toBe("/");
+  const next = proxy(new NextRequest("https://brain.example/setup", {
+    headers: { cookie: `sb_ai_auth=${cookie?.value}` },
+  }));
+  expect(next.headers.get("set-cookie")).toBeNull();
+});
+
+test("allows provider login handlers to perform their own owner or installer checks", () => {
+  for (const path of ["/api/ai/auth", `/api/ai/auth/${crypto.randomUUID()}`, `/api/ai/auth/openrouter/callback/${crypto.randomUUID()}`, "/connect/complete"]) {
+    expect(proxy(new NextRequest(`https://brain.example${path}`)).headers.get("x-middleware-next")).toBe("1");
+  }
+  expect(proxy(new NextRequest("https://brain.example/api/settings/ai/connections")).status).toBe(401);
+});

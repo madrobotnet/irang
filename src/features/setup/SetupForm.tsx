@@ -2,13 +2,14 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SyntheticEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { inputClassName } from "@/components/ui/Input";
 import { api } from "@/lib/api-client";
 import type { AiSettingsInput } from "@/lib/ai-settings";
 import { AiFields } from "./AiFields";
+import { abandonAuthAttempt } from "./AiAuthPanel";
 import {
   buildAiInput,
   emptyAiForm,
@@ -52,7 +53,7 @@ export function SetupForm() {
     target?.scrollIntoView({ block: "center" });
   }, [state, secretErrors, aiErrors, busy]);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     event.preventDefault();
     if (busy) return;
     const secrets = validateSetupSecrets({ setupToken, password, passwordConfirmation });
@@ -100,7 +101,22 @@ export function SetupForm() {
               minLength={32}
               maxLength={256}
               value={setupToken}
-              onChange={(event) => setSetupToken(event.target.value)}
+              onChange={(event) => {
+                const nextToken = event.target.value;
+                if (nextToken.trim() !== setupToken.trim()) {
+                  for (const id of [ai.chat.authAttemptId, ai.jev.authAttemptId]) {
+                    if (id) {
+                      void abandonAuthAttempt(id, { setupToken })
+                        .catch(() => console.warn("Provider login cleanup failed; the attempt will expire."));
+                    }
+                  }
+                  setAi((current) => ({
+                    chat: { ...current.chat, authAttemptId: undefined },
+                    jev: { ...current.jev, authAttemptId: undefined },
+                  }));
+                }
+                setSetupToken(nextToken);
+              }}
               aria-invalid={secretErrors.setupToken || (state.kind === "error" && state.failure.group === "token") ? true : undefined}
               aria-describedby={
                 secretErrors.setupToken
@@ -207,7 +223,15 @@ export function SetupForm() {
       <div>
         <h3 className="mb-1 text-md font-semibold">AI 연결 (선택)</h3>
         <p className="mb-3 text-sm text-mute">기본은 꺼져 있어요. 지금 정하지 않아도 설정 화면에서 언제든 바꿀 수 있어요.</p>
-        <AiFields idPrefix="setup-ai" value={ai} onChange={setAi} disabled={busy} errors={aiErrors} />
+        <AiFields
+          key={setupToken.trim()}
+          idPrefix="setup-ai"
+          value={ai}
+          onChangeAction={setAi}
+          disabled={busy}
+          errors={aiErrors}
+          setupToken={setupToken.trim()}
+        />
       </div>
 
       <div className="flex flex-col gap-3">

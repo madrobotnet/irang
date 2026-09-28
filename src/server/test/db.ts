@@ -13,7 +13,7 @@ export function connectTestDatabase(): void {
 /** Wipe all user data between tests (schema stays migrated). */
 export async function resetData(): Promise<void> {
   await query(
-    "TRUNCATE installation_settings, chat_messages, chat_threads, attachments, unresolved_links, links, inbox_items, notes, sessions, users, auth_login_failures RESTART IDENTITY CASCADE",
+    "TRUNCATE ai_auth_attempts, ai_connections, installation_settings, chat_messages, chat_threads, attachments, unresolved_links, links, inbox_items, notes, sessions, users, auth_login_failures RESTART IDENTITY CASCADE",
   );
 }
 

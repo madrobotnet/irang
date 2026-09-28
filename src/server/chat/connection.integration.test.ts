@@ -65,6 +65,44 @@ const cases = [
     credential: "secret",
     stream: 'data: {"candidates":[{"index":0,"content":{"parts":[{"text":"configured-response"}]},"finishReason":"STOP"}]}\n\n',
   },
+  {
+    provider: "github-copilot",
+    url: "https://api.individual.githubcopilot.com/responses",
+    header: "authorization", credential: "Bearer secret",
+    stream: 'data: {"type":"response.output_text.delta","delta":"configured-response"}\n\n'
+      + 'data: {"type":"response.completed","response":{}}\n\n',
+  },
+  {
+    provider: "openrouter",
+    url: "https://openrouter.ai/api/v1/chat/completions",
+    header: "authorization", credential: "Bearer secret",
+    stream: 'data: {"choices":[{"index":0,"delta":{"content":"configured-response"},"finish_reason":"stop"}]}\n\n'
+      + 'data: [DONE]\n\n',
+  },
+  {
+    provider: "xai",
+    url: "https://api.x.ai/v1/responses",
+    header: "authorization", credential: "Bearer secret",
+    stream: 'data: {"type":"response.output_text.delta","delta":"configured-response"}\n\n'
+      + 'data: {"type":"response.completed","response":{}}\n\n',
+  },
+  {
+    provider: "openai-compatible",
+    baseUrl: "https://custom.example/v1",
+    url: "https://custom.example/v1/chat/completions",
+    header: "authorization", credential: "Bearer secret",
+    stream: 'data: {"choices":[{"index":0,"delta":{"content":"configured-response"},"finish_reason":"stop"}]}\n\n'
+      + 'data: [DONE]\n\n',
+  },
+  {
+    provider: "anthropic-compatible",
+    baseUrl: "https://custom.example/v1",
+    url: "https://custom.example/v1/messages",
+    header: "x-api-key", credential: "secret",
+    stream: 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"configured-response"}}\n\n'
+      + 'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}\n\n'
+      + 'data: {"type":"message_stop"}\n\n',
+  },
 ] as const;
 
 for (const candidate of cases) {
@@ -74,7 +112,10 @@ for (const candidate of cases) {
       password: "test-configured-provider-password",
       ai: {
         ...aiOff,
-        chat: { provider: candidate.provider, mode: "api", model: "saved-model", apiKey: "secret" },
+        chat: {
+          provider: candidate.provider, mode: "api", model: "saved-model", apiKey: "secret",
+          ...("baseUrl" in candidate ? { baseUrl: candidate.baseUrl } : {}),
+        },
         chatConsent: true,
       },
     });

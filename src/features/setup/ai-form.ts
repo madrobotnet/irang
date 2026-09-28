@@ -1,12 +1,29 @@
 import {
-  AI_PROVIDERS,
-  JEV_PROVIDERS,
   type AiProvider,
   type AiSettingsInput,
   type AiSettingsView,
-  type JevProvider,
 } from "@/lib/ai-settings";
 import { ApiClientError } from "@/lib/api-client";
+import {
+  buildChatConnection,
+  buildJevConnection,
+  chatFormFromView,
+  emptyChatForm,
+  emptyJevForm,
+  jevFormFromView,
+  type ChatFormState,
+  type ConnectionErrors,
+  type ConnectionFieldKey,
+  type JevFormState,
+} from "./connection-form";
+
+export {
+  chatProviderInfo,
+  jevProviderInfo,
+  providerSupportsAuth,
+  type ChatFormState,
+  type JevFormState,
+} from "./connection-form";
 
 /** Server-reported auth (CLI) readiness; credentials are never part of this shape. */
 export type AiConnectionStatus = {
@@ -22,42 +39,13 @@ export type AiSettingsResponse = {
   connections: AiConnectionStatus[];
 };
 
-export type ChatFormState = {
-  enabled: boolean;
-  mode: "api" | "auth";
-  provider: AiProvider;
-  model: string;
-  /** Component memory only: never persisted to storage, URLs, or logs. */
-  apiKey: string;
-  consent: boolean;
-};
-
-export type JevFormState = {
-  enabled: boolean;
-  provider: JevProvider;
-  model: string;
-  apiKey: string;
-  consent: boolean;
-};
-
 export type AiFormState = { chat: ChatFormState; jev: JevFormState };
 
 /** Redacted saved settings from GET /api/settings/ai; null during first-run setup. */
 export type SavedAiView = AiSettingsView | null;
 
-export const chatProviderInfo = (provider: AiProvider) =>
-  AI_PROVIDERS.find((entry) => entry.id === provider) ?? AI_PROVIDERS[0];
-
-export const jevProviderInfo = (provider: JevProvider) =>
-  JEV_PROVIDERS.find((entry) => entry.id === provider) ?? JEV_PROVIDERS[0];
-
-export const providerSupportsAuth = (provider: AiProvider): boolean => chatProviderInfo(provider).supportsAuth;
-
 export function emptyAiForm(): AiFormState {
-  return {
-    chat: { enabled: false, mode: "api", provider: "openai", model: chatProviderInfo("openai").model, apiKey: "", consent: false },
-    jev: { enabled: false, provider: "typesafe", model: jevProviderInfo("typesafe").model, apiKey: "", consent: false },
-  };
+  return { chat: emptyChatForm(), jev: emptyJevForm() };
 }
 
 /** Initialize the editor from redacted saved metadata; keys start blank (presence only). */
@@ -65,25 +53,38 @@ export function aiFormFromView(view: SavedAiView): AiFormState {
   const base = emptyAiForm();
   if (!view) return base;
   return {
-    chat: view.chat
-      ? { enabled: true, mode: view.chat.mode, provider: view.chat.provider, model: view.chat.model, apiKey: "", consent: true }
-      : base.chat,
-    jev: view.jev
-      ? { enabled: true, provider: view.jev.provider, model: view.jev.model, apiKey: "", consent: true }
-      : base.jev,
+    chat: view.chat ? chatFormFromView(view.chat) : base.chat,
+    jev: view.jev ? jevFormFromView(view.jev) : base.jev,
   };
 }
 
-export type AiFieldKey =
-  | "chat.provider"
-  | "chat.model"
-  | "chat.apiKey"
-  | "chat.consent"
-  | "jev.model"
-  | "jev.apiKey"
-  | "jev.consent";
+export type AiFieldKey = `${"chat" | "jev"}.${ConnectionFieldKey}`;
 
 export type AiFormErrors = Partial<Record<AiFieldKey, string>>;
+
+const CONNECTION_ERROR_KEYS = [
+  "name",
+  "provider",
+  "model",
+  "apiKey",
+  "baseUrl",
+  "headers",
+  "maxOutputTokens",
+  "enterpriseDomain",
+  "auth",
+  "consent",
+] as const satisfies readonly ConnectionFieldKey[];
+
+export function mergeConnectionErrors(
+  target: AiFormErrors,
+  purpose: "chat" | "jev",
+  source: ConnectionErrors,
+): void {
+  for (const key of CONNECTION_ERROR_KEYS) {
+    const message = source[key];
+    if (message) target[`${purpose}.${key}`] = message;
+  }
+}
 
 export type AiBuildResult = { ok: true; input: AiSettingsInput } | { ok: false; errors: AiFormErrors };
 
@@ -95,31 +96,21 @@ export function buildAiInput(state: AiFormState, saved: SavedAiView): AiBuildRes
   const errors: AiFormErrors = {};
   let chat: AiSettingsInput["chat"] = null;
   if (state.chat.enabled) {
-    const model = state.chat.model.trim();
-    if (!model) errors["chat.model"] = "모델 ID를 입력해 주세요.";
-    if (!state.chat.consent) errors["chat.consent"] = "선택한 AI 제공자에게 질문과 관련 노트를 보내는 데 동의해 주세요.";
-    if (state.chat.mode === "auth") {
-      if (state.chat.provider !== "openai" && state.chat.provider !== "google") {
-        errors["chat.provider"] = "이 제공자는 API 키 연결만 지원해요.";
-      } else if (model) {
-        chat = { mode: "auth", provider: state.chat.provider, model };
-      }
+    const built = buildChatConnection(state.chat, saved?.chat ?? null);
+    if (built.ok) {
+      chat = built.connection;
     } else {
-      const apiKey = state.chat.apiKey.trim();
-      const retained = saved?.chat?.mode === "api" && saved.chat.provider === state.chat.provider && saved.chat.hasApiKey;
-      if (!apiKey && !retained) errors["chat.apiKey"] = "선택한 제공자의 API 키를 입력해 주세요.";
-      else if (model) chat = { mode: "api", provider: state.chat.provider, model, ...(apiKey ? { apiKey } : {}) };
+      mergeConnectionErrors(errors, "chat", built.errors);
     }
   }
   let jev: AiSettingsInput["jev"] = null;
   if (state.jev.enabled) {
-    const model = state.jev.model.trim();
-    if (!model) errors["jev.model"] = "모델 ID를 입력해 주세요.";
-    if (!state.jev.consent) errors["jev.consent"] = "선택한 Jev 제공자에게 캡처 내용과 최근 노트 제목을 보내는 데 동의해 주세요.";
-    const apiKey = state.jev.apiKey.trim();
-    const retained = saved?.jev?.provider === state.jev.provider && saved.jev.hasApiKey;
-    if (!apiKey && !retained) errors["jev.apiKey"] = "선택한 Jev 제공자의 API 키를 입력해 주세요.";
-    else if (model) jev = { provider: state.jev.provider, model, ...(apiKey ? { apiKey } : {}) };
+    const built = buildJevConnection(state.jev, saved?.jev ?? null);
+    if (built.ok) {
+      jev = built.connection;
+    } else {
+      mergeConnectionErrors(errors, "jev", built.errors);
+    }
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
@@ -129,6 +120,8 @@ export function buildAiInput(state: AiFormState, saved: SavedAiView): AiBuildRes
       chatConsent: state.chat.enabled ? state.chat.consent : false,
       jev,
       jevConsent: state.jev.enabled ? state.jev.consent : false,
+      ...(state.chat.enabled && state.chat.name.trim() ? { chatName: state.chat.name.trim() } : {}),
+      ...(state.jev.enabled && state.jev.name.trim() ? { jevName: state.jev.name.trim() } : {}),
     },
   };
 }

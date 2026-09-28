@@ -9,7 +9,6 @@ import {
 } from "./api-provider-shared";
 import { ChatProviderError, type ChatProvider } from "./provider";
 
-const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const AnthropicEventSchema = z.looseObject({
   type: z.string(),
   delta: z.object({
@@ -24,15 +23,11 @@ export function createAnthropicApiProvider(config: ApiAdapterConfig): ChatProvid
     async stream(input, onDelta, outerSignal) {
       const signal = requestSignal(outerSignal, config.timeoutMs);
       const body = await postApiStream({
-        url: ANTHROPIC_MESSAGES_URL,
-        headers: {
-          "x-api-key": config.apiKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
+        url: config.url,
+        headers: config.headers,
         body: JSON.stringify({
           model: config.model,
-          max_tokens: 4096,
+          max_tokens: config.maxOutputTokens ?? 4096,
           system: GROUNDING_INSTRUCTIONS,
           messages: [
             ...input.history.map((message) => ({

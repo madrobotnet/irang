@@ -23,20 +23,12 @@ const GoogleResponseSchema = z.looseObject({
 });
 
 export function createGoogleApiProvider(config: ApiAdapterConfig): ChatProvider {
-  const model = config.model.startsWith("models/") ? config.model.slice("models/".length) : config.model;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${
-    encodeURIComponent(model)
-  }:streamGenerateContent?alt=sse`;
-
   return {
     async stream(input, onDelta, outerSignal) {
       const signal = requestSignal(outerSignal, config.timeoutMs);
       const body = await postApiStream({
-        url,
-        headers: {
-          "x-goog-api-key": config.apiKey,
-          "content-type": "application/json",
-        },
+        url: config.url,
+        headers: config.headers,
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: GROUNDING_INSTRUCTIONS }] },
           contents: [

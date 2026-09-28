@@ -133,13 +133,14 @@ test("redacts saved keys and retains them only for the unchanged provider", asyn
   })).rejects.toMatchObject({ code: "validation" });
 });
 
-test("disabling optional AI removes saved credentials without changing the owner", async () => {
+test("disabling optional AI clears active selections but retains the saved connection and owner", async () => {
   await completeSetup({
     setupToken, password,
     ai: { ...ai, jev: { provider: "openrouter", model: "~typesafe/jev-latest", apiKey: "test-openrouter-key" }, jevConsent: true },
   });
   await saveAiSettings(ai);
   expect(await storedAiSettings()).toEqual({ chat: null, jev: null });
+  expect((await aiSettingsView()).profiles).toHaveLength(1);
   expect(await setupState()).toBe("complete");
 });
 

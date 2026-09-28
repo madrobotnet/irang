@@ -4,6 +4,9 @@ import { ChatProviderError } from "./provider";
 export type ApiAdapterConfig = {
   readonly apiKey: string;
   readonly model: string;
+  readonly url: string;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly maxOutputTokens?: number;
   readonly fetchImpl: typeof fetch;
   readonly timeoutMs: number;
 };
@@ -41,6 +44,7 @@ export async function postApiStream(request: ApiRequest): Promise<ReadableStream
       headers: request.headers,
       body: request.body,
       signal: request.signal,
+      redirect: "error",
     });
   } catch {
     throw new ChatProviderError();

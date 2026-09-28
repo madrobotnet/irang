@@ -1,6 +1,7 @@
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import type { JevConnection } from "@/lib/ai-settings";
-import { storedAiSettings } from "@/server/setup/settings";
+import { aiSelection } from "@/server/setup/ai-profile-store";
+import { resolvedJevConnection } from "@/server/setup/ai-profile-resolve";
 
 /**
  * Optional TypeSafe Jev access. Every caller MUST treat null (not configured) and
@@ -31,9 +32,14 @@ export function createJevClient(
 
 export async function getJev(): Promise<SystemOne | null> {
   if (override !== undefined) return override;
-  const saved = await storedAiSettings();
+  const selected = await aiSelection("jev");
   // A setup/settings opt-out wins over ambient credentials inherited by the server.
-  if (saved !== null) return saved.jev ? createJevClient(saved.jev) : null;
+  if (selected.source === "disabled") return null;
+  if (selected.source === "profile") {
+    if (selected.profile.purpose !== "jev") return null;
+    const connection = resolvedJevConnection(selected.profile.connection);
+    return connection ? createJevClient(connection) : null;
+  }
   const apiKey = process.env.TYPESAFE_API_KEY?.trim();
   if (apiKey) {
     return new TypeSafeClient({

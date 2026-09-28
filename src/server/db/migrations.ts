@@ -162,4 +162,56 @@ CREATE TABLE IF NOT EXISTS installation_settings (
 );
 `,
   },
+  {
+    id: "0003_ai_connections",
+    sql: `
+CREATE TABLE ai_connections (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose     text NOT NULL CHECK (purpose IN ('chat', 'jev')),
+  name        text NOT NULL,
+  connection  jsonb NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ai_connections_owner_idx ON ai_connections (owner_id, created_at, id);
+
+WITH legacy AS MATERIALIZED (
+  SELECT singleton, owner_id, ai,
+    CASE WHEN ai->'chat' IS NOT NULL AND ai->'chat' <> 'null'::jsonb
+      THEN gen_random_uuid() END AS chat_id,
+    CASE WHEN ai->'jev' IS NOT NULL AND ai->'jev' <> 'null'::jsonb
+      THEN gen_random_uuid() END AS jev_id
+  FROM installation_settings
+), chat_profiles AS (
+  INSERT INTO ai_connections (id, owner_id, purpose, name, connection)
+  SELECT chat_id, owner_id, 'chat', '기존 채팅 연결', ai->'chat'
+  FROM legacy WHERE chat_id IS NOT NULL RETURNING id
+), jev_profiles AS (
+  INSERT INTO ai_connections (id, owner_id, purpose, name, connection)
+  SELECT jev_id, owner_id, 'jev', '기존 Jev 연결', ai->'jev'
+  FROM legacy WHERE jev_id IS NOT NULL RETURNING id
+)
+UPDATE installation_settings s
+SET ai = jsonb_build_object('version', 2, 'chatId', legacy.chat_id, 'jevId', legacy.jev_id)
+FROM legacy WHERE s.singleton = legacy.singleton;
+
+ALTER TABLE installation_settings ALTER COLUMN ai
+  SET DEFAULT '{"version":2,"chatId":null,"jevId":null}'::jsonb;
+
+CREATE TABLE ai_auth_attempts (
+  id             uuid PRIMARY KEY,
+  provider       text NOT NULL CHECK (provider IN ('github-copilot', 'openrouter', 'xai')),
+  scope_key      text NOT NULL,
+  browser_hash   text NOT NULL,
+  status         text NOT NULL CHECK (status IN ('starting', 'pending', 'ready', 'denied', 'expired', 'failed')),
+  payload        jsonb NOT NULL,
+  expires_at     timestamptz NOT NULL,
+  next_poll_at   timestamptz NULL,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ai_auth_attempts_expiry_idx ON ai_auth_attempts (expires_at);
+CREATE INDEX ai_auth_attempts_scope_idx ON ai_auth_attempts (scope_key);
+`,
+  },
 ];

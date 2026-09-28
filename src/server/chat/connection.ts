@@ -1,5 +1,6 @@
 import type { AiProvider } from "@/lib/ai-settings";
-import { storedAiSettings } from "@/server/setup/settings";
+import { aiSelection } from "@/server/setup/ai-profile-store";
+import { refreshedConnectionProfile } from "@/server/ai-auth/refresh";
 import { loadCodexAuth } from "./auth";
 import { createApiProvider } from "./api-provider";
 import { getCliAuthReadiness } from "./cli-auth";
@@ -35,13 +36,16 @@ export async function authConnections(): Promise<readonly AuthConnectionStatus[]
 }
 
 export async function configuredChatProvider(): Promise<ChatProvider | null> {
-  const saved = await storedAiSettings();
-  if (saved === null) {
+  const selected = await aiSelection("chat");
+  if (selected.source === "environment") {
     const auth = await loadCodexAuth();
     return auth.kind === "chatgpt" ? createCodexProvider(auth) : null;
   }
-  const connection = saved.chat;
-  if (!connection) return null;
+  if (selected.source === "disabled" || selected.profile.purpose !== "chat") return null;
+  const profile = selected.profile.connection.mode === "auth"
+    ? await refreshedConnectionProfile(selected.profile.id) : selected.profile;
+  if (!profile || profile.purpose !== "chat") return null;
+  const connection = profile.connection;
   switch (connection.mode) {
     case "api":
       return createApiProvider(connection);
@@ -56,6 +60,17 @@ export async function configuredChatProvider(): Promise<ChatProvider | null> {
         case "google": {
           const status = await getCliAuthReadiness("google");
           return status.available ? createCliProvider({ provider: "google", model: connection.model }) : null;
+        }
+        case "github-copilot":
+        case "openrouter":
+        case "xai": {
+          const credential = connection.credential;
+          if (!credential) return null;
+          return createApiProvider({
+            provider: connection.provider, apiKey: credential.accessToken, model: connection.model,
+            ...(connection.apiFormat ? { apiFormat: connection.apiFormat } : {}),
+            ...(credential.provider === "github-copilot" && credential.baseUrl ? { baseUrl: credential.baseUrl } : {}),
+          });
         }
         default: {
           const exhaustive: never = connection;
