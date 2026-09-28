@@ -35,7 +35,7 @@ export const CHAT_COPY = {
   statusChecking: "채팅 설정을 확인하는 중…",
   statusUnavailableTitle: "AI 채팅이 아직 설정되지 않았습니다.",
   statusUnavailableDescription:
-    "서버의 Codex 로그인(CODEX_HOME/auth.json)이 없어 답변을 생성할 수 없습니다. 노트·검색·캡처는 그대로 사용할 수 있습니다.",
+    "설정에서 AI 제공자, 연결 방식과 모델을 선택해 주세요. 노트·검색·캡처는 AI 없이도 그대로 사용할 수 있습니다.",
   statusCheckFailed: "채팅 설정 상태를 확인하지 못했습니다.",
   statusRecheck: "다시 확인",
   sources: "출처",

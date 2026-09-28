@@ -1,15 +1,16 @@
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { clientIp } from "@/server/auth/client-ip";
-import { passwordHash, SESSION_COOKIE } from "@/server/auth/config";
+import { SESSION_COOKIE } from "@/server/auth/config";
 import { verifyLogin } from "@/server/auth/lockout";
 import { createSession } from "@/server/auth/session";
 import { ApiError, json, parseJson, withPublicApi } from "@/server/http";
+import { loginPasswordHash } from "@/server/setup/service";
 
 const Body = z.object({ password: z.string().min(1).max(512) });
 
 export const POST = withPublicApi(async (request) => {
-  const hash = passwordHash();
+  const hash = await loginPasswordHash();
   if (!hash) throw new ApiError("unavailable", "AUTH_PASSWORD_HASH is not configured");
   const { password } = await parseJson(request, Body);
   const ip = clientIp(request.headers);

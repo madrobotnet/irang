@@ -9,7 +9,7 @@ const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/api/health", "/manifest.
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))) {
+  if (pathname === "/setup" || pathname === "/api/setup" || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p))) {
     return NextResponse.next();
   }
   if (request.cookies.get(SESSION_COOKIE)?.value) {

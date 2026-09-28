@@ -4,7 +4,8 @@ import { excerpt } from "@/lib/wikilinks";
 import { db, query, queryOne } from "@/server/db";
 import { ApiError } from "@/server/http";
 import { searchNotes } from "@/server/search/service";
-import { loadCodexAuth, type CodexAuth } from "./auth";
+import type { CodexAuth } from "./auth";
+import { configuredChatProvider } from "./connection";
 import { ChatProviderError, createCodexProvider, type ChatProvider, type ProviderMessage } from "./provider";
 
 type ThreadRow = { id: string; title: string | null; created_at: Date | string; updated_at: Date | string };
@@ -55,7 +56,7 @@ function validId(id: string): void {
 }
 
 export async function getChatStatus(): Promise<{ available: boolean }> {
-  return { available: (await loadCodexAuth()).kind === "chatgpt" };
+  return { available: (await configuredChatProvider()) !== null };
 }
 
 export async function listChatThreads(): Promise<ChatThread[]> {
@@ -119,9 +120,27 @@ export async function createChatMessageStream(
   options: StreamOptions = {},
 ): Promise<Response> {
   validId(threadId);
-  const auth = options.auth ?? await loadCodexAuth();
-  if (auth.kind !== "chatgpt" && !options.provider) {
-    throw new ApiError("unavailable", "Codex 로그인이 필요합니다.");
+  let provider = options.provider;
+  if (!provider) {
+    if (options.auth) {
+      switch (options.auth.kind) {
+        case "chatgpt":
+          provider = createCodexProvider(options.auth);
+          break;
+        case "absent":
+        case "blocked":
+          break;
+        default: {
+          const exhaustive: never = options.auth;
+          return exhaustive;
+        }
+      }
+    } else {
+      provider = await configuredChatProvider() ?? undefined;
+    }
+  }
+  if (!provider) {
+    throw new ApiError("unavailable", "설정에서 사용할 AI 제공자와 연결 방식을 선택해 주세요.");
   }
 
   const pool = await db();
@@ -147,7 +166,6 @@ export async function createChatMessageStream(
   const onAbort = (): void => abort.abort();
   if (options.signal?.aborted) abort.abort();
   else options.signal?.addEventListener("abort", onAbort, { once: true });
-  const provider = options.provider ?? createCodexProvider(auth as Extract<CodexAuth, { kind: "chatgpt" }>);
   let settled = false;
 
   const body = new ReadableStream<Uint8Array>({
