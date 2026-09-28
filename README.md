@@ -30,7 +30,9 @@ Linux와 macOS에서 동작합니다. Docker(Compose 포함)만 있으면 됩니
 ```sh
 git clone https://github.com/madrobotnet/second-brain.git
 cd second-brain
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace" -w /workspace oven/bun:1.4.2-slim bun scripts/setup-env.mjs
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD:/workspace" -w /workspace \
+  oven/bun:1.4.2-slim bun scripts/setup-env.mjs
 INSECURE_COOKIES=1 docker compose up -d --build
 ```
 
@@ -79,13 +81,15 @@ INSECURE_COOKIES=1 docker compose up -d --build
 고르고 선택적으로 Jev 분류기를 추가합니다. 저장하려면 해당 제공자에게 데이터를
 보내는 데 명시적으로 동의해야 합니다.
 
-| 용도 | 제공자 | 연결 방식 | 모델 예시 |
-| --- | --- | --- | --- |
-| 채팅 | OpenAI | API 키 또는 ChatGPT 계정(Codex CLI 인증) | `gpt-5.4-mini` |
-| 채팅 | Claude | API 키만 지원 | `claude-sonnet-4-6` |
-| 채팅 | Gemini | API 키 또는 Gemini CLI 계정 인증 | `gemini-2.5-flash` |
-| Jev | TypeSafe 공식 | API 키 | `jev-latest` |
-| Jev | OpenRouter | API 키 | `~typesafe/jev-latest` |
+| 제공자 · 용도 | 연결 방식 · 모델 예시 |
+| --- | --- |
+| OpenAI · 채팅 | API / ChatGPT Auth<br>`gpt-5.4-mini` |
+| Claude · 채팅 | API<br>`claude-sonnet-4-6` |
+| Gemini · 채팅 | API / Gemini CLI Auth<br>`gemini-2.5-flash` |
+| TypeSafe · Jev | API<br>`jev-latest` |
+| OpenRouter · Jev | API<br>`~typesafe/jev-latest` |
+
+ChatGPT Auth는 공식 Codex CLI 로그인을 사용합니다. Claude는 API만 지원합니다.
 
 모델 이름은 예시일 뿐이며, 실제로 쓸 수 있는 모델은 계정 상태에 따라 다릅니다.
 설정 화면은 저장된 구성과 실제 연결 확인을 구분해서 보여주므로,

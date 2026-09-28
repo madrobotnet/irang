@@ -20,9 +20,9 @@ export function JevAiFields({ value: jev, onChange, disabled, saved, errors, idP
   return (
     <fieldset className="rounded-card border border-line p-4 sm:p-5" disabled={disabled}>
       <legend className="px-1 text-md font-semibold">인박스 정리 AI (Jev)</legend>
-      <p className="text-sm leading-relaxed text-mute">
+      <p className="text-pretty text-sm leading-relaxed text-mute">
         캡처할 때 분류, 태그, 중복 후보를 제안해요. 캡처 제목, 본문 앞 4,000자, 최근 노트의 제목·ID가 선택한 제공자에게 전송돼요.
-        채팅 모델과는 별개이며, 꺼져 있거나 실패해도 캡처는 그대로 저장돼요.
+        채팅 모델과는 별개예요. AI가 꺼졌거나 실패해도 캡처는 저장돼요.
       </p>
       {saved?.jevManagedByEnvironment ? (
         <p className="mt-2 rounded-ctl bg-warn-soft px-3 py-2 text-sm text-warn">
@@ -60,8 +60,8 @@ export function JevAiFields({ value: jev, onChange, disabled, saved, errors, idP
                 <option value={jev.provider === "typesafe" ? "jev-1.13.0" : "typesafe/jev-1.13"} />
               </datalist>
               <FieldError id={`${idPrefix}-jev-model-error`} message={errors["jev.model"]} />
-              <p id={`${idPrefix}-jev-model-hint`} className="text-sm text-mute">
-                구조화된 판단을 반환하는 Jev 모델을 선택하세요. OpenRouter의 Jev Router는 다른 제품이에요.
+              <p id={`${idPrefix}-jev-model-hint`} className="text-pretty text-sm text-mute">
+                구조화된 판단을 반환하는 Jev 모델을 선택하세요. OpenRouter의 <span className="whitespace-nowrap">Jev Router</span>는 다른 제품이에요.
               </p>
             </div>
           </div>

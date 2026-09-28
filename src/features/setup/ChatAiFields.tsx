@@ -88,8 +88,8 @@ export function ChatAiFields({ value: chat, onChange, disabled, saved, connectio
               autoComplete="off" spellCheck={false} className={inputClassName} />
             <datalist id={`${idPrefix}-chat-models`}><option value={info.model} /></datalist>
             {errors["chat.model"] ? <FieldError id={`${idPrefix}-chat-model-error`} message={errors["chat.model"]} /> : (
-              <p id={`${idPrefix}-chat-model-hint`} className="text-sm text-mute">
-                기본 모델을 고르거나 계정에서 사용할 수 있는 모델 ID를 입력하세요. 구독과 API의 모델 권한은 다를 수 있어요.
+              <p id={`${idPrefix}-chat-model-hint`} className="text-pretty text-sm text-mute">
+                모델 ID를 직접 입력할 수 있어요. 구독과 API는 모델 권한이 달라요.
               </p>
             )}
           </div>
@@ -99,12 +99,12 @@ export function ChatAiFields({ value: chat, onChange, disabled, saved, connectio
               hint={retained ? "저장된 키가 있어요. 바꾸지 않으려면 비워 두세요." : "키는 이 서버에 저장되며, 저장 뒤에는 화면에 다시 표시되지 않아요."} />
           ) : authProvider ? (
             <div className="rounded-ctl border border-line bg-desk px-3 py-3 text-sm">
-              <p>앱에 제공자 비밀번호나 OAuth 토큰을 입력하지 않아요. 서버에서 공식 명령으로 로그인해 주세요.</p>
-              <p className="mt-2"><code className="break-all rounded-ctl bg-card px-2 py-1 font-mono text-xs">{AUTH_LOGIN_COMMANDS[authProvider]}</code></p>
+              <p className="text-pretty">앱에 제공자 비밀번호나 OAuth 토큰을 입력하지 않아요. 서버에서 공식 명령으로 로그인해 주세요.</p>
+              <p className="mt-2"><code className="block whitespace-pre-wrap rounded-ctl bg-card px-2 py-1 font-mono text-xs">{AUTH_LOGIN_COMMANDS[authProvider]}</code></p>
               {status ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge tone={status.available ? "ok" : "warn"}>{status.available ? "로그인 파일 확인됨" : "로그인 필요"}</Badge>
-                  <p className="text-mute">{status.detail}</p>
+                  <p className="text-pretty text-mute">{status.detail}</p>
                 </div>
               ) : <p className="mt-2 text-mute">실제 계정 유효성과 모델 사용 권한은 첫 요청에서 확인돼요.</p>}
             </div>
