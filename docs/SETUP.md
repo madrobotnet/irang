@@ -213,6 +213,10 @@ stays raw.
 To change any variable in `.env`, edit the file and run `docker compose up -d` —
 env changes reach the app only by recreating the container. (Settings changed in
 the app UI take effect immediately without a restart; environment changes do not.)
+Compose explicitly forwards the supported app variables below; it does not load
+the entire operator `.env` into the app, so the database admin password stays
+DB-only. Custom attachment or credential directories must remain under the
+mounted `/app/.data` directory, or use an additional persistent volume.
 
 Local development env reference (beyond what `.env.example` comments inline):
 `DATABASE_URL` with a password containing special characters can be produced with
@@ -238,6 +242,7 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 | `TYPESAFE_BASE_URL` | Jev (legacy fallback) | `https://api.typesafe.ai` | Legacy SDK endpoint; the UI can retain keys only for `https://api.typesafe.ai` or `https://openrouter.ai/api` |
 | `CODEX_HOME` | Codex ChatGPT auth | `~/.codex` locally; `/app/.data/auth/codex` in Docker | Directory holding Codex `auth.json` |
 | `CODEX_MODEL` | chat (env fallback / default) | `gpt-5.4-mini` | Chat model when using the Codex ChatGPT login |
+| `CODEX_CHATGPT_BASE_URL` | Codex ChatGPT transport | `https://chatgpt.com/backend-api/codex` | Operator-controlled Codex backend endpoint |
 | `GEMINI_CLI_HOME` | Gemini CLI auth | unset locally (Google CLI login unavailable); `/app/.data/auth/google` in Docker | Directory the Gemini CLI keeps its OAuth credentials in; must be an absolute path |
 
 ## 8. AI configuration (optional, per provider)

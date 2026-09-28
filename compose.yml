@@ -8,6 +8,15 @@ services:
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}
       INSECURE_COOKIES: ${INSECURE_COOKIES:-0}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-30}
+      ATTACHMENTS_DIR: ${ATTACHMENTS_DIR:-/app/.data/attachments}
+      TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+      TYPESAFE_JEV_MODEL: ${TYPESAFE_JEV_MODEL:-jev-latest}
+      TYPESAFE_BASE_URL: ${TYPESAFE_BASE_URL:-https://api.typesafe.ai}
+      CODEX_HOME: ${CODEX_HOME:-/app/.data/auth/codex}
+      CODEX_MODEL: ${CODEX_MODEL:-gpt-5.4-mini}
+      CODEX_CHATGPT_BASE_URL: ${CODEX_CHATGPT_BASE_URL:-https://chatgpt.com/backend-api/codex}
+      GEMINI_CLI_HOME: ${GEMINI_CLI_HOME:-/app/.data/auth/google}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:
