@@ -291,7 +291,8 @@ export async function listNotes(input: ListNotesInput): Promise<{ notes: NoteSum
 export async function findNoteTitles(qText = "", limit = 10): Promise<NoteRef[]> {
   const q = await executor();
   const result = await q.query<NoteRef>(
-    `SELECT id,title FROM notes WHERE deleted_at IS NULL AND status<>'archived' AND title ILIKE $1
+    `SELECT id,title FROM notes WHERE deleted_at IS NULL AND status<>'archived'
+       AND (title ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(aliases) alias WHERE alias ILIKE $1))
      ORDER BY CASE WHEN lower(title)=lower($2) THEN 0 ELSE 1 END,similarity(title,$2) DESC,updated_at DESC LIMIT $3`,
     [`%${qText}%`, qText, Math.min(Math.max(limit, 1), 50)],
   );

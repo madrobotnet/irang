@@ -20,6 +20,14 @@ beforeEach(resetData);
 afterAll(closeDb);
 
 describe("note service", () => {
+  test("finds a renamed note by its preserved alias without returning archived notes", async () => {
+    const note = await createNote({ title: "이전 제목" });
+    await updateNote(note.id, { title: "Canonical name" });
+    expect(await findNoteTitles("이전 제목")).toEqual([{ id: note.id, title: "Canonical name" }]);
+    await updateNote(note.id, { archived: true });
+    expect(await findNoteTitles("이전 제목")).toEqual([]);
+  });
+
   test("creates unique default titles, allows empty bodies, merges inline tags, and stores embeddings", async () => {
     const first = await createNote({ body: "메모 #생각", tags: ["생각", "Work"] });
     const second = await createNote({});
