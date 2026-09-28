@@ -10,7 +10,7 @@ Flow: **capture → inbox triage → linked markdown notes → search / graph / 
 | --- | --- |
 | `bun install` | install (lockfile `bun.lock`) |
 | `bun run db:up` / `bun run db:down` | local pgvector Postgres on `127.0.0.1:55432` (docker-compose.dev.yml) |
-| `bun run dev` | dev server (`bun --bun next dev`) |
+| `bun run dev` | Bun dev server (`--no-env-file`, Next `--webpack`) |
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run lint` | `eslint .` |
 | `bun test` | unit + Postgres integration tests (`bun:test`, needs `db:up`) |
@@ -57,24 +57,26 @@ src/
 
 ## Wikilink rules (src/lib/wikilinks.ts)
 
-- Syntax `[[Target]]`, `[[Target|label]]`, `[[Target#Heading]]`. Target matching is case-insensitive against note title or any alias, trimmed.
+- Syntax `[[Target]]`, `[[Target|label]]`, `[[Target#Heading]]`. Target matching is case-insensitive against note title or any alias, with repeated whitespace collapsed.
 - Tags: `#tag` in body (letters incl. Hangul, digits, `-`, `_`, `/`; not inside code) are merged with explicit `tags` (lower-cased, deduped).
-- Rendering: wikilinks become links to `/notes/<id>`; unresolved ones render dimmed and clicking creates the note.
+- Preview clicks resolve through `/api/notes/by-title` and navigate to the real note ID. Missing targets are created only by that explicit action. The graph distinguishes unresolved targets.
 
 ## HTTP API
 
 | Method & path | Body / query | Response |
 | --- | --- | --- |
 | POST `/api/auth/login` | `{password}` | `{ok}` + cookie; 429 `{retryAfterSeconds}` |
-| POST `/api/auth/logout`, POST `/api/auth/sessions/revoke-all`, GET `/api/auth/me` | | `{ok}` |
+| POST `/api/auth/logout` | | `{ok}` |
+| POST `/api/auth/sessions/revoke-all` | | `{ok, revoked}`; clears the current cookie |
+| GET `/api/auth/me` | | `{ok, expiresAt}` |
 | GET `/api/notes` | `?q=&tag=&pinned=1&archived=1&trash=1&limit=50&cursor=` | `{notes: NoteSummary[], nextCursor: string\|null}` |
 | POST `/api/notes` | `{title?, body?, tags?}` | `{note: Note}` (title defaults to "제목 없음" + n) |
 | GET/PATCH/DELETE `/api/notes/:id` | PATCH `{title?, body?, tags?, aliases?, pinned?, archived?}` | `{note: Note}`; DELETE = move to trash |
 | POST `/api/notes/:id/restore` | | `{note}` |
 | DELETE `/api/notes/:id?purge=1` | | permanent delete (only when in trash) |
 | GET `/api/notes/:id/links` | | `NoteLinks` |
-| GET `/api/notes/:id/related` | | `{notes: RelatedNote[]}` (semantic neighbours) |
-| GET `/api/notes/titles` | `?q=&limit=10` | `{notes: NoteRef[]}` — quick switcher and `[[` autocomplete |
+| GET `/api/notes/:id/related` | | `{notes: RelatedNote[]}` (character-similarity neighbours) |
+| GET `/api/notes/titles` | `?q=&limit=10` | `{notes: NoteRef[]}` — title/alias lookup for the switcher and autocomplete |
 | POST `/api/notes/by-title` | `{title}` | `{note}` get-or-create (clicking an unresolved link) |
 | POST `/api/daily` | `{date?: YYYY-MM-DD}` | `{note}` get-or-create daily note |
 | GET `/api/tags` | | `{tags: TagCount[]}` |
@@ -90,14 +92,14 @@ src/
 | GET `/api/graph` | `?focus=<noteId>&depth=1..3&tags=1&orphans=1&tag=<filter>` | `GraphData` |
 | GET `/api/chat/status` | | `{available: boolean}` |
 | GET/POST `/api/chat/threads` | POST `{title?}` | `{threads}` / `{thread}` |
-| GET/PATCH/DELETE `/api/chat/threads/:id` | PATCH `{title}` | `{thread, messages}` |
+| GET/PATCH/DELETE `/api/chat/threads/:id` | PATCH `{title}` | GET `{thread, messages}`; PATCH `{thread}`; DELETE `{ok}` |
 | POST `/api/chat/threads/:id/messages` | `{content}` | `text/event-stream`: `citations` (Citation[]), `delta` ({text}), `done` ({message: ChatMessage}), `error` ({code, message}) |
-| GET `/api/home` | | `HomeData` |
+| GET `/api/home` | `?timeZone=<IANA zone>` (optional) | `HomeData`; client supplies its local zone |
 | GET `/api/health` | public | `{ok}` |
 
 ## Design system (Direction A — "desk")
 
-Owner's locked taste: warm parchment desk, matte cards, charcoal rail, terracotta accent. Korean UI copy. Font: Pretendard Variable (self-hosted from the `pretendard` package), `font-feature-settings: "ss06"`; mono: system ui-monospace.
+The retained design direction uses a warm parchment desk, matte cards, charcoal rail and terracotta accent. This is an implementation choice, not a new user-imposed restriction. Korean UI copy. Font: Pretendard Variable (self-hosted from the `pretendard` package), `font-feature-settings: "ss06"`; mono: system ui-monospace.
 
 CSS variables in `globals.css` (light / `.dark`), exposed to Tailwind 4 via `@theme inline`:
 
@@ -120,3 +122,12 @@ Tailwind names: `bg-canvas bg-desk bg-card text-ink text-mute border-line bg-acc
 Shell: desktop (≥ 1024px) = 64px charcoal icon rail (expands to 220px with labels) + content; mobile = top bar + bottom nav (홈 · 노트 · [캡처 FAB] · 검색 · 더보기). Nav: 홈 `/`, 인박스 `/inbox` (badge = open count), 노트 `/notes`, 오늘 `/daily`, 검색 `/search`, 그래프 `/graph`, 채팅 `/chat`, 설정 `/settings`.
 
 Keyboard: `Ctrl/⌘+K` command palette (notes by title + actions), `Ctrl/⌘+P` quick switcher (same palette in note mode), `c` or `Ctrl/⌘+Shift+Space`… capture dialog, `g h/i/n/s/g/c` go-to, `/` focus search. Shortcuts are ignored while typing in inputs/editors.
+
+## State and retrieval boundaries
+
+- SWR keys retain one response shape. Chat and settings share the plain chat-status DTO.
+- Note mutations invalidate individual list pages, SWR Infinite aggregates, title lookups, links, graph/search and time-zone-qualified home snapshots.
+- Draft writes are serialized. Failed flushes prevent destructive actions, and late attachment completion reads the current draft.
+- Hashed n-gram search candidates require literal query n-gram overlap; a hash collision alone is not a match.
+- Chat without fresh matches reloads prior cited active notes for follow-up context. Deleted or archived notes are not revived as evidence.
+- `--workspace-h` reserves mobile header, navigation and safe-area space. Note/chat panes scroll internally instead of adding an extra document-height gap.

@@ -1,0 +1,135 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/notes",
+    "status": 401,
+    "headers": {
+      "connection": "keep-alive",
+      "content-encoding": "gzip",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:24:51 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding"
+    },
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Login required"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 500,
+    "headers": {
+      "connection": "keep-alive",
+      "date": "Sun, 27 Sep 2026 19:24:52 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": ""
+  },
+  {
+    "method": "POST",
+    "path": "/api/notes",
+    "status": 401,
+    "headers": {
+      "connection": "keep-alive",
+      "content-encoding": "gzip",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:24:52 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "Accept-Encoding"
+    },
+    "body": {
+      "error": {
+        "code": "unauthorized",
+        "message": "Login required"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 500,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:26:34 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "error": {
+        "code": "internal",
+        "message": "Something went wrong"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 500,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:27:38 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "error": {
+        "code": "internal",
+        "message": "Something went wrong"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 500,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:28:24 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "error": {
+        "code": "internal",
+        "message": "Something went wrong"
+      }
+    }
+  },
+  {
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 500,
+    "headers": {
+      "cache-control": "private, no-store",
+      "connection": "keep-alive",
+      "content-type": "application/json;charset=utf-8",
+      "date": "Sun, 27 Sep 2026 19:28:57 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+    },
+    "body": {
+      "error": {
+        "code": "internal",
+        "message": "Something went wrong"
+      }
+    }
+  }
+]
