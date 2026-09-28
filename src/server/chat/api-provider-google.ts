@@ -47,6 +47,8 @@ export function createGoogleApiProvider(config: ApiAdapterConfig): ChatProvider 
             { role: "user", parts: [{ text: groundedQuestion(input) }] },
           ],
           tools: [],
+          // GenerateContentRequest.store controls request logging in the v1beta schema:
+          // https://generativelanguage.googleapis.com/$discovery/rest?version=v1beta
           store: false,
         }),
         signal,
