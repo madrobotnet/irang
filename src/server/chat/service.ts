@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import type { ChatMessage, ChatThread, Citation } from "@/lib/types";
+import { excerpt } from "@/lib/wikilinks";
 import { db, query, queryOne } from "@/server/db";
 import { ApiError } from "@/server/http";
 import { searchNotes } from "@/server/search/service";
@@ -167,6 +168,22 @@ export async function createChatMessageStream(
             title: hit.title,
             excerpt: hit.snippet,
           }));
+          if (sourceCitations.length === 0) {
+            const priorIds = [...new Set(historyResult.rows.flatMap((message) =>
+              citations(message.citations).map((citation) => citation.noteId).filter((id) => UUID.test(id)),
+            ))].slice(0, 8);
+            if (priorIds.length) {
+              const prior = await client.query<{ id: string; title: string; body: string }>(
+                `SELECT id::text, title, body FROM notes
+                  WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND status <> 'archived'
+                  ORDER BY array_position($1::uuid[], id)`,
+                [priorIds],
+              );
+              sourceCitations.push(...prior.rows.map((note, index) => ({
+                index: index + 1, noteId: note.id, title: note.title, excerpt: excerpt(note.body, 220),
+              })));
+            }
+          }
           controller.enqueue(sse("citations", sourceCitations));
 
           let answer = EMPTY_ANSWER;

@@ -1,7 +1,7 @@
 /**
  * Deterministic hashed character n-gram embedding (128-d) for pgvector.
- * No external embedding API: gives typo-tolerant, Korean-friendly "semantic-ish"
- * similarity used for related notes and as one signal in hybrid search.
+ * No external embedding API: character similarity, not semantic understanding,
+ * used for related notes and as one signal in hybrid search.
  */
 export const EMBEDDING_DIM = 128;
 

@@ -137,7 +137,7 @@ describe("streamed chat", () => {
   });
 
   test("includes recent conversation history in the next provider request", async () => {
-    await insertNote("회의 기록", "다음 회의는 금요일이다.");
+    const noteId = await insertNote("회의 기록", "다음 회의는 금요일이다.");
     const thread = await createChatThread();
     const inputs: ProviderInput[] = [];
     const provider: ChatProvider = {
@@ -155,6 +155,28 @@ describe("streamed chat", () => {
       { role: "user", content: "다음 회의는 언제야?" },
       { role: "assistant", content: "금요일입니다." },
     ]);
+    expect(inputs[1]!.sources.map((source) => source.noteId)).toEqual([noteId]);
+  });
+
+  test("does not reuse deleted note evidence for a follow-up", async () => {
+    const noteId = await insertNote("회의 기록", "다음 회의는 금요일이다.");
+    const thread = await createChatThread();
+    let calls = 0;
+    const provider: ChatProvider = {
+      async stream(_input, onDelta) {
+        calls++;
+        onDelta("금요일입니다.");
+        return "금요일입니다.";
+      },
+    };
+    await (await createChatMessageStream(thread.id, "다음 회의는 언제야?", { provider, auth: AUTH })).text();
+    await query("UPDATE notes SET deleted_at=now() WHERE id=$1", [noteId]);
+
+    const response = await createChatMessageStream(thread.id, "방금 답을 다시 말해줘", { provider, auth: AUTH });
+    const streamed = events(await response.text());
+    expect(calls).toBe(1);
+    expect(streamed[0]?.data).toEqual([]);
+    expect(streamed.at(-1)?.event).toBe("done");
   });
 
   test("returns 503 before opening a stream when Codex auth is unavailable", async () => {

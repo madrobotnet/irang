@@ -191,7 +191,16 @@ export async function searchNotes(
   const candidates = new Map<string, RankedCandidate>();
   addRanking(candidates, keyword, "keyword");
   addRanking(candidates, fuzzy, "fuzzy");
-  addRanking(candidates, ngram, "semantic");
+  const queryGrams = tokenize(queryTextTrimmed).flatMap((token) => {
+    const chars = Array.from(token);
+    return chars.length === 1 ? [token] : chars.slice(1).map((_, index) => chars.slice(index, index + 2).join(""));
+  });
+  // Hash buckets can collide across unrelated alphabets. Verify actual text
+  // overlap within the same bounded body window used by fuzzy matching.
+  addRanking(candidates, ngram.filter((row) => {
+    const text = `${row.title}\n${row.body.slice(0, 10000)}`.toLowerCase().normalize("NFKC");
+    return queryGrams.some((gram) => text.includes(gram));
+  }), "semantic");
 
   const hits: SearchHit[] = [...candidates.values()]
     .sort((a, b) => b.score - a.score

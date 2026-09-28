@@ -80,6 +80,15 @@ describe("searchNotes", () => {
     expect(result.hits).toEqual([]);
   });
 
+  test("does not turn a hash collision without text overlap into a search result", async () => {
+    await insertNote({
+      title: "간격 반복의 원리",
+      body: "기억이 흐려질 즈음 능동적으로 떠올리면 복습 효율이 높아진다. 단순 재독보다 질문을 만들고 [[회상 연습 설계]]로 답을 꺼내 본다. #학습 #기억",
+    });
+
+    expect((await searchNotes("PARA")).hits).toEqual([]);
+  });
+
   test("applies a normalized tag filter", async () => {
     const workId = await insertNote({ title: "회고", body: "이번 주 배운 내용", tags: ["업무"] });
     await insertNote({ title: "개인 회고", body: "이번 주 배운 내용", tags: ["개인"] });
