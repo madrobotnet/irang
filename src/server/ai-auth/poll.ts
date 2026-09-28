@@ -25,7 +25,7 @@ export async function pollAuthAttempt(
     const payload = DevicePayloadSchema.parse(attempt.payload);
     try {
       const result = await pollDeviceAuthorization(attempt.provider, payload.deviceCode, {
-        ...options, enterpriseDomain: payload.enterpriseDomain,
+        ...options, enterpriseDomain: payload.enterpriseDomain, githubToken: payload.githubToken,
       });
       switch (result.status) {
         case "complete": {
@@ -40,10 +40,13 @@ export async function pollAuthAttempt(
         case "pending":
         case "slow_down": {
           const interval = result.status === "slow_down"
-            ? Math.max(payload.intervalSeconds + 5, result.intervalSeconds ?? 0)
+            ? Math.min(3600, Math.max(payload.intervalSeconds + 5, result.intervalSeconds ?? 0))
             : Math.max(payload.intervalSeconds, result.intervalSeconds ?? 0);
           const nextPollAt = new Date(now + interval * 1000);
-          const updatedPayload = { ...payload, intervalSeconds: interval };
+          const updatedPayload = {
+            ...payload, intervalSeconds: interval,
+            ...(result.githubToken ? { githubToken: result.githubToken } : {}),
+          };
           await client.query(
             "UPDATE ai_auth_attempts SET payload = $2::jsonb, next_poll_at = $3 WHERE id = $1",
             [id, JSON.stringify(updatedPayload), nextPollAt],

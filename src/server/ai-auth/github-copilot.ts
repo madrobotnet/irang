@@ -154,6 +154,12 @@ export async function pollGitHubCopilotDeviceAuthorization(
   options: AuthProtocolOptions,
 ): Promise<DevicePollResult> {
   const domain = enterpriseDomain(options.enterpriseDomain);
+  if (options.githubToken) {
+    return {
+      status: "complete",
+      credential: await exchangeCopilotToken(options.githubToken, domain, options),
+    };
+  }
   const response = await requestJson({
     provider: "github-copilot",
     operation: "device token polling",
@@ -194,10 +200,17 @@ export async function pollGitHubCopilotDeviceAuthorization(
   if (!parsed.success) {
     throw new OAuthProtocolError("github-copilot", "device token response validation", response.status);
   }
-  return {
-    status: "complete",
-    credential: await exchangeCopilotToken(parsed.data.access_token, domain, options),
-  };
+  try {
+    return {
+      status: "complete",
+      credential: await exchangeCopilotToken(parsed.data.access_token, domain, options),
+    };
+  } catch (error) {
+    if (error instanceof OAuthProtocolError && error.retryable) {
+      return { status: "slow_down", githubToken: parsed.data.access_token };
+    }
+    throw error;
+  }
 }
 
 export function refreshGitHubCopilotCredential(

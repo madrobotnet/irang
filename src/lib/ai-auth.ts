@@ -45,7 +45,7 @@ export type DeviceAuthorization = {
 };
 
 export type DevicePollResult =
-  | { readonly status: "pending" | "slow_down"; readonly intervalSeconds?: number }
+  | { readonly status: "pending" | "slow_down"; readonly intervalSeconds?: number; readonly githubToken?: string }
   | { readonly status: "denied" | "expired" }
   | { readonly status: "complete"; readonly credential: OAuthCredential };
 
@@ -54,4 +54,5 @@ export type AuthProtocolOptions = {
   readonly signal?: AbortSignal;
   readonly now?: () => number;
   readonly enterpriseDomain?: string;
+  readonly githubToken?: string;
 };

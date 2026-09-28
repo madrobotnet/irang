@@ -12,6 +12,7 @@ export const DevicePayloadSchema = z.object({
   verificationUrl: z.string().url().max(4096),
   intervalSeconds: z.number().positive().max(3600),
   enterpriseDomain: z.string().optional(),
+  githubToken: z.string().min(1).max(16_384).optional(),
 }).strict();
 export const PkcePayloadSchema = z.object({
   kind: z.literal("pkce"),

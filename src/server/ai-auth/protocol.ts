@@ -14,6 +14,7 @@ import {
   refreshXaiCredential,
   startXaiDeviceAuthorization,
 } from "./xai";
+import { OAuthProtocolError } from "./http";
 
 function assertNever(value: never): never {
   throw new TypeError(`Unsupported OAuth provider: ${String(value)}`);
@@ -38,13 +39,18 @@ export async function pollDeviceAuthorization(
   deviceCode: string,
   options: AuthProtocolOptions = {},
 ): Promise<DevicePollResult> {
-  switch (provider) {
-    case "github-copilot":
-      return pollGitHubCopilotDeviceAuthorization(deviceCode, options);
-    case "xai":
-      return pollXaiDeviceAuthorization(deviceCode, options);
-    default:
-      return assertNever(provider);
+  try {
+    switch (provider) {
+      case "github-copilot":
+        return await pollGitHubCopilotDeviceAuthorization(deviceCode, options);
+      case "xai":
+        return await pollXaiDeviceAuthorization(deviceCode, options);
+      default:
+        return assertNever(provider);
+    }
+  } catch (error) {
+    if (error instanceof OAuthProtocolError && error.retryable) return { status: "slow_down" };
+    throw error;
   }
 }
 
@@ -64,6 +70,6 @@ export async function refreshCredential(
   }
 }
 
-export { OAuthProtocolError } from "./http";
+export { OAuthProtocolError };
 export { exchangeOpenRouterCode, openRouterAuthorizationUrl } from "./openrouter";
 export { createPkce } from "./pkce";

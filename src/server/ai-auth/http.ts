@@ -15,6 +15,10 @@ export class OAuthProtocolError extends Error {
   ) {
     super(`${provider} OAuth ${operation} failed${status === undefined ? "" : ` (HTTP ${status})`}`);
   }
+
+  get retryable(): boolean {
+    return this.status === undefined || this.status === 429 || this.status >= 500;
+  }
 }
 
 export type JsonResponse = {
@@ -56,9 +60,13 @@ export async function requestJson(input: JsonRequest): Promise<JsonResponse> {
     const decoder = new TextDecoder("utf-8", { fatal: true });
     let text = "";
     let bytes = 0;
+    let readFailed = false;
     try {
       while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } = await reader.read().catch(() => {
+          readFailed = true;
+          throw new OAuthProtocolError(input.provider, input.operation);
+        });
         if (done) break;
         bytes += value.byteLength;
         if (bytes > 65_536) throw new Error("OAuth response exceeds the size limit");
@@ -66,10 +74,11 @@ export async function requestJson(input: JsonRequest): Promise<JsonResponse> {
       }
       rawBody = JSON.parse(text + decoder.decode());
     } finally {
-      try { await reader.cancel(); } finally { reader.releaseLock(); }
+      try { if (!readFailed) await reader.cancel(); } finally { reader.releaseLock(); }
     }
-  } catch {
+  } catch (error) {
     input.signal?.throwIfAborted();
+    if (error instanceof OAuthProtocolError) throw error;
     throw new OAuthProtocolError(input.provider, `${input.operation}: malformed response`, response.status);
   }
 
