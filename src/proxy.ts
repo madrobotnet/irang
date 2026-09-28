@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "sb_session";
-const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/api/health", "/manifest.webmanifest", "/icons/", "/favicon"];
+const PUBLIC_PREFIXES = ["/login", "/api/auth/login", "/api/health", "/manifest.webmanifest", "/icons/", "/fonts/", "/favicon"];
 
 /**
  * Cheap gate: requests without a session cookie never reach app pages or APIs.

@@ -28,8 +28,8 @@ export async function api<T>(path: string, init?: RequestInit & { json?: unknown
     const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
     throw new ApiClientError(
       response.status,
-      body?.error.code ?? "http_error",
-      body?.error.message ?? `Request failed (${response.status})`,
+      body?.error?.code ?? "http_error",
+      body?.error?.message ?? `Request failed (${response.status})`,
       body ?? undefined,
     );
   }
