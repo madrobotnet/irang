@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+# Only this published, self-signed TLS fixture is exempt. Other keys in the
+# same test file must still fail the scan.
+[[allowlists]]
+description = "Public capture.example TLS test key"
+targetRules = ["private-key"]
+condition = "AND"
+paths = ['''(^|/)src/server/inbox/url\.test\.ts$''']
+regexes = ['''MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQglZBfaxApoc\+ieP5W\s+ZHkS8dkayROGpmCHD8hI7e4V7y2hRANCAAR8o/CrYnDIaDnmxWqveLMw3hbaISf\+\s+4vpgKreOiSWgVvR15CtlLmEu8MHNveXU5B3xqoZLUkUGAOuiuTVPE6Jo''']
