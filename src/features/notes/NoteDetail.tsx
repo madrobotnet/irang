@@ -123,6 +123,10 @@ function LoadedNote({ note, refresh }: { note: Note; refresh: () => Promise<unkn
           <CommaField label="태그" defaultValue={snapshot.tags.join(", ")} placeholder="프로젝트, 아이디어" onCommit={(tags) => controller.update({ tags })} />
           <CommaField label="별칭" defaultValue={snapshot.aliases.join(", ")} placeholder="다른 이름" onCommit={(aliases) => controller.update({ aliases })} />
         </div>
+        {note.sourceUrl ? <p className="mt-2 flex min-w-0 items-center gap-2 text-sm">
+          <span className="shrink-0 text-mute">원문</span>
+          <a href={note.sourceUrl} target="_blank" rel="noreferrer noopener" className="min-w-0 truncate text-accent underline underline-offset-2 focus-ring">{note.sourceUrl}</a>
+        </p> : null}
         <div className="mt-4 flex rounded-ctl bg-desk p-1 sm:w-fit"><button type="button" className={`rounded-ctl px-4 py-1.5 text-sm ${mode === "edit" ? "bg-card font-medium shadow-card" : "text-mute"}`} onClick={() => setMode("edit")}>편집</button><button type="button" className={`rounded-ctl px-4 py-1.5 text-sm ${mode === "preview" ? "bg-card font-medium shadow-card" : "text-mute"}`} onClick={() => setMode("preview")}>미리보기</button></div>
         <div className="mt-3">{mode === "edit" ? <MarkdownEditor noteId={note.id} value={snapshot.body} onChange={(body) => controller.update({ body })} onAppend={(markdown) => {
           const body = controller.getSnapshot().body;
