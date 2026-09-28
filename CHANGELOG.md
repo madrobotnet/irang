@@ -1,0 +1,65 @@
+# Changelog
+
+## 2.1.0 - 2026-09-28
+
+Protected first-run setup, persistent AI connection settings, and first-party AI
+transports. Capture, inbox, Markdown notes with `[[wiki links]]`, typo-tolerant
+Korean search, the note graph, attachments, and the home dashboard keep their
+2.0 behavior.
+
+### Added
+
+- **Protected first-run setup.** An empty server (no users, notes, inbox items,
+  threads, or attachments) serves `/setup`, where the operator enters the
+  installation code (`SETUP_TOKEN`, printed by `bun run setup-env` or
+  `bun run setup-token`) and chooses the owner password (12 characters or
+  more). The owner account and AI settings are written in a single database
+  transaction. Servers with `AUTH_PASSWORD_HASH` or existing data never expose
+  first-run account creation; the environment hash stays authoritative for
+  login and the setup-created owner password is the fallback.
+- **Persistent AI configuration.** Chat and Jev connections are stored
+  server-side (`installation_settings`) and editable in the setup wizard and
+  the authenticated settings view; saved changes apply without a restart. The
+  API only ever returns redacted metadata (provider, connection mode, model,
+  and whether a key is present), never credentials.
+- **Chat AI transports.** Direct API transports for OpenAI, Claude, and Gemini
+  with explicit provider, connection mode, and model choice. Answer streams
+  cite the notes they used and may say when the notes contain no answer.
+  Claude is API-key only; OpenAI and Gemini additionally work through their
+  official account login (the Docker image bundles the Codex and Gemini CLI
+  tools, and their auth files live in the persistent app-data volume).
+- **Explicit data-sharing controls.** Saving a connection requires explicit
+  consent to what is sent: chat sends the question, recent conversation
+  history, and related note excerpts; Jev sends the capture title and body
+  (up to 4000 characters) and recent note titles. A saved opt-out wins over
+  legacy environment credentials. Model permissions and billing stay with the
+  provider.
+- **Optional Jev classifier.** TypeSafe official (`api.typesafe.ai`) or
+  OpenRouter (`openrouter.ai/api`) with model IDs such as `jev-latest`.
+  Capture, notes, search, and the graph never require Jev.
+- **Docker bootstrap.** `docker compose up -d --build` builds the image from
+  source: Bun 1.4.2 install and build stages, a Node 22 stage for the official
+  CLI tools, a non-root runtime user, and an `/api/health` healthcheck.
+  `scripts/setup-env.mjs` generates a `0600` `.env` with three distinct random
+  secrets (installer token, application-database password, admin-database
+  password) and refuses an existing file. The database starts as the `postgres`
+  admin account; the application itself connects only through a precreated
+  least-privilege role (`NOSUPERUSER NOCREATEDB NOCREATEROLE`, with pgcrypto,
+  pgvector, and pg_trgm preinstalled) using its own password.
+  `docker compose down` preserves named volumes.
+- **CI.** A GitHub Actions workflow for pull requests and pushes to main and
+  feature branches: frozen-lockfile install, typecheck, lint with zero
+  warnings, the full Bun test suite against an isolated Postgres started from
+  `docker-compose.dev.yml`, a production Docker build, a redacted gitleaks
+  secret scan, and teardown of the runner's test database.
+- **Docs.** Rewritten README quickstart, a new installation guide
+  (`docs/SETUP.md`), and updated `docs/ARCHITECTURE.md`.
+- **License.** Released under the [MIT license](LICENSE).
+
+## 2.0.0 - 2026-09-28
+
+Rebuild on Next.js with a Bun runtime and PostgreSQL storage: URL and memo
+capture into an inbox, Markdown notes with wiki links, typo-tolerant Korean
+search (PostgreSQL full-text, trigram, and character n-gram), an interactive
+note graph, attachments, a timezone-aware home dashboard with daily notes, and
+optional AI chat with cited sources.

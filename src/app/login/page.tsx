@@ -5,13 +5,16 @@ import { LOGIN_COPY } from "@/features/auth/login-copy";
 import { sanitizeNextUrl } from "@/features/auth/next-url";
 import { Mark } from "@/components/shell/Sidebar";
 import { getSession } from "@/server/auth/session";
+import { setupState } from "@/server/setup/service";
 
 export const metadata: Metadata = { title: "로그인", robots: { index: false, follow: false } };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
   const next = sanitizeNextUrl(params.next);
+  if (!process.env.DATABASE_URL?.trim()) redirect("/setup");
   if (await getSession()) redirect(next);
+  if (await setupState() !== "complete") redirect("/setup");
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas bg-grain px-4 py-10">

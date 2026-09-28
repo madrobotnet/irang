@@ -1,18 +1,13 @@
 "use client";
 
 import { Monitor, Moon, Sun } from "lucide-react";
-import { useSyncExternalStore, type ReactNode } from "react";
-import useSWR from "swr";
+import { useSyncExternalStore } from "react";
 import { useShell } from "@/components/shell/ShellProvider";
 import { modKey } from "@/components/shell/shortcuts";
 import type { Theme } from "@/components/shell/ThemeProvider";
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { Shortcut } from "@/components/ui/Kbd";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { fetcher } from "@/lib/api-client";
-import type { ChatStatus } from "./settings-model";
+import { AiConnections } from "./AiConnections";
 import { Section } from "./SettingsSection";
 import { SessionSection } from "./SettingsSession";
 
@@ -26,7 +21,7 @@ export function SettingsView() {
       <div className="divide-y divide-line">
         <ThemeSection />
         <SessionSection />
-        <AiSection />
+        <AiConnections />
         <InstallSection />
         <DataSection />
         <ShortcutSection />
@@ -68,54 +63,6 @@ function ThemeSection() {
           ? `기기 설정을 따라 지금은 ${resolvedTheme === "dark" ? "어두운" : "밝은"} 화면이에요.`
           : `항상 ${theme === "dark" ? "어두운" : "밝은"} 화면으로 보여요.`}
       </p>
-    </Section>
-  );
-}
-
-function StatusRow({ title, status, children }: { title: string; status: ReactNode; children: ReactNode }) {
-  return (
-    <li className="py-3.5 first:pt-0 last:pb-0">
-      <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-md font-medium">{title}</h3>
-        {status}
-      </div>
-      <p className="mt-1 text-sm text-mute">{children}</p>
-    </li>
-  );
-}
-
-function AiSection() {
-  const { data, error, isLoading, mutate } = useSWR<ChatStatus>("/api/chat/status", fetcher, { revalidateOnFocus: false });
-  const chatStatus =
-    isLoading && !data ? (
-      <Skeleton className="h-5 w-16 rounded-pill" />
-    ) : error && !data ? (
-      <span className="inline-flex items-center gap-1">
-        <Badge tone="danger">확인 실패</Badge>
-        <Button variant="ghost" size="sm" className="h-touch lg:h-8" onClick={() => void mutate()}>
-          다시 확인
-        </Button>
-      </span>
-    ) : data?.available ? (
-      <Badge tone="ok">사용 가능</Badge>
-    ) : (
-      <Badge>설정되지 않음</Badge>
-    );
-
-  return (
-    <Section id="settings-ai" title="AI 기능 (선택)" description="AI 없이도 캡처, 노트, 검색, 그래프는 모두 동작해요. 아래 기능은 서버에 설정했을 때만 켜져요.">
-      <ul className="divide-y divide-line">
-        <StatusRow title="노트 채팅" status={chatStatus}>
-          서버에 로그인된 ChatGPT(Codex) 계정으로 답을 만들어요. 질문과 함께 관련 노트 일부가 OpenAI로 전송되고, 답변에는 근거가 된 노트가 표시돼요. 연결은 서버
-          관리자가 서버에서 설정해요.
-        </StatusRow>
-        <StatusRow title="인박스 정리 제안" status={<Badge>항목마다 표시</Badge>}>
-          서버에 TypeSafe API 키가 있으면 캡처한 뒤 태그와 중복 후보를 제안해요. 제안은 직접 고를 때만 적용되고, 꺼져 있거나 실패해도 캡처는 그대로 저장돼요.
-        </StatusRow>
-        <StatusRow title="검색과 관련 노트" status={<Badge tone="ok">항상 사용</Badge>}>
-          키워드와 글자 조각이 얼마나 겹치는지로 서버에서 계산해요. AI 모델이 뜻을 이해하는 방식은 아니에요.
-        </StatusRow>
-      </ul>
     </Section>
   );
 }

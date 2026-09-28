@@ -34,7 +34,7 @@ src/
   components/shell/            Sidebar, MobileNav, CommandPalette, ShellProvider
   features/<area>/             client feature components per area
   lib/                         isomorphic: types.ts (wire types), api-client.ts, markdown/wikilink helpers
-  server/                      server-only modules per area; db/, auth/, http.ts, jev/
+  server/                      server-only modules per area; db/, auth/, http.ts, jev/, setup/
 ```
 
 ## Core contracts (already implemented — use, do not rewrite)
@@ -42,7 +42,8 @@ src/
 - `src/server/db/index.ts`: `db()`, `query<T>(sql, params)`, `queryOne<T>()`, `tx(fn)`, `closeDb()`. Migrations in `src/server/db/migrations.ts` run automatically on first use. **Schema changes = append a new migration** (never edit `0001`).
 - `src/server/http.ts`: `withApi(handler)` (session required), `withPublicApi`, `ApiError(code, message)`, `json()`, `parseJson(request, zodSchema)`. Error body: `{ error: { code, message } }`.
 - `src/server/auth/session.ts`: `getSession()`; cookie `sb_session`.
-- `src/server/jev/client.ts`: `getJev()` returns a TypeSafe client or `null`. **Jev is optional: null or a thrown error must never fail a user action.**
+- `src/server/jev/client.ts`: `await getJev()` returns a TypeSafe client or `null`. Config routing: saved settings from `installation_settings` win first — a saved configuration without a Jev connection is an explicit opt-out that also disables the legacy `TYPESAFE_API_KEY` env fallback; only with no saved settings does the env key (optional `TYPESAFE_JEV_MODEL`) apply. Chat resolution mirrors this in `src/server/chat/connection.ts` (`configuredChatProvider()`): saved settings first, then the ambient Codex ChatGPT login file. **Optional AI failures must not block capture, notes, search, or graph operations. Chat reports its own unavailable/provider-error state.**
+- `src/server/setup/service.ts` + `src/server/setup/settings.ts`: first-run wizard and AI settings. `setupState()` is `complete` when `AUTH_PASSWORD_HASH` is set or any users / installation settings / protected data exist, `ready` only while the server is empty and a valid `SETUP_TOKEN` is configured, else `disabled`. `completeSetup()` creates the owner and stores AI settings in one transaction (advisory lock + occupied re-check). `loginPasswordHash()` prefers env `AUTH_PASSWORD_HASH`; only a wizard-created owner falls back to the stored DB hash. AI settings and API keys live in `installation_settings.ai` (Postgres, not E2E encrypted); `aiSettingsView()` returns redacted metadata only (`hasApiKey` flags, no credentials), and saving applies without an app restart.
 - `src/lib/types.ts`: every API response type. `src/lib/api-client.ts`: `api<T>(path, { method, json })`, `fetcher` for SWR, `ApiClientError`.
 - `src/server/test/db.ts`: `connectTestDatabase()`, `resetData()`, `closeDb()` for integration tests.
 
@@ -65,6 +66,7 @@ src/
 
 | Method & path | Body / query | Response |
 | --- | --- | --- |
+| POST `/api/setup` | `{setupToken, password, passwordConfirmation, ai}` | public first-run: 201 `{ok}`; 403 wrong setup token; 409 when setup is complete or data exists |
 | POST `/api/auth/login` | `{password}` | `{ok}` + cookie; 429 `{retryAfterSeconds}` |
 | POST `/api/auth/logout` | | `{ok}` |
 | POST `/api/auth/sessions/revoke-all` | | `{ok, revoked}`; clears the current cookie |
@@ -94,6 +96,7 @@ src/
 | GET/POST `/api/chat/threads` | POST `{title?}` | `{threads}` / `{thread}` |
 | GET/PATCH/DELETE `/api/chat/threads/:id` | PATCH `{title}` | GET `{thread, messages}`; PATCH `{thread}`; DELETE `{ok}` |
 | POST `/api/chat/threads/:id/messages` | `{content}` | `text/event-stream`: `citations` (Citation[]), `delta` ({text}), `done` ({message: ChatMessage}), `error` ({code, message}) |
+| GET/PUT `/api/settings/ai` | PUT `{chat, chatConsent, jev, jevConsent}` | `{settings, connections}`; `settings` is redacted (`hasApiKey` flags, no credentials); PUT saves and applies immediately (no restart) |
 | GET `/api/home` | `?timeZone=<IANA zone>` (optional) | `HomeData`; client supplies its local zone |
 | GET `/api/health` | public | `{ok}` |
 

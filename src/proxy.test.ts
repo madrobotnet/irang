@@ -22,3 +22,11 @@ test("redirects protected pages without a session", () => {
   expect(response.status).toBe(307);
   expect(location).toBe("https://brain.example/login?next=%2Fnotes%3Ftag%3Dwork");
 });
+
+test("allows only the exact installer entry points without a session", () => {
+  for (const path of ["/setup", "/api/setup"]) {
+    expect(proxy(new NextRequest(`https://brain.example${path}`)).headers.get("x-middleware-next")).toBe("1");
+  }
+  expect(proxy(new NextRequest("https://brain.example/api/setup/secrets")).status).toBe(401);
+  expect(proxy(new NextRequest("https://brain.example/api/settings/ai")).status).toBe(401);
+});

@@ -3,7 +3,7 @@ import type { PoolClient, QueryResultRow } from "pg";
 import type { InboxItem, InboxSource, InboxSuggestions, Note } from "@/lib/types";
 import { db, tx } from "@/server/db";
 import { ApiError } from "@/server/http";
-import { getJev, jevModel } from "@/server/jev/client";
+import { getJev } from "@/server/jev/client";
 import { createNote, getNote } from "@/server/notes/service";
 import { fetchUrlText, type UrlIntakeDependencies } from "./url";
 
@@ -143,9 +143,9 @@ export async function discardInbox(id: string): Promise<void> {
 type Answer = { type?: unknown; noul?: unknown; choice?: unknown; confidence?: unknown; probabilities?: unknown };
 
 async function buildSuggestions(item: InboxRow): Promise<InboxSuggestions> {
-  const jev = getJev();
-  if (!jev) return { status: "unavailable", tags: [], kind: null, duplicateOf: null };
   try {
+    const jev = await getJev();
+    if (!jev) return { status: "unavailable", tags: [], kind: null, duplicateOf: null };
     const pool = await db();
     const notes = await pool.query<{ id: string; title: string }>(
       "SELECT id,title FROM notes WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 20",
@@ -153,7 +153,6 @@ async function buildSuggestions(item: InboxRow): Promise<InboxSuggestions> {
     const duplicateChoices: Record<string, string | null> = { none: "기존 노트와 중복되지 않음" };
     for (const note of notes.rows) duplicateChoices[note.id] = note.title;
     const response = await jev.systemOne({
-      model: jevModel(),
       state: { title: item.title, body: item.body.slice(0, 4000), existingNotes: notes.rows },
       questions: {
         kind: choice("이 캡처의 주된 종류를 하나 고르세요.", { idea: "아이디어", reference: "참고 자료", task: "할 일", other: "기타" }),

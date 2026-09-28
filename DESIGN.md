@@ -77,3 +77,25 @@ The application is private: authentication and deliberate search-engine
 exclusion take precedence over a public-site SEO score. Do not claim browser
 engines, performance scores, offline support or AI capabilities that were not
 actually measured or implemented.
+
+## 9. First-run setup and AI connections
+
+The setup page is a document-scrolling form using the login page's mark,
+Pretendard, canvas and card tokens. On desktop, a short installation summary
+sits beside the form; on mobile it precedes a single column of controls.
+Group installer authorization, the owner's password, and optional AI choices
+by purpose. Do not put database URLs, filesystem paths or OAuth tokens in a
+public form. An existing installation never presents a password-reset form.
+
+Reuse the same AI connection fields in initial setup and authenticated
+settings. Provider and API/Auth selections are labelled native controls.
+Explain the selected provider's real login path and distinguish saved
+configuration from a verified connection. Optional data sharing requires an
+explicit checkbox. Credentials stay in component memory, never localStorage,
+URLs or success messages; saved keys are represented only by presence.
+
+Preserve all fields after recoverable failures, identify the failing group,
+and prevent duplicate submissions while saving. A completed setup directs
+the owner to the ordinary login screen. Cover unconfigured-server, invalid
+installer code, validation, saving, completed/locked and configured-credential
+states in browser QA, including 390px mobile and 768px tablet layouts.

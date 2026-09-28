@@ -179,10 +179,11 @@ describe("streamed chat", () => {
     expect(streamed.at(-1)?.event).toBe("done");
   });
 
-  test("returns 503 before opening a stream when Codex auth is unavailable", async () => {
+  test("rejects an unavailable chat connection before opening a stream", async () => {
     const thread = await createChatThread();
-    await expect(createChatMessageStream(thread.id, "질문", { auth: { kind: "absent" } }))
-      .rejects.toEqual(new ApiError("unavailable", "Codex 로그인이 필요합니다."));
+    const pending = createChatMessageStream(thread.id, "질문", { auth: { kind: "absent" } });
+    await expect(pending).rejects.toBeInstanceOf(ApiError);
+    await expect(pending).rejects.toMatchObject({ code: "unavailable" });
     expect((await getChatThread(thread.id)).messages).toEqual([]);
   });
 

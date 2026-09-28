@@ -150,4 +150,16 @@ ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_check;
 CREATE INDEX IF NOT EXISTS chat_messages_thread_idx ON chat_messages (thread_id, created_at, id);
 `,
   },
+  {
+    id: "0002_installation_settings",
+    sql: `
+CREATE TABLE IF NOT EXISTS installation_settings (
+  singleton        boolean PRIMARY KEY DEFAULT true CHECK (singleton),
+  owner_id         uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  setup_completed  boolean NOT NULL DEFAULT false,
+  ai               jsonb NOT NULL DEFAULT '{"chat":null,"jev":null}'::jsonb,
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+`,
+  },
 ];

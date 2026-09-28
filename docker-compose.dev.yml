@@ -1,4 +1,6 @@
 # Local Postgres (pgvector) for development and the integration test suite.
+name: second-brain-dev
+
 services:
   db:
     image: pgvector/pgvector:0.8.6-pg18
