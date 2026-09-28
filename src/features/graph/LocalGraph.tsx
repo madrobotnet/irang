@@ -1,11 +1,9 @@
 "use client";
 
-/**
- * CONTRACT (owned by the graph lane): compact local graph around one note.
- * Props are fixed; the implementation replaces this placeholder.
- */
+import { GraphExplorer } from "./GraphExplorer";
+
 export type LocalGraphProps = { noteId: string; depth?: 1 | 2 | 3; height?: number };
 
-export function LocalGraph({ height = 260 }: LocalGraphProps) {
-  return <div style={{ height }} aria-hidden />;
+export function LocalGraph({ noteId, depth = 1, height = 260 }: LocalGraphProps) {
+  return <GraphExplorer key={noteId} noteId={noteId} depth={depth} height={height} compact />;
 }
