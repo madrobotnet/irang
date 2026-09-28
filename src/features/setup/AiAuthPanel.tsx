@@ -198,6 +198,18 @@ export function AiAuthPanel({
         >
           {readyAttemptId ? "다시 로그인" : "로그인 시작"}
         </Button>
+        {error && attempt && (attempt.status === "starting" || attempt.status === "pending") ? (
+          <Button
+            size="lg"
+            disabled={disabled}
+            onClick={() => {
+              setError(null);
+              setAttempt({ ...attempt });
+            }}
+          >
+            상태 다시 확인
+          </Button>
+        ) : null}
         {attempt ? (
           <Button size="lg" disabled={disabled} leading={<X aria-hidden className="size-4" />} onClick={() => void cancel()}>
             로그인 취소
