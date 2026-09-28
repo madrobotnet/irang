@@ -42,8 +42,10 @@ src/
 - `src/server/db/index.ts`: `db()`, `query<T>(sql, params)`, `queryOne<T>()`, `tx(fn)`, `closeDb()`. Migrations in `src/server/db/migrations.ts` run automatically on first use. **Schema changes = append a new migration** (never edit `0001`).
 - `src/server/http.ts`: `withApi(handler)` (session required), `withPublicApi`, `ApiError(code, message)`, `json()`, `parseJson(request, zodSchema)`. Error body: `{ error: { code, message } }`.
 - `src/server/auth/session.ts`: `getSession()`; cookie `sb_session`.
-- `src/server/jev/client.ts`: `await getJev()` returns a TypeSafe client or `null`. Config routing: saved settings from `installation_settings` win first — a saved configuration without a Jev connection is an explicit opt-out that also disables the legacy `TYPESAFE_API_KEY` env fallback; only with no saved settings does the env key (optional `TYPESAFE_JEV_MODEL`) apply. Chat resolution mirrors this in `src/server/chat/connection.ts` (`configuredChatProvider()`): saved settings first, then the ambient Codex ChatGPT login file. **Optional AI failures must not block capture, notes, search, or graph operations. Chat reports its own unavailable/provider-error state.**
-- `src/server/setup/service.ts` + `src/server/setup/settings.ts`: first-run wizard and AI settings. `setupState()` is `complete` when `AUTH_PASSWORD_HASH` is set or any users / installation settings / protected data exist, `ready` only while the server is empty and a valid `SETUP_TOKEN` is configured, else `disabled`. `completeSetup()` creates the owner and stores AI settings in one transaction (advisory lock + occupied re-check). `loginPasswordHash()` prefers env `AUTH_PASSWORD_HASH`; only a wizard-created owner falls back to the stored DB hash. AI settings and API keys live in `installation_settings.ai` (Postgres, not E2E encrypted); `aiSettingsView()` returns redacted metadata only (`hasApiKey` flags, no credentials), and saving applies without an app restart.
+- `src/server/jev/client.ts`: `await getJev()` returns a TypeSafe client or `null`. `aiSelection(purpose)` independently resolves chat and Jev to a saved profile, explicit off, or environment-managed configuration. No settings row preserves legacy behavior; adding an inactive profile never changes it. Off prevents ambient credentials from reactivating that purpose. Chat uses the same selection in `configuredChatProvider()`. **Optional AI failures must not block capture, notes, search, or graph operations. Chat reports its own unavailable/provider-error state.**
+- `src/server/setup/service.ts` + `src/server/setup/settings.ts`: protected first-run setup and active selections. `setupState()` is `complete` when an env password or existing users/protected data are present, `ready` only for an empty server with a valid installer token. Owner creation, initial profiles and ready-auth consumption share one transaction and the occupied-state advisory lock. The env password remains authoritative.
+- `src/server/setup/ai-profiles.ts`: owner-scoped profile creation, update and deletion. Off preserves profiles; deleting an active profile disables its purpose. Keys and headers are retained only for the same provider and normalized endpoint. `aiSettingsView()` returns safe metadata, never keys, header values or OAuth credentials. Changes apply without restart.
+- `src/server/ai-auth/`: stateless GitHub Copilot/xAI device and OpenRouter PKCE clients, DB-backed attempts, owner/installer and browser binding, one-time consumption, and serialized refresh. HTTP responses are bounded to 64 KiB and 15 seconds; credential-bearing redirects are refused. Native ChatGPT and Gemini CLI login remain separate.
 - `src/lib/types.ts`: every API response type. `src/lib/api-client.ts`: `api<T>(path, { method, json })`, `fetcher` for SWR, `ApiClientError`.
 - `src/server/test/db.ts`: `connectTestDatabase()`, `resetData()`, `closeDb()` for integration tests.
 
@@ -55,6 +57,9 @@ src/
 - `inbox_items(id, title, body, source web|url|share|api, url, promoted_note_id, discarded_at, suggestions jsonb, created_at)`.
 - `attachments(id, note_id?, filename, mime, size_bytes, storage_key)` stored under `ATTACHMENTS_DIR` (default `.data/attachments`).
 - `chat_threads`, `chat_messages(role, content, citations jsonb)`.
+- `installation_settings(owner_id, setup_completed, ai jsonb)`: `ai` is `{version:2, chatId, jevId}`. IDs are a profile UUID, `null` (off), or `"environment"`.
+- `ai_connections(id, owner_id, purpose, name, connection jsonb, created_at, updated_at)`: separate chat/Jev profiles and server-only credentials. Migration `0003_ai_connections` converts prior inline settings without changing active choices.
+- `ai_auth_attempts(id, provider, scope_key, browser_hash, status, payload, expires_at, next_poll_at)`: private transient authorization state; never a process-local session map. A profile save consumes a ready attempt inside its transaction.
 
 ## Wikilink rules (src/lib/wikilinks.ts)
 
@@ -97,8 +102,19 @@ src/
 | GET/PATCH/DELETE `/api/chat/threads/:id` | PATCH `{title}` | GET `{thread, messages}`; PATCH `{thread}`; DELETE `{ok}` |
 | POST `/api/chat/threads/:id/messages` | `{content}` | `text/event-stream`: `citations` (Citation[]), `delta` ({text}), `done` ({message: ChatMessage}), `error` ({code, message}) |
 | GET/PUT `/api/settings/ai` | PUT `{chat, chatConsent, jev, jevConsent}` | `{settings, connections}`; `settings` is redacted (`hasApiKey` flags, no credentials); PUT saves and applies immediately (no restart) |
+| POST `/api/settings/ai/connections` | `{purpose, name, connection, consent:true}` | 201 `{profile, settings}` with safe metadata; adds without activating |
+| PUT/DELETE `/api/settings/ai/connections/:id` | PUT same profile input | PUT `{profile, settings}`; DELETE `{settings}` |
+| POST `/api/ai/auth` | `{provider, setupToken?, enterpriseDomain?}` | public handler requiring owner session or installer authorization; browser-bound `AuthAttemptView`, never tokens |
+| POST/DELETE `/api/ai/auth/:id` | `{setupToken?}` | scoped poll status / `{ok}` cancellation |
+| GET `/api/ai/auth/openrouter/callback/:id` | provider code or error | browser-bound PKCE completion, then 303 to `/connect/complete` |
 | GET `/api/home` | `?timeZone=<IANA zone>` (optional) | `HomeData`; client supplies its local zone |
 | GET `/api/health` | public | `{ok}` |
+
+Selection inputs accept inline connections (initial setup), `{mode:"saved",id}`,
+`{mode:"environment"}`, or `null`. Optional `chatName`/`jevName` name the initial
+profiles. Browser Auth uses an input-only `authAttemptId`; stored credentials
+never appear in client input or settings output. Supported schemas live in
+`src/lib/ai-settings.ts`, `ai-connections.ts` and `ai-auth-flow.ts`.
 
 ## Design system (Direction A — "desk")
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.2.0 - 2026-09-28
+
+### Added
+
+- Multiple named AI connections with independent chat and Jev selection. First
+  setup creates initial profiles; settings can add, edit, select, disable or
+  delete them. Disabling usage preserves saved connections.
+- OpenAI-compatible Chat Completions/Responses and Anthropic-compatible Messages
+  endpoints, including manual model IDs, keyless local servers, extra headers
+  and output-token limits.
+- GitHub Copilot, OpenRouter and xAI API credentials and browser account login.
+  Copilot and xAI use device authorization; OpenRouter uses PKCE and returns an
+  API key. ChatGPT and Gemini retain their official CLI login; Claude remains
+  API-only.
+- Optional Jev connections through TypeSafe API or OpenRouter API/account login,
+  independently switchable and editable after setup.
+- Owner/installer-scoped, browser-bound login attempts, one-time transactional
+  credential consumption and serialized token refresh. Credentials and extra
+  header values are never returned in settings responses.
+
+### Changed
+
+- Migration `0003_ai_connections` preserves existing AI credentials and selected
+  models in owner-scoped connection profiles. Per-purpose environment selections
+  preserve legacy installations without silently enabling inactive connections.
+- Changing a custom endpoint requires a fresh key or explicit keyless choice
+  and never forwards the previous endpoint's extra headers.
+
 ## 2.1.0 - 2026-09-28
 
 Protected first-run setup, persistent AI connection settings, and first-party AI

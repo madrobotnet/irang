@@ -49,6 +49,7 @@ Skeleton and the shared shell rather than adding parallel implementations.
 Controls need resting, focus, busy, disabled and failure states. Dialogs use
 native modal focus trapping and restore focus to the opener. Destructive actions
 need explicit confirmation. Saving, capture and chat failures preserve input.
+AI connection dialogs block Escape, backdrop and header dismissal while saving or deleting.
 Actual login, capture, settings and error scenarios serve as the primitive state
 harness during browser QA.
 

@@ -1,4 +1,4 @@
-# Second Brain 2.1.0 — Installation & Configuration
+# Second Brain 2.2.0 — Installation & Configuration
 
 Deployment guide for a single-owner, self-hosted Second Brain instance. Everything
 ships as two Docker Compose services (the Next.js app and a Postgres database) plus
@@ -152,7 +152,8 @@ Server behavior worth knowing:
 
 ## 6. Cookies, HTTP vs HTTPS, and reverse-proxy trust
 
-The session cookie (`sb_session`) is `HttpOnly` and `SameSite=Lax`. Its `Secure`
+The session cookie (`sb_session`) and provider-login browser cookie (`sb_ai_auth`)
+are `HttpOnly` and `SameSite=Lax`. Their `Secure`
 flag is enabled in production builds unless `INSECURE_COOKIES=1`:
 
 - **Local loopback HTTP test:** set `INSECURE_COOKIES=1` in the operator `.env`,
@@ -230,14 +231,14 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 | `DATABASE_URL` | app (db layer) | — (required in Docker via Compose) | Postgres connection string |
 | `SETUP_TOKEN` | first-run wizard | — (required by `compose.yml`) | Guards `/setup`; 32–256 chars accepted, generated value is 64 hex chars |
 | `AUTH_PASSWORD_HASH` | login + setup state | empty | Argon2id PHC hash; when set it wins over any wizard-created owner password and permanently disables the wizard |
-| `INSECURE_COOKIES` | login | `0` | `1` disables the cookie `Secure` flag (loopback HTTP only) |
+| `INSECURE_COOKIES` | login and provider Auth | `0` | `1` disables the cookie `Secure` flag (loopback HTTP only) |
 | `TRUSTED_PROXY_HOPS` | client-IP resolution | `1` | Trusted `X-Forwarded-For` depth (section 6) |
 | `SESSION_TTL_DAYS` | sessions | `30` | Session lifetime in days |
 | `ATTACHMENTS_DIR` | attachment storage | `.data/attachments` (relative to the app's working directory) | Attachment file location; in Docker this is inside the `app-data` volume |
 | `APP_PORT` | `compose.yml` | `3000` | Loopback host port |
 | `POSTGRES_PASSWORD` | `compose.yml` | — (required) | Application DB role (`second_brain`) password, interpolated into `DATABASE_URL` and handed to the db init script |
 | `POSTGRES_ADMIN_PASSWORD` | `compose.yml` db service | — (required) | `postgres` superuser password inside the db container; operator maintenance only, never for the app |
-| `TYPESAFE_API_KEY` | Jev (legacy fallback) | empty | Jev API key used **only** while no settings have been saved in the UI |
+| `TYPESAFE_API_KEY` | Jev (legacy fallback) | empty | Jev API key used while no settings exist, or while Jev explicitly keeps the environment-managed selection |
 | `TYPESAFE_JEV_MODEL` | Jev (legacy fallback) | `jev-latest` | Jev model for the env-key fallback |
 | `TYPESAFE_BASE_URL` | Jev (legacy fallback) | `https://api.typesafe.ai` | Legacy SDK endpoint; the UI can retain keys only for `https://api.typesafe.ai` or `https://openrouter.ai/api` |
 | `CODEX_HOME` | Codex ChatGPT auth | `~/.codex` locally; `/app/.data/auth/codex` in Docker | Directory holding Codex `auth.json` |
@@ -250,6 +251,10 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 Everything below is optional. Capture, notes, editing, search, and the graph work
 fully without any AI connection. Configure via the setup wizard or later via
 **Settings → AI** in the app; both write the same stored configuration.
+Give each connection a name. Settings can store multiple connections and select
+one for chat and another for Jev. Adding a connection does not activate it.
+Switching usage off preserves the saved connections; deleting one removes its
+stored credentials and disables it if it was active.
 
 ### Chat AI
 
@@ -258,8 +263,13 @@ fully without any AI connection. Configure via the setup wizard or later via
 | ChatGPT / OpenAI | yes | yes — Codex CLI with ChatGPT login | `gpt-5.4-mini` |
 | Claude (Anthropic) | yes | **no** — API key only | `claude-sonnet-4-6` |
 | Gemini | yes | yes — Gemini CLI with Google OAuth | `gemini-2.5-flash` |
+| GitHub Copilot | Copilot API token | GitHub device authorization | `gpt-5.4-mini` |
+| OpenRouter | yes | browser PKCE authorization | `openai/gpt-5.4-mini` |
+| xAI / Grok | yes | xAI device authorization | `grok-4.3` |
+| OpenAI Compatible | custom key or explicitly keyless | no | enter the endpoint's model ID |
+| Anthropic Compatible | custom key or explicitly keyless | no | enter the endpoint's model ID |
 
-Account login uses the official CLIs baked into the app image (pinned
+ChatGPT and Gemini account login use the official CLIs baked into the app image (pinned
 `@openai/codex@0.158.0`, `@google/gemini-cli@0.61.0`). Run these from the host
 shell — they execute inside the running app container:
 
@@ -278,6 +288,59 @@ readiness does **not** prove the account is valid, entitled, or authorized for a
 model — validity and model permissions are only proven by the first real request,
 and they remain under the provider's control (account state, plan, billing).
 
+### Browser account login
+
+For Copilot, OpenRouter or xAI, select Auth and start the connection in the form.
+On first setup, enter the installation code first. Open the provider's login
+page; enter the displayed device code when requested. Return to the original
+Second Brain tab and save once it reports the authorization is ready.
+
+- Copilot requires a usable Copilot entitlement. API mode expects a Copilot API
+  token, not an arbitrary GitHub personal access token. An optional Enterprise
+  domain and Responses, Chat Completions or Messages protocol can be selected.
+- OpenRouter authorization issues a durable API key through PKCE. It does not
+  transfer a ChatGPT, Claude or other subscription into OpenRouter.
+- xAI account authorization uses the provider's device flow and refresh tokens.
+  Account entitlement and model access are determined by xAI.
+- Login attempts are scoped to the authenticated owner or installer and bound
+  to the browser that started them. A ready attempt is consumed once in the same
+  transaction that saves the connection; a failed save rolls consumption back.
+  Attempts expire after at most 15 minutes. Expired records are removed when a
+  new login starts; polling an expired attempt clears its private payload.
+- Copilot and xAI tokens are refreshed server-side when approaching expiry.
+  Revoked access or unsuccessful refresh requires reconnecting in settings.
+  The app does not automatically enable Copilot model policies.
+
+### Custom compatible endpoints
+
+Choose **OpenAI Compatible** or **Anthropic Compatible**, then enter a name,
+HTTP(S) base URL, model ID and API key, or explicitly choose a keyless endpoint.
+Examples:
+
+| Input | Request destination |
+| --- | --- |
+| `https://gateway.example` with Chat Completions | `https://gateway.example/v1/chat/completions` |
+| `https://gateway.example/custom/v1` with Responses | `https://gateway.example/custom/v1/responses` |
+| `https://gateway.example/v1/messages` with Messages | the same URL, not a duplicated suffix |
+
+OpenAI Compatible supports Chat Completions or Responses. Anthropic Compatible
+uses Messages. Optional extra headers support gateway-specific authentication;
+header names are case-insensitive and transport headers such as `Host`, `Cookie`
+and `Content-Length` cannot be overridden. A supplied authorization header
+overrides the default key header. Output-token limits are optional.
+
+URLs cannot contain embedded credentials, query strings or fragments. Put
+gateway credentials in the API-key field or extra headers. Redirects are not
+followed with credentials. Changing provider or normalized endpoint never
+reuses the previous endpoint's key or extra headers; enter a new key or explicitly
+choose keyless, and re-enter any headers needed by the new destination.
+
+In Docker, `localhost` refers to the app container. Use a reachable Compose
+service name, a LAN address, or `host.docker.internal` when the Docker host
+provides it. On Linux Engine, that hostname may require an operator-added
+`extra_hosts: ["host.docker.internal:host-gateway"]` mapping in the app service.
+The upstream server must listen on an interface reachable from the container.
+
 ### Jev (inbox triage suggestions)
 
 Jev is an independent, optional connection — it only powers capture classification,
@@ -292,24 +355,29 @@ endpoint:
 
 Use a model that returns structured judgment, and the model IDs above — OpenRouter's
 separate "Jev Router" product is a different thing and is not what this app calls.
+TypeSafe uses an API key. OpenRouter accepts either an API key or the browser
+account connection described above. Jev profiles, models and usage can be changed
+without changing the active chat connection.
 
 ### Storage, consent, and change semantics
 
-- API keys and AI settings are stored in Postgres (`installation_settings.ai`).
+- Connection profiles, API keys, extra header values and browser Auth credentials
+  are stored in Postgres (`ai_connections`). `installation_settings.ai` contains
+  only the per-purpose selection IDs.
   This is private server-side storage, **not** end-to-end encrypted — protect the
   database backups accordingly (section 9).
 - Keys and the setup token are never returned to the browser: the settings API
-  exposes only redacted metadata such as `hasApiKey` flags. Saved keys are kept
-  when the provider and API mode stay the same. Changing providers requires
-  a new key; one provider's key is never reused for another.
+  exposes only redacted metadata such as credential-presence flags and header
+  names. Saved keys and headers are retained only for the same profile, provider,
+  API mode and normalized endpoint. Header values cannot be read back; omitting
+  unchanged headers retains them, while an empty header object clears them.
 - Each provider connection requires an explicit data-transfer consent checkbox;
   enabling either AI sends your question plus related note excerpts (chat) or
   capture content plus recent note titles (Jev) to that provider.
 - Saved settings take effect immediately, without an app restart.
-- Once settings have been saved, the stored configuration wins over ambient
-  environment credentials (`TYPESAFE_API_KEY`, Codex auth file). A saved
-  configuration with an AI section switched off is an explicit opt-out: it stops
-  that AI feature even if legacy env credentials are still present on the server.
+- Chat and Jev independently choose a saved profile, explicit off, or the legacy
+  environment configuration. Off wins over ambient credentials. Adding an
+  inactive profile does not change either selection or disable legacy behavior.
 
 ## 9. Data, backup, and upgrades
 
@@ -408,7 +476,11 @@ Deployments that predate the first-run wizard keep working unchanged:
   `TYPESAFE_JEV_MODEL`) drives Jev,
   and a ChatGPT-login Codex `auth.json` drives chat.
 - After you save AI settings in the UI (Settings → AI), the stored configuration
-  takes over, including explicit opt-outs (section 8).
+  takes over for each purpose, including explicit opt-outs. The environment
+  selection preserves that purpose's legacy behavior (section 8).
+- Upgrading from 2.1 migrates existing inline chat/Jev credentials into named
+  profiles without changing their models or activation state. Owner passwords
+  and CLI credential files are not changed by this migration.
 
 ## 11. Recovery
 

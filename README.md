@@ -2,7 +2,7 @@
 
 **생각을 모으고, 노트로 연결하는 개인 지식 작업대.**
 
-`v2.1.0` · Docker로 직접 설치 · [MIT](LICENSE)
+`v2.2.0` · Docker로 직접 설치 · [MIT](LICENSE)
 
 ![노트와 인박스를 한곳에서 살펴보는 세컨드 브레인 홈](docs/images/workbench.png)
 
@@ -77,19 +77,31 @@ INSECURE_COOKIES=1 docker compose up -d --build
 
 ## AI 제공자
 
-설정(`/setup` 또는 로그인 후 설정 화면)에서 채팅 제공자와 연결 방식, 모델을
-고르고 선택적으로 Jev 분류기를 추가합니다. 저장하려면 해당 제공자에게 데이터를
-보내는 데 명시적으로 동의해야 합니다.
+첫 셋업에서 연결 이름, 제공자, 연결 방식, 모델을 고릅니다. 이후 설정 화면에서
+여러 연결을 추가·수정하고, 채팅과 Jev에 사용할 연결을 각각 선택할 수 있습니다.
+사용을 꺼도 저장한 연결은 남으며, 연결 삭제는 별도 동작입니다.
+저장하려면 해당 제공자에게 데이터를 보내는 데 명시적으로 동의해야 합니다.
 
 | 제공자 · 용도 | 연결 방식 · 모델 예시 |
 | --- | --- |
 | OpenAI · 채팅 | API / ChatGPT Auth<br>`gpt-5.4-mini` |
 | Claude · 채팅 | API<br>`claude-sonnet-4-6` |
 | Gemini · 채팅 | API / Gemini CLI Auth<br>`gemini-2.5-flash` |
+| GitHub Copilot · 채팅 | Copilot API 토큰 / GitHub 기기 로그인<br>`gpt-5.4-mini` |
+| OpenRouter · 채팅 | API / 브라우저 계정 연결<br>`openai/gpt-5.4-mini` |
+| xAI · 채팅 | API / 계정 기기 로그인<br>`grok-4.3` |
+| OpenAI Compatible · 채팅 | 사용자 지정 URL·API 키·모델<br>Chat Completions / Responses |
+| Anthropic Compatible · 채팅 | 사용자 지정 URL·API 키·모델<br>Messages |
 | TypeSafe · Jev | API<br>`jev-latest` |
-| OpenRouter · Jev | API<br>`~typesafe/jev-latest` |
+| OpenRouter · Jev | API / 브라우저 계정 연결<br>`~typesafe/jev-latest` |
 
-ChatGPT Auth는 공식 Codex CLI 로그인을 사용합니다. Claude는 API만 지원합니다.
+ChatGPT와 Gemini Auth는 공식 CLI를, Copilot·OpenRouter·xAI는 앱에서 시작하는
+브라우저 로그인을 사용합니다. Claude는 API만 지원합니다. OpenRouter 계정 연결은
+API 키를 발급하는 방식이며 구독 이용권을 가져오는 기능이 아닙니다.
+
+커스텀 연결은 추가 헤더와 출력 토큰 한도도 설정할 수 있습니다. 키가 필요 없는
+로컬 서버도 지원합니다. Docker 안의 `localhost`는 호스트가 아닌 앱 컨테이너를
+뜻합니다. 주소 예시와 로그인 절차는 [AI 설정 안내](docs/SETUP.md#8-ai-configuration-optional-per-provider)를 참고하세요.
 
 모델 이름은 예시일 뿐이며, 실제로 쓸 수 있는 모델은 계정 상태에 따라 다릅니다.
 설정 화면은 저장된 구성과 실제 연결 확인을 구분해서 보여주므로,
@@ -101,11 +113,11 @@ ChatGPT Auth는 공식 Codex CLI 로그인을 사용합니다. Claude는 API만 
   선택한 제공자에 보냅니다.
 - Jev는 캡처 제목, 본문 앞 4,000자, 최근 노트 제목·ID를 보내 인박스
   분류와 태그를 제안합니다. 제안은 선택해야만 노트에 적용됩니다.
-- 브라우저에서는 API 키를 설정 폼 메모리에서만 다룹니다. 저장 후에는 키를 다시 내려주지
-  않고 존재 여부만 표시합니다.
-- UI에서 한 번 저장한 뒤에는 그 저장값이 환경 변수 기반 구성
-  (`TYPESAFE_API_KEY`, `CODEX_*`)보다 우선합니다. UI에서 해제하면 환경 변수
-  구성도 함께 사용하지 않습니다.
+- 입력한 API 키는 설정 폼 메모리에서만 다루고, 저장 후에는 다시 내려주지 않습니다.
+  추가 헤더 값과 계정 인증 토큰도 서버에만 보관합니다.
+- 채팅과 Jev는 선택한 연결 또는 명시적인 꺼짐 상태를 각각 따릅니다. 기존 환경
+  변수 기반 구성(`TYPESAFE_API_KEY`, `CODEX_*`)은 해당 용도의 환경 설정 유지를
+  선택하면 계속 사용할 수 있습니다. 사용하지 않는 연결을 추가해도 활성화되지 않습니다.
 
 ## 데이터와 프라이버시
 
