@@ -56,7 +56,9 @@ export async function cliCredentialFile(
  * validity, subscription entitlement, or live model access. Never runs the CLI,
  * reads credential contents, refreshes tokens, or probes any network endpoint.
  *
- * Gemini 0.61.0: utils/paths.ts homedir() + config/storage.ts getOAuthCredsPath().
+ * Gemini 0.61.0 uses its own homedir(), which prefers GEMINI_CLI_HOME over HOME:
+ * https://github.com/google-gemini/gemini-cli/blob/v0.61.0/packages/core/src/utils/paths.ts
+ * Storage.getOAuthCredsPath() then appends .gemini/oauth_creds.json to that root.
  */
 export async function getCliAuthReadiness(
   provider: CliAuthProvider,
