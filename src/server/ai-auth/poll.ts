@@ -4,6 +4,7 @@ import { tx } from "@/server/db";
 import type { AiAuthScope } from "./attempt-store";
 import { authAttemptView, DevicePayloadSchema, lockedAuthAttempt, requireAttemptScope } from "./attempt-data";
 import { OAuthProtocolError, pollDeviceAuthorization } from "./protocol";
+import { exchangeOpenRouterAttempt } from "./openrouter-attempt";
 
 export async function pollAuthAttempt(
   id: string,
@@ -18,10 +19,10 @@ export async function pollAuthAttempt(
       await client.query("UPDATE ai_auth_attempts SET status = 'expired', payload = '{}'::jsonb WHERE id = $1", [id]);
       return { id, provider: attempt.provider, status: "expired", expiresAt: attempt.expires_at.getTime() };
     }
-    if (attempt.status !== "pending" || attempt.provider === "openrouter"
-      || (attempt.next_poll_at?.getTime() ?? 0) > now) {
+    if (attempt.status !== "pending" || (attempt.next_poll_at?.getTime() ?? 0) > now) {
       return authAttemptView(attempt, now);
     }
+    if (attempt.provider === "openrouter") return exchangeOpenRouterAttempt(client, attempt, options);
     const payload = DevicePayloadSchema.parse(attempt.payload);
     try {
       const result = await pollDeviceAuthorization(attempt.provider, payload.deviceCode, {

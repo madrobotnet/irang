@@ -18,6 +18,8 @@ export const PkcePayloadSchema = z.object({
   kind: z.literal("pkce"),
   verifier: z.string().min(43).max(128),
   verificationUrl: z.string().url().max(8192),
+  code: z.string().min(1).max(4096).optional(),
+  intervalSeconds: z.number().positive().max(3600).optional(),
 }).strict();
 
 export type AuthAttemptRow = {
@@ -53,7 +55,10 @@ export function authAttemptView(attempt: AuthAttemptRow, now: number): AuthAttem
   if (attempt.status !== "pending") return base;
   if (attempt.provider === "openrouter") {
     const payload = PkcePayloadSchema.parse(attempt.payload);
-    return { ...base, verificationUrl: payload.verificationUrl, retryAfterMs: 2000 };
+    return {
+      ...base, verificationUrl: payload.verificationUrl,
+      retryAfterMs: Math.max(500, (attempt.next_poll_at?.getTime() ?? now + 2000) - now),
+    };
   }
   const payload = DevicePayloadSchema.parse(attempt.payload);
   return {

@@ -14,7 +14,7 @@ export const GET = withPublicApi<Context>(async (request, context) => {
     denied: url.searchParams.has("error"), browserHash: authBrowserHash(request),
   });
   const destination = new URL("/connect/complete", url);
-  destination.searchParams.set("status", result.success ? "success" : "failed");
+  destination.searchParams.set("status", result.pending ? "pending" : result.success ? "success" : "failed");
   destination.searchParams.set("stage", result.setup ? "setup" : "settings");
   // Keep the browser's public origin rather than Next's internal server origin.
   const response = new NextResponse(null, {

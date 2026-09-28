@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleCheck, CircleX, Clock } from "lucide-react";
 import { Mark } from "@/components/shell/Sidebar";
 
 export const metadata: Metadata = {
@@ -14,8 +14,9 @@ export default async function ConnectCompletePage({
 }) {
   const params = await searchParams;
   const succeeded = params.status === "success";
+  const pending = params.status === "pending";
   const setup = params.stage === "setup";
-  const Icon = succeeded ? CircleCheck : CircleX;
+  const Icon = pending ? Clock : succeeded ? CircleCheck : CircleX;
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas bg-grain px-4 py-8 sm:px-6">
@@ -24,12 +25,14 @@ export default async function ConnectCompletePage({
           <Mark className="size-7" />
           <span className="text-md font-semibold tracking-tight">세컨드 브레인</span>
         </div>
-        <Icon aria-hidden className={succeeded ? "size-8 text-ok" : "size-8 text-danger"} />
+        <Icon aria-hidden className={pending ? "size-8 text-warn" : succeeded ? "size-8 text-ok" : "size-8 text-danger"} />
         <h1 id="connect-complete-title" className="mt-3 text-2xl font-semibold tracking-tight">
-          {succeeded ? "로그인을 확인했어요" : "로그인을 완료하지 못했어요"}
+          {pending ? "로그인 확인 중" : succeeded ? "로그인을 확인했어요" : "로그인을 완료하지 못했어요"}
         </h1>
         <p className="mt-3 text-md leading-relaxed text-mute">
-          {succeeded
+          {pending
+            ? `제공자 응답이 지연되고 있어요. 원래 ${setup ? "최초 설정" : "설정"} 탭으로 돌아가면 자동으로 다시 확인해요.`
+            : succeeded
             ? `원래 ${setup ? "최초 설정" : "설정"} 탭으로 돌아가 연결을 저장하세요. 이 창에는 코드나 자격 증명이 표시되지 않아요.`
             : `원래 ${setup ? "최초 설정" : "설정"} 탭으로 돌아가 로그인 상태를 확인한 뒤 다시 시도하세요.`}
         </p>
