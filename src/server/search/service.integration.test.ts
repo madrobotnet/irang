@@ -72,6 +72,50 @@ describe("searchNotes", () => {
     expect(result.hits[0]?.matchedBy).toContain("fuzzy");
   });
 
+  test.each([
+    "TypeScript",
+    "TypeScritp",
+    "What does the TypeScript deployment checklist say?",
+    "How do I deploy the Docker image safely?",
+    "quantum teleportation",
+  ])("requires meaningful English overlap for %s", async (queryText) => {
+    const deploymentId = await insertNote({
+      title: "TypeScript deployment checklist",
+      body: "Compile TypeScript, run the test suite, back up PostgreSQL, then deploy the Docker image. Verify the health endpoint after deployment.",
+    });
+    await insertNote({
+      title: "Running training",
+      body: "Running three times every week helps build endurance for a marathon.",
+    });
+    await insertNote({
+      title: "Shopping list",
+      body: "Buy apples, milk and fresh vegetables.",
+    });
+
+    const result = await searchNotes(queryText);
+
+    expect(result.hits.map((hit) => hit.noteId)).toEqual(
+      queryText === "quantum teleportation" ? [] : [deploymentId],
+    );
+    if (queryText !== "quantum teleportation") {
+      expect(result.hits[0]?.matchedBy).toContain("semantic");
+    }
+  });
+
+  test("preserves short queries and mixed-script typo retrieval", async () => {
+    const id = await insertNote({
+      title: "AI 김치찌개",
+      body: "TypeScript로 요리 기록을 정리한다. Run Docker.",
+    });
+
+    for (const queryText of [
+      "AI", "run", "김", "김치", "TypeScritp 김치찌게", "TypeScritp김치찌게",
+    ]) {
+      const result = await searchNotes(queryText);
+      expect(result.hits[0]?.noteId).toBe(id);
+    }
+  });
+
   test("returns no result for an unrelated query", async () => {
     await insertNote({ title: "장보기", body: "우유 달걀 사과" });
 

@@ -191,15 +191,27 @@ export async function searchNotes(
   const candidates = new Map<string, RankedCandidate>();
   addRanking(candidates, keyword, "keyword");
   addRanking(candidates, fuzzy, "fuzzy");
-  const queryGrams = tokenize(queryTextTrimmed).flatMap((token) => {
-    const chars = Array.from(token);
-    return chars.length === 1 ? [token] : chars.slice(1).map((_, index) => chars.slice(index, index + 2).join(""));
-  });
-  // Hash buckets can collide across unrelated alphabets. Verify actual text
-  // overlap within the same bounded body window used by fuzzy matching.
+  const latinGrams = new Set<string>();
+  const otherGrams = new Set<string>();
+  for (const token of tokenize(queryTextTrimmed)) {
+    for (const [part] of token.matchAll(/[\p{Script=Latin}\p{N}]+|[^\p{Script=Latin}\p{N}]+/gu)) {
+      const latin = /\p{Script=Latin}/u.test(part);
+      const chars = Array.from(part);
+      const size = Math.min(chars.length, latin ? 3 : 2);
+      const grams = latin ? latinGrams : otherGrams;
+      for (let index = 0; index <= chars.length - size; index += 1) {
+        grams.add(chars.slice(index, index + size).join(""));
+      }
+    }
+  }
+  // Hash similarity needs actual text evidence. Latin bigrams are too common:
+  // require at least half of distinct trigrams, retaining non-Latin overlap
+  // and whole terms shorter than a gram within the existing bounded window.
   addRanking(candidates, ngram.filter((row) => {
     const text = `${row.title}\n${row.body.slice(0, 10000)}`.toLowerCase().normalize("NFKC");
-    return queryGrams.some((gram) => text.includes(gram));
+    const matchedLatin = [...latinGrams].filter((gram) => text.includes(gram)).length;
+    return [...otherGrams].some((gram) => text.includes(gram))
+      || (latinGrams.size > 0 && matchedLatin * 2 >= latinGrams.size);
   }), "semantic");
 
   const hits: SearchHit[] = [...candidates.values()]
