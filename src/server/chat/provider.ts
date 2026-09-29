@@ -1,4 +1,6 @@
-import { accessTokenExpired, persistCodexSession, type CodexSession } from "./auth";
+import { CHAT_AUTH_MODELS } from "@/lib/ai-model-catalog";
+import { refreshedConnectionProfile } from "@/server/ai-auth/refresh";
+import { accessTokenExpired, persistCodexSession, storedCodexSession, type CodexSession, type FileCodexSession } from "./auth";
 
 export type ProviderMessage = { role: "user" | "assistant"; content: string };
 export type ProviderSource = { noteId: string; title: string; excerpt: string };
@@ -17,7 +19,7 @@ export class ChatProviderError extends Error {
 type Environment = Record<string, string | undefined>;
 const REFRESH_URL = "https://auth.openai.com/oauth/token";
 const OAUTH_CLIENT_ID = "app_EMoamEEZ73f0CkXaXp7hrann";
-const DEFAULT_MODEL = "gpt-5.4-mini";
+const DEFAULT_MODEL = CHAT_AUTH_MODELS.openai.defaultId;
 const refreshInFlight = new Map<string, Promise<CodexSession>>();
 
 function responseText(value: unknown): string {
@@ -101,7 +103,7 @@ export async function consumeResponseStream(
 }
 
 async function refreshOnce(
-  session: CodexSession,
+  session: FileCodexSession,
   fetchImpl: typeof fetch,
   env: Environment,
   signal: AbortSignal,
@@ -121,7 +123,7 @@ async function refreshOnce(
   if (!response.ok) throw new ChatProviderError();
   const payload = await response.json() as { access_token?: unknown; refresh_token?: unknown };
   if (typeof payload.access_token !== "string" || !payload.access_token.trim()) throw new ChatProviderError();
-  const next: CodexSession = {
+  const next: FileCodexSession = {
     ...session,
     accessToken: payload.access_token.trim(),
     refreshToken: typeof payload.refresh_token === "string" && payload.refresh_token.trim()
@@ -142,6 +144,12 @@ async function refreshSession(
   env: Environment,
   signal: AbortSignal,
 ): Promise<CodexSession> {
+  if ("profileId" in session) {
+    const profile = await refreshedConnectionProfile(session.profileId, { fetchImpl, signal, forceIfAccessToken: session.accessToken });
+    const credential = profile?.connection.mode === "auth" ? profile.connection.credential : undefined;
+    if (!credential || credential.provider !== "openai") throw new ChatProviderError();
+    return storedCodexSession(session.profileId, credential);
+  }
   const existing = refreshInFlight.get(session.authFilePath);
   if (existing) return existing;
 

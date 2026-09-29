@@ -4,6 +4,9 @@ import { WebAuthProviderSchema, type WebAuthProvider } from "@/lib/ai-auth";
 import { AuthAttemptStatusSchema, type AuthAttemptStatus, type AuthAttemptView } from "@/lib/ai-auth-flow";
 import { ApiError } from "@/server/http";
 import type { AiAuthScope } from "./attempt-store";
+import { OpenAiCodeSchema } from "./openai";
+
+const ExchangeStateSchema = z.enum(["prepared", "in_flight"]);
 
 export const DevicePayloadSchema = z.object({
   kind: z.literal("device"),
@@ -13,12 +16,15 @@ export const DevicePayloadSchema = z.object({
   intervalSeconds: z.number().positive().max(3600),
   enterpriseDomain: z.string().optional(),
   githubToken: z.string().min(1).max(16_384).optional(),
+  openaiCode: OpenAiCodeSchema.optional(),
+  exchangeState: ExchangeStateSchema.optional(),
 }).strict();
 export const PkcePayloadSchema = z.object({
   kind: z.literal("pkce"),
   verifier: z.string().min(43).max(128),
   verificationUrl: z.string().url().max(8192),
   code: z.string().min(1).max(4096).optional(),
+  exchangeState: ExchangeStateSchema.optional(),
   intervalSeconds: z.number().positive().max(3600).optional(),
 }).strict();
 
@@ -53,10 +59,11 @@ export function authAttemptView(attempt: AuthAttemptRow, now: number): AuthAttem
     id: attempt.id, provider: attempt.provider, status: attempt.status, expiresAt: attempt.expires_at.getTime(),
   };
   if (attempt.status !== "pending") return base;
-  if (attempt.provider === "openrouter") {
+  if (attempt.provider === "openrouter" || attempt.provider === "google") {
     const payload = PkcePayloadSchema.parse(attempt.payload);
     return {
       ...base, verificationUrl: payload.verificationUrl,
+      ...(attempt.provider === "google" ? { requiresCode: !payload.code } : {}),
       retryAfterMs: Math.max(500, (attempt.next_poll_at?.getTime() ?? now + 2000) - now),
     };
   }

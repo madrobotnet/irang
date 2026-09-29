@@ -37,7 +37,6 @@ export async function resolveChatConnection(
       switch (input.provider) {
         case "openai":
         case "google":
-          return ChatConnectionSchema.parse(connection);
         case "github-copilot":
         case "openrouter":
         case "xai": {
@@ -47,6 +46,12 @@ export async function resolveChatConnection(
           const credential = authAttemptId
             ? await consumeAuthAttempt(context.client, { id: authAttemptId, provider: input.provider, scope: context.scope })
             : previousCredential;
+          // Existing file-backed profiles remain editable without replacing their
+          // legacy credential source. New profiles must complete browser auth.
+          if (!credential && !authAttemptId && (input.provider === "openai" || input.provider === "google")
+            && previous?.mode === "auth" && previous.provider === input.provider) {
+            return ChatConnectionSchema.parse(connection);
+          }
           if (!credential) throw new ApiError("validation", "제공자 로그인을 완료한 뒤 연결을 저장해 주세요.");
           if (credential?.provider === "github-copilot" && credential.enterpriseDomain !== input.enterpriseDomain) {
             throw new ApiError("validation", "로그인한 GitHub 기업 도메인과 설정이 다릅니다. 다시 연결해 주세요.");

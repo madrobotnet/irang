@@ -12,7 +12,7 @@ const defaults = {
   TYPESAFE_JEV_MODEL: "jev-latest",
   TYPESAFE_BASE_URL: "https://api.typesafe.ai",
   CODEX_HOME: "/app/.data/auth/codex",
-  CODEX_MODEL: "gpt-5.4-mini",
+  CODEX_MODEL: "gpt-6-sol",
   CODEX_CHATGPT_BASE_URL: "https://chatgpt.com/backend-api/codex",
   GEMINI_CLI_HOME: "/app/.data/auth/google",
 } as const;

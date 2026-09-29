@@ -162,9 +162,3 @@ export function aiSaveFailureMessage(error: unknown): string {
   if (error instanceof TypeError) return "서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.";
   return "AI 설정을 저장하지 못했습니다. 다시 시도해 주세요.";
 }
-
-/** Official server-side login commands; the app never accepts OAuth tokens or provider passwords. */
-export const AUTH_LOGIN_COMMANDS: Readonly<Record<"openai" | "google", string>> = {
-  openai: "docker compose exec app codex login --device-auth",
-  google: "docker compose exec -e NO_BROWSER=true app gemini",
-};

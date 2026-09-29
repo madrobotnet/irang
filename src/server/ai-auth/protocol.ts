@@ -15,6 +15,7 @@ import {
   startXaiDeviceAuthorization,
 } from "./xai";
 import { OAuthProtocolError } from "./http";
+import { refreshOpenAiCredential } from "./openai";
 
 function assertNever(value: never): never {
   throw new TypeError(`Unsupported OAuth provider: ${String(value)}`);
@@ -62,7 +63,10 @@ export async function refreshCredential(
     case "github-copilot":
       return refreshGitHubCopilotCredential(credential, options);
     case "openrouter":
+    case "google": // The official CLI refreshes its isolated file during chat.
       return credential;
+    case "openai":
+      return refreshOpenAiCredential(credential, options);
     case "xai":
       return refreshXaiCredential(credential, options);
     default:

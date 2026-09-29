@@ -7,6 +7,9 @@ import {
   type AiFormState,
 } from "./ai-form";
 
+const JEV_ATTEMPT = "33333333-3333-4333-8333-333333333333";
+const GOOGLE_ATTEMPT = "55555555-5555-4555-8555-555555555555";
+
 function settingsView(input: Pick<AiSettingsView, "chat" | "jev">): AiSettingsView {
   return {
     ...input,
@@ -159,7 +162,7 @@ describe("buildAiInput", () => {
         enabled: true,
         mode: "auth" as const,
         provider: "github-copilot" as const,
-        model: "gpt-5.4-mini",
+        model: "gpt-6-luna",
         enterpriseDomain: "github.example.com",
         consent: true,
       },
@@ -178,7 +181,7 @@ describe("buildAiInput", () => {
         chat: {
           mode: "auth",
           provider: "github-copilot",
-          model: "gpt-5.4-mini",
+          model: "gpt-6-luna",
           apiFormat: "chat-completions",
           enterpriseDomain: "github.example.com",
           authAttemptId: "11111111-1111-4111-8111-111111111111",
@@ -323,12 +326,15 @@ describe("existing provider form contracts", () => {
   test("auth mode carries no API key and rejects Claude", () => {
     const google: AiFormState = {
       ...enabledChat,
-      chat: { ...enabledChat.chat, mode: "auth", provider: "google", model: "gemini-2.5-flash", apiKey: "" },
+      chat: {
+        ...enabledChat.chat, mode: "auth", provider: "google", model: "gemini-3.5-flash", apiKey: "",
+        authAttemptId: GOOGLE_ATTEMPT,
+      },
     };
     expect(buildAiInput(google, null)).toEqual({
       ok: true,
       input: {
-        chat: { mode: "auth", provider: "google", model: "gemini-2.5-flash" },
+        chat: { mode: "auth", provider: "google", model: "gemini-3.5-flash", authAttemptId: GOOGLE_ATTEMPT },
         chatConsent: true, jev: null, jevConsent: false,
       },
     });
@@ -341,6 +347,42 @@ describe("existing provider form contracts", () => {
     const result = buildAiInput({ ...enabledChat, chat: { ...enabledChat.chat, model: "   " } }, null);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.errors["chat.model"]).toBeString();
+  });
+
+  test("Auth accepts listed models and the unchanged saved model, never other text", () => {
+    const auth: AiFormState = {
+      ...base,
+      chat: { ...base.chat, enabled: true, mode: "auth", provider: "google", model: "typed-model", consent: true },
+      jev: { ...base.jev, enabled: true, mode: "auth", provider: "openrouter", model: "typed/jev", authAttemptId: JEV_ATTEMPT, consent: true },
+    };
+    const unlisted = buildAiInput(auth, null);
+    expect(unlisted.ok).toBe(false);
+    if (!unlisted.ok) {
+      expect(unlisted.errors["chat.model"]).toBeString();
+      expect(unlisted.errors["jev.model"]).toBeString();
+    }
+
+    const saved = settingsView({
+      chat: { provider: "google", mode: "auth", model: "gemini-2.5-flash", hasApiKey: false },
+      jev: { provider: "openrouter", mode: "auth", model: "~typesafe/jev-1.0", hasApiKey: false, hasCredential: true },
+    });
+    const retained = buildAiInput({
+      chat: { ...auth.chat, model: "gemini-2.5-flash" },
+      jev: { ...auth.jev, model: "~typesafe/jev-1.0", authAttemptId: undefined },
+    }, saved);
+    expect(retained).toMatchObject({
+      ok: true,
+      input: { chat: { model: "gemini-2.5-flash" }, jev: { model: "~typesafe/jev-1.0" } },
+    });
+
+    const otherProvider = buildAiInput({ ...auth, chat: { ...auth.chat, provider: "xai", model: "gemini-2.5-flash" } }, saved);
+    expect(otherProvider.ok).toBe(false);
+    if (!otherProvider.ok) expect(otherProvider.errors["chat.model"]).toBeString();
+  });
+
+  test("API mode keeps free-text model IDs", () => {
+    expect(buildAiInput({ ...enabledChat, chat: { ...enabledChat.chat, model: "claude-private-preview" } }, null))
+      .toMatchObject({ ok: true, input: { chat: { mode: "api", model: "claude-private-preview" } } });
   });
 
   test("keeps TypeSafe and OpenRouter API choices separate", () => {

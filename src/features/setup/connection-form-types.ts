@@ -9,6 +9,8 @@ export type ChatFormState = {
   readonly mode: "api" | "auth";
   readonly provider: AiProvider;
   readonly model: string;
+  /** Model last used in the other API/Auth mode during this edit; restored on switching back. */
+  readonly otherModeModel?: string;
   readonly apiKey: string;
   readonly keyless: boolean;
   readonly baseUrl: string;
@@ -27,6 +29,8 @@ export type JevFormState = {
   readonly mode: "api" | "auth";
   readonly provider: JevProvider;
   readonly model: string;
+  /** Model last used in the other API/Auth mode during this edit; restored on switching back. */
+  readonly otherModeModel?: string;
   readonly apiKey: string;
   readonly authAttemptId?: string;
   readonly consent: boolean;

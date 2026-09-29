@@ -1,7 +1,8 @@
 import type { AiProvider } from "@/lib/ai-settings";
 import { aiSelection } from "@/server/setup/ai-profile-store";
 import { refreshedConnectionProfile } from "@/server/ai-auth/refresh";
-import { loadCodexAuth } from "./auth";
+import { createGoogleProfileProvider } from "@/server/ai-auth/google-profile";
+import { loadCodexAuth, storedCodexSession } from "./auth";
 import { createApiProvider } from "./api-provider";
 import { getCliAuthReadiness } from "./cli-auth";
 import { createCliProvider } from "./cli-provider";
@@ -52,12 +53,17 @@ export async function configuredChatProvider(): Promise<ChatProvider | null> {
     case "auth":
       switch (connection.provider) {
         case "openai": {
+          if (connection.credential?.provider === "openai") {
+            return createCodexProvider(storedCodexSession(profile.id, connection.credential),
+              { env: { ...process.env, CODEX_MODEL: connection.model } });
+          }
           const auth = await loadCodexAuth();
           return auth.kind === "chatgpt"
             ? createCodexProvider(auth, { env: { ...process.env, CODEX_MODEL: connection.model } })
             : null;
         }
         case "google": {
+          if (connection.credential?.provider === "google") return createGoogleProfileProvider(profile.id);
           const status = await getCliAuthReadiness("google");
           return status.available ? createCliProvider({ provider: "google", model: connection.model }) : null;
         }

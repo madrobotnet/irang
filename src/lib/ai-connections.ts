@@ -53,9 +53,6 @@ function validateAuth(
   if ("credential" in input && input.credential && input.credential.provider !== input.provider) {
     context.addIssue({ code: "custom", path: ["credential"], message: "제공자 인증 정보가 일치하지 않습니다." });
   }
-  if ("authAttemptId" in input && input.authAttemptId && ["openai", "google"].includes(input.provider)) {
-    context.addIssue({ code: "custom", path: ["authAttemptId"], message: "이 제공자는 서버 CLI 로그인을 사용합니다." });
-  }
 }
 
 export const ChatInputSchema = z.discriminatedUnion("mode", [

@@ -13,6 +13,8 @@ import {
   ModelSchema,
 } from "@/lib/ai-provider-options";
 import { isCustomProvider } from "@/lib/ai-providers";
+import { chatAuthModels, JEV_AUTH_MODELS } from "@/lib/ai-model-catalog";
+import { isSelectableAuthModel, savedModelFor } from "./model-choice";
 import type {
   BuildConnectionResult,
   ChatFormState,
@@ -118,6 +120,8 @@ function parseModel(model: string, errors: ConnectionErrors): string | null {
   return result.data;
 }
 
+const AUTH_MODEL_ERROR = "목록에서 사용할 모델을 선택해 주세요.";
+
 function parseHeaders(value: string, errors: ConnectionErrors): Record<string, string> | null {
   let parsed: unknown;
   try {
@@ -146,9 +150,15 @@ export function buildChatConnection(
     const unchanged = saved?.mode === "auth"
       && saved.provider === state.provider
       && (saved.enterpriseDomain ?? "") === enterpriseDomain;
-    const webAuth = state.provider === "github-copilot" || state.provider === "openrouter" || state.provider === "xai";
+    // Existing OpenAI/Google profiles may use the server's CLI login file; the server keeps it.
+    const legacyFileAuth = state.provider === "openai" || state.provider === "google";
+    const keepsSavedLogin = unchanged && (Boolean(saved?.hasCredential) || legacyFileAuth);
     if (!isAuthProvider(state.provider)) errors.provider = "이 제공자는 API 키 연결만 지원해요.";
-    if (webAuth && !state.authAttemptId && !(unchanged && saved?.hasCredential)) {
+    const catalog = chatAuthModels(state.provider);
+    if (model && catalog && !isSelectableAuthModel(catalog, model, savedModelFor(saved, state.provider, "auth"))) {
+      errors.model = AUTH_MODEL_ERROR;
+    }
+    if (isAuthProvider(state.provider) && !state.authAttemptId && !keepsSavedLogin) {
       errors.auth = "브라우저 로그인을 완료해 주세요.";
     }
     if (Object.keys(errors).length > 0 || !model || !isAuthProvider(state.provider)) return { ok: false, errors };
@@ -217,6 +227,9 @@ export function buildJevConnection(
   if (state.mode === "auth") {
     const unchanged = saved?.mode === "auth" && saved.provider === "openrouter";
     if (state.provider !== "openrouter") errors.provider = "TypeSafe는 API 키 연결만 지원해요.";
+    if (model && !isSelectableAuthModel(JEV_AUTH_MODELS.openrouter, model, savedModelFor(saved, "openrouter", "auth"))) {
+      errors.model = AUTH_MODEL_ERROR;
+    }
     if (!state.authAttemptId && !(unchanged && saved?.hasCredential)) errors.auth = "OpenRouter 로그인을 완료해 주세요.";
     if (Object.keys(errors).length > 0 || !model) return { ok: false, errors };
     return {

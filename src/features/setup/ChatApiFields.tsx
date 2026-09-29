@@ -3,7 +3,9 @@
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
 import { ApiFormatSchema } from "@/lib/ai-provider-options";
+import { chatAuthModels } from "@/lib/ai-model-catalog";
 import { FieldError, SecretInput } from "./AiFieldControls";
+import { AuthModelSelect } from "./AuthModelSelect";
 import type { AiFormErrors } from "./ai-form";
 import type { ChatFormState, HeaderAction } from "./connection-form";
 
@@ -12,27 +14,49 @@ function headerAction(value: string): HeaderAction {
   return "retain";
 }
 
-export function ChatModelField({ idPrefix, chat, setChatAction, error }: {
+export function ChatModelField({ idPrefix, chat, savedAuthModel, setChatAction, error }: {
   readonly idPrefix: string;
   readonly chat: ChatFormState;
+  readonly savedAuthModel: string | null;
   readonly setChatAction: (patch: Partial<ChatFormState>) => void;
   readonly error?: string;
 }) {
+  const id = `${idPrefix}-chat-model`;
+  const describedBy = error ? `${id}-error` : `${id}-hint`;
+  const catalog = chat.mode === "auth" ? chatAuthModels(chat.provider) : null;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={`${idPrefix}-chat-model`} className="text-sm font-medium">사용할 모델</label>
-      <input
-        id={`${idPrefix}-chat-model`}
-        value={chat.model}
-        onChange={(event) => setChatAction({ model: event.target.value })}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${idPrefix}-chat-model-error` : `${idPrefix}-chat-model-hint`}
-        autoComplete="off"
-        spellCheck={false}
-        className={inputClassName}
-      />
-      <FieldError id={`${idPrefix}-chat-model-error`} message={error} />
-      {!error ? <p id={`${idPrefix}-chat-model-hint`} className="text-sm text-mute">모델 ID를 직접 입력하세요. 구독 Auth와 유료 API의 모델 권한은 서로 달라요.</p> : null}
+      <label htmlFor={id} className="text-sm font-medium">사용할 모델</label>
+      {catalog ? (
+        <AuthModelSelect
+          id={id}
+          value={chat.model}
+          catalog={catalog}
+          savedModel={savedAuthModel}
+          error={error}
+          describedBy={describedBy}
+          onChangeAction={(model) => setChatAction({ model })}
+        />
+      ) : (
+        <input
+          id={id}
+          value={chat.model}
+          onChange={(event) => setChatAction({ model: event.target.value })}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          autoComplete="off"
+          spellCheck={false}
+          className={inputClassName}
+        />
+      )}
+      <FieldError id={`${id}-error`} message={error} />
+      {!error ? (
+        <p id={`${id}-hint`} className="text-pretty text-sm text-mute">
+          {catalog
+            ? "최신 모델부터 보여요. 계정이나 요금제에 따라 쓸 수 없는 모델도 있어요."
+            : "모델 ID를 직접 입력하세요. 구독 Auth와 유료 API의 모델 권한은 서로 달라요."}
+        </p>
+      ) : null}
     </div>
   );
 }

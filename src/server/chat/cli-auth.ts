@@ -1,8 +1,39 @@
 import { constants } from "node:fs";
-import { access, realpath, stat } from "node:fs/promises";
+import { access, lstat, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { z } from "zod";
+import { GoogleCredentialSchema, type GoogleCredential } from "@/lib/ai-auth";
 
 export type CliAuthProvider = "google";
+export type CliStoredSession = {
+  readonly credential: GoogleCredential;
+  readonly persist: (credential: GoogleCredential) => Promise<void>;
+};
+
+export async function stageCliCredential(file: string, credential: GoogleCredential): Promise<void> {
+  await writeFile(file, JSON.stringify({
+    access_token: credential.accessToken, refresh_token: credential.refreshToken, expiry_date: credential.expiresAt,
+    id_token: credential.idToken, scope: credential.scope, token_type: credential.tokenType ?? "Bearer",
+  }), { mode: 0o600 });
+}
+
+/** Read only the bounded isolated credential file after the child has exited.
+ * Google may omit refresh_token on rotation; retain the saved refresh grant. */
+export async function collectCliCredential(file: string, session: CliStoredSession): Promise<void> {
+  const info = await lstat(file);
+  if (!info.isFile() || info.size > 64 * 1024) throw new TypeError("Invalid CLI credential file");
+  const tokens = z.object({
+    access_token: z.string(), refresh_token: z.string().optional(), expiry_date: z.number(),
+    id_token: z.string().optional(), scope: z.string().optional(), token_type: z.string().optional(),
+  }).parse(JSON.parse(await readFile(file, "utf8")));
+  const previous = session.credential;
+  const next = GoogleCredentialSchema.parse({
+    provider: "google", accessToken: tokens.access_token, refreshToken: tokens.refresh_token ?? previous.refreshToken,
+    expiresAt: tokens.expiry_date, idToken: tokens.id_token ?? previous.idToken,
+    scope: tokens.scope ?? previous.scope, tokenType: tokens.token_type ?? previous.tokenType,
+  });
+  if (JSON.stringify(next) !== JSON.stringify(previous)) await session.persist(next);
+}
 export type CliEnvironment = Readonly<Record<string, string | undefined>>;
 export type CliAuthReadiness = {
   readonly provider: CliAuthProvider;

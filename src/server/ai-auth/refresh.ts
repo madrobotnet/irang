@@ -8,7 +8,7 @@ import { OAuthProtocolError, refreshCredential } from "./protocol";
 /** Serialize refresh with edits/deletion and re-read before replacing credentials. */
 export async function refreshedConnectionProfile(
   id: string,
-  options: AuthProtocolOptions = {},
+  options: AuthProtocolOptions & { readonly forceIfAccessToken?: string } = {},
 ): Promise<ConnectionProfile | null> {
   return tx(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [AI_SETTINGS_LOCK]);
@@ -22,8 +22,10 @@ export async function refreshedConnectionProfile(
     const profile = ConnectionProfileSchema.parse(row);
     if (profile.connection.mode !== "auth") return profile;
     const credential = profile.connection.credential;
-    if (!credential || credential.provider === "openrouter" || credential.expiresAt === undefined
-      || credential.expiresAt > (options.now ?? Date.now)() + 60_000) return profile;
+    if (!credential || credential.provider === "openrouter" || credential.provider === "google") return profile;
+    const force = options.forceIfAccessToken !== undefined && credential.accessToken === options.forceIfAccessToken;
+    if (!force && (credential.expiresAt === undefined
+      || credential.expiresAt > (options.now ?? Date.now)() + 60_000)) return profile;
     try {
       const refreshed = await refreshCredential(credential, options);
       const updated = ConnectionProfileSchema.parse({

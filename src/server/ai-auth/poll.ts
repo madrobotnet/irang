@@ -5,13 +5,14 @@ import type { AiAuthScope } from "./attempt-store";
 import { authAttemptView, DevicePayloadSchema, lockedAuthAttempt, requireAttemptScope } from "./attempt-data";
 import { OAuthProtocolError, pollDeviceAuthorization } from "./protocol";
 import { exchangeOpenRouterAttempt } from "./openrouter-attempt";
+import { completeCodeExchange, prepareCodeExchange, type CodeExchangeClaim } from "./code-attempt";
 
 export async function pollAuthAttempt(
   id: string,
   scope: AiAuthScope,
   options: AuthProtocolOptions = {},
 ): Promise<AuthAttemptView> {
-  return tx(async (client) => {
+  const result = await tx<AuthAttemptView | CodeExchangeClaim>(async (client) => {
     const attempt = await lockedAuthAttempt(client, id);
     requireAttemptScope(attempt, scope);
     const now = (options.now ?? Date.now)();
@@ -23,6 +24,7 @@ export async function pollAuthAttempt(
       return authAttemptView(attempt, now);
     }
     if (attempt.provider === "openrouter") return exchangeOpenRouterAttempt(client, attempt, options);
+    if (attempt.provider === "google" || attempt.provider === "openai") return prepareCodeExchange(client, attempt, options);
     const payload = DevicePayloadSchema.parse(attempt.payload);
     try {
       const result = await pollDeviceAuthorization(attempt.provider, payload.deviceCode, {
@@ -65,6 +67,7 @@ export async function pollAuthAttempt(
       return { id, provider: attempt.provider, status: "failed", expiresAt: attempt.expires_at.getTime() };
     }
   });
+  return "attempt" in result ? completeCodeExchange(result, options) : result;
 }
 
 export async function cancelAuthAttempt(id: string, scope: AiAuthScope): Promise<void> {

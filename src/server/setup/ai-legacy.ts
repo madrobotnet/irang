@@ -1,9 +1,10 @@
 import type { ChatConnection, JevConnection } from "@/lib/ai-settings";
+import { CHAT_AUTH_MODELS } from "@/lib/ai-model-catalog";
 import { loadCodexAuth } from "@/server/chat/auth";
 
 export async function legacyChatConnection(): Promise<ChatConnection | null> {
   return (await loadCodexAuth()).kind === "chatgpt"
-    ? { mode: "auth", provider: "openai", model: process.env.CODEX_MODEL?.trim() || "gpt-5.4-mini" }
+    ? { mode: "auth", provider: "openai", model: process.env.CODEX_MODEL?.trim() || CHAT_AUTH_MODELS.openai.defaultId }
     : null;
 }
 

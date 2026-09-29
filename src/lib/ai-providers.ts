@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const AI_PROVIDERS = [
-  { id: "openai", name: "ChatGPT / OpenAI", model: "gpt-5.4-mini", supportsAuth: true },
-  { id: "anthropic", name: "Claude", model: "claude-sonnet-4-6", supportsAuth: false },
-  { id: "google", name: "Gemini", model: "gemini-2.5-flash", supportsAuth: true },
-  { id: "github-copilot", name: "GitHub Copilot", model: "gpt-5.4-mini", supportsAuth: true },
-  { id: "openrouter", name: "OpenRouter", model: "openai/gpt-5.4-mini", supportsAuth: true },
-  { id: "xai", name: "xAI / Grok", model: "grok-4.3", supportsAuth: true },
+  { id: "openai", name: "ChatGPT / OpenAI", model: "gpt-6-sol", supportsAuth: true },
+  { id: "anthropic", name: "Claude", model: "claude-sonnet-5-5", supportsAuth: false },
+  { id: "google", name: "Gemini", model: "gemini-3.8-flash", supportsAuth: true },
+  { id: "github-copilot", name: "GitHub Copilot", model: "gpt-6-luna", supportsAuth: true },
+  { id: "openrouter", name: "OpenRouter", model: "openai/gpt-6-sol", supportsAuth: true },
+  { id: "xai", name: "xAI / Grok", model: "grok-4.7", supportsAuth: true },
   { id: "openai-compatible", name: "OpenAI Compatible", model: "", supportsAuth: false },
   { id: "anthropic-compatible", name: "Anthropic Compatible", model: "", supportsAuth: false },
 ] as const;

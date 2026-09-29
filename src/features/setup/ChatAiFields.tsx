@@ -3,14 +3,15 @@
 import { AI_PROVIDERS, AiProviderSchema } from "@/lib/ai-settings";
 import type { WebAuthProvider } from "@/lib/ai-auth";
 import { isCustomProvider } from "@/lib/ai-providers";
+import { chatAuthModels } from "@/lib/ai-model-catalog";
 import { Badge } from "@/components/ui/Badge";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
 import { AiAuthPanel, abandonAuthAttempt } from "./AiAuthPanel";
 import { ConsentRow, FieldError } from "./AiFieldControls";
 import { ChatApiFields, ChatApiFormatField, ChatModelField } from "./ChatApiFields";
+import { modelForMode, modelForProvider, savedModelFor } from "./model-choice";
 import {
-  AUTH_LOGIN_COMMANDS,
   chatProviderInfo,
   type AiConnectionStatus,
   type AiFormErrors,
@@ -19,7 +20,8 @@ import {
 } from "./ai-form";
 
 function selectedWebAuthProvider(provider: ChatFormState["provider"]): WebAuthProvider | null {
-  if (provider === "github-copilot" || provider === "openrouter" || provider === "xai") return provider;
+  if (provider === "openai" || provider === "google" || provider === "github-copilot"
+    || provider === "openrouter" || provider === "xai") return provider;
   return null;
 }
 
@@ -51,9 +53,13 @@ export function ChatAiFields({
     && (saved.chat.baseUrl ?? "") === chat.baseUrl.trim()
     && saved.chat.hasApiKey;
   const setChat = (patch: Partial<ChatFormState>) => onChangeAction({ ...chat, ...patch });
-  const authProvider = chat.provider === "openai" || chat.provider === "google" ? chat.provider : null;
+  const savedChat = saved?.chat ?? null;
+  const switchMode = (mode: ChatFormState["mode"]) => modelForMode(chat, mode, savedChat, chatAuthModels(chat.provider));
   const webAuthProvider = selectedWebAuthProvider(chat.provider);
   const status = connections?.find((entry) => entry.provider === chat.provider);
+  // Existing OpenAI/Google profiles may rely on the server's CLI login file instead of a stored credential.
+  const legacyFileAuth = (chat.provider === "openai" || chat.provider === "google")
+    && saved?.chat?.mode === "auth" && saved.chat.provider === chat.provider && !saved.chat.hasCredential;
   const abandonReadyAttempt = () => {
     if (!chat.authAttemptId) return;
     void abandonAuthAttempt(chat.authAttemptId, setupToken ? { setupToken } : {})
@@ -120,9 +126,13 @@ export function ChatAiFields({
                   abandonReadyAttempt();
                   const provider = AiProviderSchema.parse(event.target.value);
                   const next = chatProviderInfo(provider);
+                  const mode = next.supportsAuth ? chat.mode : "api";
                   setChat({
                     provider,
-                    model: next.model,
+                    model: modelForProvider({
+                      provider, mode, saved: savedChat, catalog: chatAuthModels(provider), apiDefault: next.model,
+                    }),
+                    otherModeModel: undefined,
                     apiKey: "",
                     keyless: false,
                     baseUrl: "",
@@ -132,7 +142,7 @@ export function ChatAiFields({
                     authAttemptId: undefined,
                     apiFormat: provider === "github-copilot" ? "responses"
                       : provider === "anthropic-compatible" ? "anthropic-messages" : "chat-completions",
-                    mode: next.supportsAuth ? chat.mode : "api",
+                    mode,
                     consent: false,
                   });
                 }}
@@ -155,7 +165,7 @@ export function ChatAiFields({
                     checked={chat.mode === "api"}
                     onChange={() => {
                       abandonReadyAttempt();
-                      setChat({ mode: "api", authAttemptId: undefined, consent: false });
+                      setChat({ mode: "api", authAttemptId: undefined, consent: false, ...switchMode("api") });
                     }}
                     className="size-4 accent-accent"
                   />
@@ -168,7 +178,7 @@ export function ChatAiFields({
                       name={`${idPrefix}-chat-mode`}
                       value="auth"
                       checked={chat.mode === "auth"}
-                      onChange={() => setChat({ mode: "auth", apiKey: "", keyless: false, consent: false })}
+                      onChange={() => setChat({ mode: "auth", apiKey: "", keyless: false, consent: false, ...switchMode("auth") })}
                       className="size-4 accent-accent"
                     />
                     Auth
@@ -177,22 +187,30 @@ export function ChatAiFields({
               </div>
             </fieldset>
           </div>
-          <ChatModelField idPrefix={idPrefix} chat={chat} setChatAction={setChat} error={errors["chat.model"]} />
+          <ChatModelField
+            idPrefix={idPrefix}
+            chat={chat}
+            savedAuthModel={savedModelFor(savedChat, chat.provider, "auth")}
+            setChatAction={setChat}
+            error={errors["chat.model"]}
+          />
           {chat.mode === "api" ? (
             <ChatApiFields idPrefix={idPrefix} chat={chat} setChatAction={setChat} retained={retained} custom={custom} errors={errors} disabled={disabled} />
-          ) : authProvider ? (
-            <div className="rounded-ctl border border-line bg-desk px-3 py-3 text-sm">
-              <p className="text-pretty">앱에 제공자 비밀번호나 OAuth 토큰을 입력하지 않아요. 서버에서 공식 CLI로 로그인해 주세요.</p>
-              <code className="mt-2 block whitespace-pre-wrap rounded-ctl bg-card px-2 py-1 font-mono text-xs">{AUTH_LOGIN_COMMANDS[authProvider]}</code>
-              {status ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge tone={status.available ? "ok" : "warn"}>{status.available ? "로그인 파일 확인됨" : "로그인 필요"}</Badge>
-                  <p className="text-pretty text-mute">{status.detail}</p>
-                </div>
-              ) : <p className="mt-2 text-mute">실제 계정 유효성과 모델 사용 권한은 첫 요청에서 확인돼요.</p>}
-            </div>
           ) : webAuthProvider ? (
             <>
+              {legacyFileAuth ? (
+                <div className="flex flex-col gap-1.5 text-sm">
+                  <p className="text-pretty text-mute">
+                    서버의 기존 CLI 로그인을 계속 사용해요. 아래에서 다시 로그인하면 이 연결에 저장된 로그인으로 바뀌어요.
+                  </p>
+                  {status ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={status.available ? "ok" : "warn"}>{status.available ? "로그인 파일 확인됨" : "로그인 필요"}</Badge>
+                      <p className="text-pretty text-mute">{status.detail}</p>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
               {webAuthProvider === "github-copilot" ? (
                 <ChatApiFormatField idPrefix={idPrefix} chat={chat} setChatAction={setChat} />
               ) : null}
@@ -236,7 +254,7 @@ export function ChatAiFields({
             id={`${idPrefix}-chat-consent`}
             checked={chat.consent}
             disabled={disabled}
-          onChangeAction={(consent) => setChat({ consent })}
+            onChangeAction={(consent) => setChat({ consent })}
             error={errors["chat.consent"]}
           >
             질문, 최근 대화 기록, 관련 노트 일부를 선택한 제공자에게 보내는 데 동의합니다.

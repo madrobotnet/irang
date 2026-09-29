@@ -14,6 +14,13 @@ afterAll(closeDb);
 
 const cases: ReadonlyArray<{ credential: OAuthCredential; url: string; stream: string }> = [
   {
+    credential: { provider: "openai", accessToken: "codex-profile-access", refreshToken: "codex-profile-refresh",
+      accountId: "profile-account", expiresAt: Date.now() + 3_600_000 },
+    url: "https://chatgpt.com/backend-api/codex/responses",
+    stream: 'data: {"type":"response.output_text.delta","delta":"auth-response"}\n\n'
+      + 'data: {"type":"response.completed","response":{}}\n\n',
+  },
+  {
     credential: {
       provider: "github-copilot", accessToken: "copilot-access", refreshToken: "github-refresh",
       baseUrl: "https://api.business.githubcopilot.com", expiresAt: Date.now() + 3_600_000,

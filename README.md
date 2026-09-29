@@ -89,20 +89,26 @@ INSECURE_COOKIES=1 docker compose up -d --build
 
 | 제공자 · 용도 | 연결 방식 · 모델 예시 |
 | --- | --- |
-| OpenAI · 채팅 | API / ChatGPT Auth<br>`gpt-5.4-mini` |
-| Claude · 채팅 | API<br>`claude-sonnet-4-6` |
-| Gemini · 채팅 | API / Gemini CLI Auth<br>`gemini-2.5-flash` |
-| GitHub Copilot · 채팅 | Copilot API 토큰 / GitHub 기기 로그인<br>`gpt-5.4-mini` |
-| OpenRouter · 채팅 | API / 브라우저 계정 연결<br>`openai/gpt-5.4-mini` |
-| xAI · 채팅 | API / 계정 기기 로그인<br>`grok-4.3` |
+| OpenAI · 채팅 | API / ChatGPT 기기 코드 인증<br>`gpt-6-sol` |
+| Claude · 채팅 | API<br>`claude-sonnet-5-5` |
+| Gemini · 채팅 | API / Google 브라우저 인증코드<br>API `gemini-3.8-flash` · Auth `gemini-3.5-flash` |
+| GitHub Copilot · 채팅 | Copilot API 토큰 / GitHub 기기 로그인<br>`gpt-6-luna` |
+| OpenRouter · 채팅 | API / 브라우저 계정 연결<br>`openai/gpt-6-sol` |
+| xAI · 채팅 | API / 계정 기기 로그인<br>`grok-4.7` |
 | OpenAI Compatible · 채팅 | 사용자 지정 URL·API 키·모델<br>Chat Completions / Responses |
 | Anthropic Compatible · 채팅 | 사용자 지정 URL·API 키·모델<br>Messages |
 | TypeSafe · Jev | API<br>`jev-latest` |
 | OpenRouter · Jev | API / 브라우저 계정 연결<br>`~typesafe/jev-latest` |
 
-ChatGPT와 Gemini Auth는 공식 CLI를, Copilot·OpenRouter·xAI는 앱에서 시작하는
-브라우저 로그인을 사용합니다. Claude는 API만 지원합니다. OpenRouter 계정 연결은
-API 키를 발급하는 방식이며 구독 이용권을 가져오는 기능이 아닙니다.
+Auth 연결은 앱에서 시작합니다. ChatGPT는 표시된 기기 코드를 제공자 페이지에
+입력하고, Gemini는 Google 로그인 후 받은 인증 코드를 앱에 붙여넣습니다.
+Gemini의 인증 방식은 Device Code가 아니며, 채팅 실행에는 공식 Gemini CLI를
+사용합니다. Claude는 API만 지원합니다. OpenRouter 계정 연결은 API 키를 발급하는
+방식이며 구독 이용권을 가져오는 기능이 아닙니다.
+
+Auth의 모델은 제공자별 최신순 드롭다운에서 선택합니다. API는 추천값을 제공하되
+모델명을 직접 입력할 수 있습니다. 추천 목록은 2026-09-29 공식 문서와 모델
+카탈로그를 기준으로 하며, 저장된 기존 모델명은 자동으로 바꾸지 않습니다.
 
 커스텀 연결은 추가 헤더와 출력 토큰 한도도 설정할 수 있습니다. 키가 필요 없는
 로컬 서버도 지원합니다. Docker 안의 `localhost`는 호스트가 아닌 앱 컨테이너를

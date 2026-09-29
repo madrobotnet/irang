@@ -4,12 +4,13 @@ import path from "node:path";
 import { z } from "zod";
 import { ChatProviderError, type ChatProvider, type ProviderInput } from "./provider";
 import {
-  cliCredentialFile, cliSearchPath, findCliBinary,
-  type CliAuthProvider, type CliEnvironment,
+  cliCredentialFile, cliSearchPath, collectCliCredential, findCliBinary, stageCliCredential,
+  type CliAuthProvider, type CliEnvironment, type CliStoredSession,
 } from "./cli-auth";
 
 export type CliProviderOptions = {
   readonly env?: CliEnvironment;
+  readonly session?: CliStoredSession;
   readonly timeoutMs?: number;
   /** Lower limits may be supplied by deterministic subprocess tests. */
   readonly maxOutputBytes?: number;
@@ -87,13 +88,14 @@ export function createCliProvider(
   return {
     async stream(request, onDelta, signal) {
       let root: string | undefined;
+      let stagedCredential: string | undefined;
       try {
         if (signal.aborted) throw new ChatProviderError();
         const text = inputText(request);
         if (Buffer.byteLength(text) > maxInputBytes) throw new ChatProviderError();
-        const credential = await cliCredentialFile(env);
+        const credential = options.session ? undefined : await cliCredentialFile(env);
         const binary = options.fixtureCommand?.runtime ?? await findCliBinary(env);
-        if (!credential || !binary) throw new ChatProviderError();
+        if ((!options.session && !credential) || !binary) throw new ChatProviderError();
 
         // Fixed /tmp rather than app-controlled TMPDIR; each run has an empty cwd
         // and a private HOME so CLI startup cannot discover repository/user config.
@@ -103,10 +105,14 @@ export function createCliProvider(
         const config = path.join(home, ".gemini");
         await mkdir(cwd);
         await mkdir(config, { recursive: true });
-        // No credential contents are collected or copied. Gemini 0.61.0's
-        // oauth2.ts cacheCredentials uses writeFile, preserving this symlink when
-        // the OFFICIAL CLI refreshes during an actual user chat.
-        await symlink(credential, path.join(config, "oauth_creds.json"));
+        const authFile = path.join(config, "oauth_creds.json");
+        if (options.session) {
+          await stageCliCredential(authFile, options.session.credential);
+          stagedCredential = authFile;
+        } else if (credential) {
+          // Preserve legacy write-through refresh to the explicitly injected root.
+          await symlink(credential, authFile);
+        }
         const settingsPath = path.join(root, "settings.json");
         const policyPath = path.join(root, "deny.toml");
         await writeFile(settingsPath, JSON.stringify(settings), { mode: 0o600 });
@@ -239,7 +245,15 @@ export function createCliProvider(
         if (error instanceof ChatProviderError) throw error;
         throw new ChatProviderError();
       } finally {
-        if (root) await rm(root, { recursive: true, force: true }).catch(() => { throw new ChatProviderError(); });
+        try {
+          // Token refresh can succeed even when generation is cancelled or fails.
+          if (stagedCredential && options.session) await collectCliCredential(stagedCredential, options.session);
+        } catch (error) {
+          if (error instanceof Error) throw new ChatProviderError();
+          throw error;
+        } finally {
+          if (root) await rm(root, { recursive: true, force: true }).catch(() => { throw new ChatProviderError(); });
+        }
       }
     },
   };

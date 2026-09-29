@@ -16,6 +16,11 @@ export const AuthStartInputSchema = AuthScopeInputSchema.extend({
 });
 export type AuthStartInput = z.infer<typeof AuthStartInputSchema>;
 
+// Accept the displayed Google authorization code, never a callback URL.
+export const AuthCodeInputSchema = AuthScopeInputSchema.extend({
+  code: z.string().trim().min(1).max(4096).regex(/^[A-Za-z0-9._~+/-]+$/),
+}).strict();
+
 export const AuthAttemptStatusSchema = z.enum(["starting", "pending", "ready", "denied", "expired", "failed"]);
 export type AuthAttemptStatus = z.infer<typeof AuthAttemptStatusSchema>;
 export type AuthAttemptView = {
@@ -25,5 +30,6 @@ export type AuthAttemptView = {
   readonly expiresAt: number;
   readonly verificationUrl?: string;
   readonly userCode?: string;
+  readonly requiresCode?: boolean;
   readonly retryAfterMs?: number;
 };

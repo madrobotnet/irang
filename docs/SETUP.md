@@ -256,7 +256,7 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 | `TYPESAFE_JEV_MODEL` | Jev (legacy fallback) | `jev-latest` | Jev model for the env-key fallback |
 | `TYPESAFE_BASE_URL` | Jev (legacy fallback) | `https://api.typesafe.ai` | Legacy SDK endpoint; the UI can retain keys only for `https://api.typesafe.ai` or `https://openrouter.ai/api` |
 | `CODEX_HOME` | Codex ChatGPT auth | `~/.codex` locally; `/app/.data/auth/codex` in Docker | Directory holding Codex `auth.json` |
-| `CODEX_MODEL` | chat (env fallback / default) | `gpt-5.4-mini` | Chat model when using the Codex ChatGPT login |
+| `CODEX_MODEL` | chat (env fallback / default) | `gpt-6-sol` | Chat model when using the Codex ChatGPT login |
 | `CODEX_CHATGPT_BASE_URL` | Codex ChatGPT transport | `https://chatgpt.com/backend-api/codex` | Operator-controlled Codex backend endpoint |
 | `GEMINI_CLI_HOME` | Gemini CLI auth | unset locally (Google CLI login unavailable); `/app/.data/auth/google` in Docker | Directory the Gemini CLI keeps its OAuth credentials in; must be an absolute path |
 
@@ -272,20 +272,36 @@ stored credentials and disables it if it was active.
 
 ### Chat AI
 
-| Provider | API-key mode | Account-login mode | Default model (editable) |
+| Provider | API-key mode | Account-login mode | Recommended new model |
 | --- | --- | --- | --- |
-| ChatGPT / OpenAI | yes | yes — Codex CLI with ChatGPT login | `gpt-5.4-mini` |
-| Claude (Anthropic) | yes | **no** — API key only | `claude-sonnet-4-6` |
-| Gemini | yes | yes — Gemini CLI with Google OAuth | `gemini-2.5-flash` |
-| GitHub Copilot | Copilot API token | GitHub device authorization | `gpt-5.4-mini` |
-| OpenRouter | yes | browser PKCE authorization | `openai/gpt-5.4-mini` |
-| xAI / Grok | yes | xAI device authorization | `grok-4.3` |
+| ChatGPT / OpenAI | yes | in-app ChatGPT device authorization | `gpt-6-sol` |
+| Claude (Anthropic) | yes | **no** — API key only | `claude-sonnet-5-5` |
+| Gemini | yes | in-app Google browser authorization code | API: `gemini-3.8-flash`; Auth: `gemini-3.5-flash` |
+| GitHub Copilot | Copilot API token | GitHub device authorization | `gpt-6-luna` |
+| OpenRouter | yes | browser PKCE authorization | `openai/gpt-6-sol` |
+| xAI / Grok | yes | xAI device authorization | `grok-4.7` |
 | OpenAI Compatible | custom key or explicitly keyless | no | enter the endpoint's model ID |
 | Anthropic Compatible | custom key or explicitly keyless | no | enter the endpoint's model ID |
 
-ChatGPT and Gemini account login use the official CLIs baked into the app image (pinned
-`@openai/codex@0.158.0`, `@google/gemini-cli@0.61.0`). Run these from the host
-shell — they execute inside the running app container:
+Auth mode uses a provider-specific model dropdown, ordered newest first.
+API mode keeps an editable model ID with recommendations. Existing saved model
+IDs remain unchanged, including IDs outside the current recommendations.
+The catalog was checked against official sources on 2026-09-29; account, plan
+and administrator policies still control availability.
+
+ChatGPT device authorization follows the official Codex flow. Gemini browser
+authorization follows the official Gemini CLI's manual PKCE flow; it is not
+Google Device Flow, which does not support the required `cloud-platform` scope.
+The app image retains the official CLIs (`@openai/codex@0.158.0`,
+`@google/gemini-cli@0.61.0`). Gemini chat still executes through its CLI.
+The app exchanges the Google authorization code using the Gemini CLI's public
+OAuth client; this is not a Google-endorsed integration. Review the
+[Gemini CLI terms and privacy notice](https://github.com/google-gemini/gemini-cli/blob/main/docs/resources/tos-privacy.md),
+including its restriction on third-party direct access to the services powering
+the CLI, before choosing account login.
+
+Existing server-wide CLI logins remain compatible. For those legacy connections,
+operators can still run these commands from the host shell:
 
 ```sh
 docker compose exec app codex login --device-auth
@@ -296,7 +312,7 @@ The CLIs keep their credential files in the persistent `app-data` volume
 (`CODEX_HOME=/app/.data/auth/codex`, `GEMINI_CLI_HOME=/app/.data/auth/google`),
 owned by UID 1001, so they survive upgrades and container recreation.
 
-Important honesty rule: the app's connection status shows "ready" when the CLI
+For a legacy CLI connection, the app's connection status shows "ready" when the CLI
 exists and a readable, non-empty official credential file is present. That file
 readiness does **not** prove the account is valid, entitled, or authorized for a
 model — validity and model permissions are only proven by the first real request,
@@ -304,10 +320,19 @@ and they remain under the provider's control (account state, plan, billing).
 
 ### Browser account login
 
-For Copilot, OpenRouter or xAI, select Auth and start the connection in the form.
+For ChatGPT, Gemini, Copilot, OpenRouter or xAI, select Auth and start the connection in the form.
 On first setup, enter the installation code first. Open the provider's login
 page; enter the displayed device code when requested. Return to the original
 Second Brain tab and save once it reports the authorization is ready.
+
+- ChatGPT displays a one-time code and a link to OpenAI's device verification
+  page. Enter that code on the OpenAI page, not in Second Brain. Device code
+  login must be enabled in ChatGPT security settings or workspace permissions.
+- Gemini opens Google sign-in. Copy the authorization code Google gives you
+  back into the original Second Brain form and submit it there. No server
+  terminal is needed. The Auth default `gemini-3.5-flash` follows Gemini CLI's
+  base tier and can map to 3.8 Flash when the account has access; selecting a
+  newer model does not grant that access.
 
 - Copilot requires a usable Copilot entitlement. API mode expects a Copilot API
   token, not an arbitrary GitHub personal access token. An optional Enterprise
@@ -321,7 +346,9 @@ Second Brain tab and save once it reports the authorization is ready.
   transaction that saves the connection; a failed save rolls consumption back.
   Attempts expire after at most 15 minutes. Expired records are removed when a
   new login starts; polling an expired attempt clears its private payload.
-- Copilot and xAI tokens are refreshed server-side when approaching expiry.
+- Stored account credentials are refreshed on the server. Google credentials
+  are refreshed by the official Gemini CLI during chat; other supported account
+  credentials refresh through their provider adapters when needed.
   Revoked access or unsuccessful refresh requires reconnecting in settings.
   The app does not automatically enable Copilot model policies.
 
@@ -365,7 +392,7 @@ endpoint:
 | Provider | Endpoint | Default model | Alternative model ID |
 | --- | --- | --- | --- |
 | TypeSafe (official) | `https://api.typesafe.ai/v1/systemone` | `jev-latest` | `jev-1.13.0` |
-| OpenRouter | `https://openrouter.ai/api/v1/systemone` | `~typesafe/jev-latest` | `typesafe/jev-1.13` |
+| OpenRouter | `https://openrouter.ai/api/v1/systemone` | `~typesafe/jev-latest` | router-managed; no pinned alternative recommended |
 
 Use a model that returns structured judgment, and the model IDs above — OpenRouter's
 separate "Jev Router" product is a different thing and is not what this app calls.

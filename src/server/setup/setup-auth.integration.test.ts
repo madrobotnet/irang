@@ -3,6 +3,7 @@ import type { AiSettingsInput } from "@/lib/ai-settings";
 import { GET as openRouterCallback } from "@/app/api/ai/auth/openrouter/callback/[id]/route";
 import { AI_AUTH_COOKIE, authBrowserIdentity } from "@/server/ai-auth/access";
 import { finishOpenRouterAuth } from "@/server/ai-auth/callback";
+import { submitAuthCode } from "@/server/ai-auth/code";
 import { pollAuthAttempt } from "@/server/ai-auth/poll";
 import { startAuthAttempt } from "@/server/ai-auth/start";
 import { query } from "@/server/db";
@@ -75,3 +76,33 @@ test("consumes installer-bound login with owner creation and rolls back the whol
   });
   expect(await query("SELECT id FROM ai_auth_attempts")).toHaveLength(0);
 });
+
+for (const provider of ["openai", "google"] as const) {
+  test(`${provider} onboarding consumes only the installer/browser-bound grant with explicit consent`, async () => {
+    // Given
+    const scope = { key: await requireInstallerAccess(token), browserHash: "d".repeat(64) };
+    let clock = Date.now();
+    const responses = provider === "openai" ? [
+      { device_auth_id: "private-device", user_code: "REAL-CODE", interval: "5" },
+      { authorization_code: "private-code", code_verifier: "private-verifier", code_challenge: "challenge" },
+    ] : [];
+    const fetchImpl: typeof fetch = Object.assign(async () => Response.json(responses.shift() ?? {
+      access_token: "private-access", refresh_token: "private-refresh", expires_in: 3600,
+      id_token: `e30.${Buffer.from(JSON.stringify({ "https://api.openai.com/auth": { chatgpt_account_id: "account" } })).toString("base64url")}.fixture`,
+    }), { preconnect: fetch.preconnect });
+    const options = { fetchImpl, now: () => clock };
+    const attempt = await startAuthAttempt({ provider, callbackOrigin: "https://brain.example" }, scope, options);
+    clock += 5000;
+    if (provider === "google") await submitAuthCode({ id: attempt.id, code: "4/code" }, scope, options);
+    else await pollAuthAttempt(attempt.id, scope, options);
+    const ai: AiSettingsInput = { chat: { mode: "auth", provider, model: "fixture", authAttemptId: attempt.id },
+      chatConsent: true, jev: null, jevConsent: false };
+    // When / Then
+    await expect(completeSetup({ setupToken: token, password: "fixture-long-password", ai }, { browserHash: "other-browser" }))
+      .rejects.toMatchObject({ code: "forbidden" });
+    expect(await setupState()).toBe("ready");
+    await completeSetup({ setupToken: token, password: "fixture-long-password", ai }, { browserHash: scope.browserHash });
+    expect((await storedAiSettings())?.chat).toMatchObject({ provider, credential: { accessToken: "private-access", refreshToken: "private-refresh" } });
+    expect(await query("SELECT id FROM ai_auth_attempts")).toHaveLength(0);
+  });
+}

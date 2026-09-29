@@ -3,7 +3,7 @@ import { OAuthCredentialSchema, WebAuthProviderSchema } from "./ai-auth";
 
 describe("OAuth credential schemas", () => {
   test("accepts every supported web authentication provider", () => {
-    expect(WebAuthProviderSchema.options).toEqual(["github-copilot", "openrouter", "xai"]);
+    expect(WebAuthProviderSchema.options).toEqual(["github-copilot", "openrouter", "xai", "openai", "google"]);
   });
 
   test("requires renewable provider credentials to carry refresh tokens", () => {

@@ -147,6 +147,54 @@ describe("profile form", () => {
   });
 });
 
+describe("OpenAI and Google Auth profiles", () => {
+  const legacy = {
+    id: CHAT_ID,
+    name: "기존 Codex",
+    purpose: "chat",
+    connection: { provider: "openai", mode: "auth", model: "gpt-5.4-mini", hasApiKey: false, hasCredential: false },
+  } satisfies ConnectionProfileView;
+
+  test("a file-backed legacy profile stays editable without a new login", () => {
+    const form = profileFormFromView(legacy);
+    expect(buildProfileInput("chat", form, legacy)).toEqual({
+      ok: true,
+      input: {
+        purpose: "chat", name: "기존 Codex", consent: true,
+        connection: { mode: "auth", provider: "openai", model: "gpt-5.4-mini" },
+      },
+    });
+    expect(buildProfileInput("chat", {
+      ...form, chat: { ...form.chat, name: "새 이름", model: "gpt-6-luna" },
+    }, legacy)).toMatchObject({
+      ok: true,
+      input: { name: "새 이름", connection: { model: "gpt-6-luna" } },
+    });
+  });
+
+  test("new or re-targeted OpenAI/Google Auth profiles require a ready login", () => {
+    for (const provider of ["openai", "google"] as const) {
+      const created = newProfileForm("chat");
+      const model = provider === "openai" ? "gpt-6-sol" : "gemini-3.5-flash";
+      const state = {
+        ...created,
+        chat: { ...created.chat, name: "새 연결", mode: "auth" as const, provider, model, consent: true },
+      };
+      const missing = buildProfileInput("chat", state, null);
+      expect(missing.ok).toBe(false);
+      if (!missing.ok) expect(missing.errors["chat.auth"]).toBeString();
+      expect(buildProfileInput("chat", { ...state, chat: { ...state.chat, authAttemptId: JEV_ID } }, null))
+        .toMatchObject({ ok: true, input: { connection: { provider, authAttemptId: JEV_ID } } });
+    }
+    const legacyForm = profileFormFromView(legacy);
+    const retargeted = buildProfileInput("chat", {
+      ...legacyForm, chat: { ...legacyForm.chat, provider: "google", model: "gemini-3.5-flash" },
+    }, legacy);
+    expect(retargeted.ok).toBe(false);
+    if (!retargeted.ok) expect(retargeted.errors["chat.auth"]).toBeString();
+  });
+});
+
 describe("selection form", () => {
   test("supports saved, environment, and off choices independently", () => {
     expect(buildSelectionInput({

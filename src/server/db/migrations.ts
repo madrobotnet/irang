@@ -235,4 +235,12 @@ CREATE TABLE attachment_cleanup (
 );
 `,
   },
+  {
+    id: "0006_browser_auth_providers",
+    sql: `
+ALTER TABLE ai_auth_attempts DROP CONSTRAINT ai_auth_attempts_provider_check;
+ALTER TABLE ai_auth_attempts ADD CONSTRAINT ai_auth_attempts_provider_check
+  CHECK (provider IN ('github-copilot', 'openrouter', 'xai', 'openai', 'google'));
+`,
+  },
 ];

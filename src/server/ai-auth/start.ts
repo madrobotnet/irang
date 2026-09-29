@@ -6,6 +6,8 @@ import { AI_SETTINGS_LOCK } from "@/server/setup/ai-profile-store";
 import type { AiAuthScope } from "./attempt-store";
 import { authAttemptView, DevicePayloadSchema, PkcePayloadSchema, type AuthAttemptRow } from "./attempt-data";
 import { createPkce, openRouterAuthorizationUrl, startDeviceAuthorization } from "./protocol";
+import { googleAuthorizationUrl } from "./google";
+import { startOpenAiDeviceAuthorization } from "./openai";
 
 export async function startAuthAttempt(
   input: AuthStartInput & { readonly callbackOrigin: string },
@@ -45,11 +47,18 @@ export async function startAuthAttempt(
         });
         break;
       }
+      case "google": {
+        const { verifier, challenge } = await createPkce();
+        payload = PkcePayloadSchema.parse({ kind: "pkce", verifier, verificationUrl: googleAuthorizationUrl(challenge) });
+        break;
+      }
       case "github-copilot":
+      case "openai":
       case "xai": {
-        const device = await startDeviceAuthorization(input.provider, {
-          ...options, enterpriseDomain: input.enterpriseDomain,
-        });
+        const device = input.provider === "openai" ? await startOpenAiDeviceAuthorization(options)
+          : await startDeviceAuthorization(input.provider, {
+            ...options, enterpriseDomain: input.enterpriseDomain,
+          });
         const { expiresAt: deviceExpiry, ...devicePayload } = device;
         payload = DevicePayloadSchema.parse({ kind: "device", ...devicePayload, enterpriseDomain: input.enterpriseDomain });
         expiry = new Date(Math.min(deviceExpiry, expiresAt.getTime()));

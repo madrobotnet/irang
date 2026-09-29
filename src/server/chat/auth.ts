@@ -2,16 +2,22 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import type { OAuthCredential } from "@/lib/ai-auth";
 
 export type CodexSession = {
   kind: "chatgpt";
   accessToken: string;
   accountId: string;
   refreshToken: string | null;
-  authFilePath: string;
-};
+} & ({ authFilePath: string } | { profileId: string });
+export type FileCodexSession = CodexSession & { authFilePath: string };
 
-export type CodexAuth = CodexSession | { kind: "absent" } | { kind: "blocked" };
+export function storedCodexSession(profileId: string, credential: Extract<OAuthCredential, { provider: "openai" }>): CodexSession {
+  return { kind: "chatgpt", profileId, accessToken: credential.accessToken,
+    refreshToken: credential.refreshToken, accountId: credential.accountId };
+}
+
+export type CodexAuth = FileCodexSession | { kind: "absent" } | { kind: "blocked" };
 type Environment = Record<string, string | undefined>;
 
 const AUTH_CLAIM = "https://api.openai.com/auth";
@@ -85,7 +91,7 @@ export function accessTokenExpired(token: string, now = Date.now()): boolean {
   return typeof exp === "number" && Number.isFinite(exp) && exp * 1000 <= now + 60_000;
 }
 
-export async function persistCodexSession(session: CodexSession): Promise<void> {
+export async function persistCodexSession(session: FileCodexSession): Promise<void> {
   const parsed = JSON.parse(await readFile(session.authFilePath, "utf8")) as Record<string, unknown>;
   const tokens = parsed.tokens && typeof parsed.tokens === "object" && !Array.isArray(parsed.tokens)
     ? parsed.tokens as Record<string, unknown>

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const WebAuthProviderSchema = z.enum(["github-copilot", "openrouter", "xai"]);
+export const WebAuthProviderSchema = z.enum(["github-copilot", "openrouter", "xai", "openai", "google"]);
 export type WebAuthProvider = z.infer<typeof WebAuthProviderSchema>;
 
 const TokenSchema = z.string().min(1).max(16_384);
@@ -14,7 +14,26 @@ const HttpUrlSchema = z.url({ protocol: /^https?$/ }).refine((value) => {
     && url.hash === "";
 }, "Expected an absolute HTTP(S) URL without credentials, query, or fragment");
 
+export const GoogleCredentialSchema = z.object({
+  provider: z.literal("google"),
+  accessToken: TokenSchema,
+  refreshToken: TokenSchema,
+  expiresAt: ExpiresAtSchema,
+  idToken: TokenSchema.optional(),
+  scope: z.string().max(4096).optional(),
+  tokenType: z.string().max(128).optional(),
+}).strict();
+export type GoogleCredential = z.infer<typeof GoogleCredentialSchema>;
+
 export const OAuthCredentialSchema = z.discriminatedUnion("provider", [
+  z.object({
+    provider: z.literal("openai"),
+    accessToken: TokenSchema,
+    refreshToken: TokenSchema,
+    accountId: z.string().min(1).max(256),
+    expiresAt: ExpiresAtSchema,
+  }).strict(),
+  GoogleCredentialSchema,
   z.object({
     provider: z.literal("github-copilot"),
     accessToken: TokenSchema,

@@ -1,11 +1,14 @@
 "use client";
 
 import { JEV_PROVIDERS, JevProviderSchema } from "@/lib/ai-settings";
+import { jevAuthModels } from "@/lib/ai-model-catalog";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
 import { AiAuthPanel, abandonAuthAttempt } from "./AiAuthPanel";
 import { ConsentRow, FieldError, SecretInput } from "./AiFieldControls";
+import { AuthModelSelect } from "./AuthModelSelect";
 import { jevProviderInfo, type AiFormErrors, type JevFormState, type SavedAiView } from "./ai-form";
+import { modelForMode, modelForProvider, savedModelFor } from "./model-choice";
 
 export function JevAiFields({
   value: jev,
@@ -30,6 +33,10 @@ export function JevAiFields({
     && (saved.jev.mode ?? "api") === "api"
     && saved.jev.hasApiKey;
   const setJev = (patch: Partial<JevFormState>) => onChangeAction({ ...jev, ...patch });
+  const savedJev = saved?.jev ?? null;
+  const modelCatalog = jev.mode === "auth" ? jevAuthModels(jev.provider) : null;
+  const modelDescribedBy = errors["jev.model"] ? `${idPrefix}-jev-model-error` : `${idPrefix}-jev-model-hint`;
+  const switchMode = (mode: JevFormState["mode"]) => modelForMode(jev, mode, savedJev, jevAuthModels(jev.provider));
   const abandonReadyAttempt = () => {
     if (!jev.authAttemptId) return;
     void abandonAuthAttempt(jev.authAttemptId, setupToken ? { setupToken } : {})
@@ -98,7 +105,10 @@ export function JevAiFields({
                   const provider = JevProviderSchema.parse(event.target.value);
                   setJev({
                     provider,
-                    model: jevProviderInfo(provider).model,
+                    model: modelForProvider({
+                      provider, mode: "api", saved: savedJev, catalog: null, apiDefault: jevProviderInfo(provider).model,
+                    }),
+                    otherModeModel: undefined,
                     mode: "api",
                     apiKey: "",
                     authAttemptId: undefined,
@@ -123,7 +133,7 @@ export function JevAiFields({
                     checked={jev.mode === "api"}
                     onChange={() => {
                       abandonReadyAttempt();
-                      setJev({ mode: "api", authAttemptId: undefined, consent: false });
+                      setJev({ mode: "api", authAttemptId: undefined, consent: false, ...switchMode("api") });
                     }}
                     className="size-4 accent-accent"
                   />
@@ -136,7 +146,7 @@ export function JevAiFields({
                       name={`${idPrefix}-jev-mode`}
                       value="auth"
                       checked={jev.mode === "auth"}
-                      onChange={() => setJev({ mode: "auth", apiKey: "", consent: false })}
+                      onChange={() => setJev({ mode: "auth", apiKey: "", consent: false, ...switchMode("auth") })}
                       className="size-4 accent-accent"
                     />
                     OpenRouter Auth
@@ -147,16 +157,28 @@ export function JevAiFields({
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor={`${idPrefix}-jev-model`} className="text-sm font-medium">사용할 Jev 모델</label>
-            <input
-              id={`${idPrefix}-jev-model`}
-              value={jev.model}
-              onChange={(event) => setJev({ model: event.target.value })}
-              aria-invalid={errors["jev.model"] ? true : undefined}
-              aria-describedby={errors["jev.model"] ? `${idPrefix}-jev-model-error` : `${idPrefix}-jev-model-hint`}
-              autoComplete="off"
-              spellCheck={false}
-              className={inputClassName}
-            />
+            {modelCatalog ? (
+              <AuthModelSelect
+                id={`${idPrefix}-jev-model`}
+                value={jev.model}
+                catalog={modelCatalog}
+                savedModel={savedModelFor(savedJev, jev.provider, "auth")}
+                error={errors["jev.model"]}
+                describedBy={modelDescribedBy}
+                onChangeAction={(model) => setJev({ model })}
+              />
+            ) : (
+              <input
+                id={`${idPrefix}-jev-model`}
+                value={jev.model}
+                onChange={(event) => setJev({ model: event.target.value })}
+                aria-invalid={errors["jev.model"] ? true : undefined}
+                aria-describedby={modelDescribedBy}
+                autoComplete="off"
+                spellCheck={false}
+                className={inputClassName}
+              />
+            )}
             <FieldError id={`${idPrefix}-jev-model-error`} message={errors["jev.model"]} />
             {!errors["jev.model"] ? (
               <p id={`${idPrefix}-jev-model-hint`} className="text-pretty text-sm text-mute">
