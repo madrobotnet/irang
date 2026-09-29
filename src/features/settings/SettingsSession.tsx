@@ -6,6 +6,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { useShell } from "@/components/shell/ShellProvider";
 import { Badge, Button, Dialog, Skeleton } from "@/components/ui";
+import { hasUnsavedNoteDrafts } from "@/features/notes/draft-store";
 import { api } from "@/lib/api-client";
 import { Section } from "./SettingsSection";
 import { daysUntil, formatExpiry, type RevokeAllResult, type SessionInfo } from "./settings-model";
@@ -27,6 +28,7 @@ export function SessionSection() {
   const days = data ? daysUntil(expiresAt, data.fetchedAt) : null;
 
   const revokeAll = async () => {
+    if (hasUnsavedNoteDrafts() && !window.confirm("저장되지 않은 노트 변경 내용이 있습니다. 로그아웃할까요?")) return;
     setRevoking(true);
     setRevokeError(null);
     try {
