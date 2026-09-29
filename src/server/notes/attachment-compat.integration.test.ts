@@ -33,7 +33,7 @@ async function storedAttachment(key: string, filename = "legacy.txt"): Promise<s
   return row.id;
 }
 
-test.each(["report.txt", "한글 메모.pdf"])("loads the unchanged v1 UUID-basename file %s", async (filename) => {
+test.each(["report.txt", "한글 메모.pdf", "old\\report.txt"])("loads the unchanged v1 UUID-basename file %s", async (filename) => {
   const key = `${crypto.randomUUID()}-${filename}`;
   const id = await storedAttachment(key, filename);
   const bytes = new TextEncoder().encode("legacy attachment");
