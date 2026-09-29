@@ -56,6 +56,7 @@ src/
 - `unresolved_links(from_note_id, target_title)` — `[[targets]]` with no matching note; resolved when a note with that title/alias is created or renamed.
 - `inbox_items(id, title, body, source web|url|share|api, url, promoted_note_id, discarded_at, suggestions jsonb, created_at)`.
 - `attachments(id, note_id?, filename, mime, size_bytes, storage_key)` stored under `ATTACHMENTS_DIR` (default `.data/attachments`).
+- `attachment_cleanup(storage_key)`: durable file-removal work inserted in the same transaction as permanent note deletion. Keys disappear only after successful removal. Failed work is retried after later purges and through the Node startup instrumentation hook; failures log only a count and error code, not filenames or paths.
 - `chat_threads`, `chat_messages(role, content, citations jsonb)`.
 - `installation_settings(owner_id, setup_completed, ai jsonb)`: `ai` is `{version:2, chatId, jevId}`. IDs are a profile UUID, `null` (off), or `"environment"`.
 - `ai_connections(id, owner_id, purpose, name, connection jsonb, created_at, updated_at)`: separate chat/Jev profiles and server-only credentials. Migration `0003_ai_connections` converts prior inline settings without changing active choices.

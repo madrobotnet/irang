@@ -227,4 +227,12 @@ WHERE search_embedding IS NOT NULL
    OR search_source_hash IS NOT NULL;
 `,
   },
+  {
+    id: "0005_attachment_cleanup",
+    sql: `
+CREATE TABLE attachment_cleanup (
+  storage_key text PRIMARY KEY
+);
+`,
+  },
 ];

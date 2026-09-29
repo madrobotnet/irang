@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { rm } from "node:fs/promises";
 import type { PoolClient, QueryResultRow } from "pg";
 import type { LinkContext, Note, NoteLinks, NoteRef, NoteSummary, TagCount } from "@/lib/types";
 import { embedText, vectorLiteral } from "@/lib/embed";
@@ -15,6 +14,7 @@ import {
 import { db, tx } from "@/server/db";
 import { ApiError } from "@/server/http";
 import { storagePath } from "./attachment-storage";
+import { retryAttachmentCleanup } from "./attachment-cleanup";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Executor = Pick<PoolClient, "query">;
@@ -243,7 +243,7 @@ export async function restoreNote(id: string): Promise<Note> {
 
 export async function purgeNote(id: string): Promise<void> {
   assertNoteId(id);
-  const files = await tx(async (client) => {
+  await tx(async (client) => {
     // Block new attachment foreign-key inserts before collecting deleted rows.
     const note = await client.query(
       "SELECT id FROM notes WHERE id=$1 AND deleted_at IS NOT NULL FOR UPDATE", [id],
@@ -255,13 +255,19 @@ export async function purgeNote(id: string): Promise<void> {
     const attachments = await client.query<{ storage_key: string }>(
       "DELETE FROM attachments WHERE note_id=$1 RETURNING storage_key", [id],
     );
-    const paths = attachments.rows.map((row) => storagePath(row.storage_key));
+    const keys = attachments.rows.map((row) => {
+      storagePath(row.storage_key);
+      return row.storage_key;
+    });
+    await client.query(
+      "INSERT INTO attachment_cleanup (storage_key) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING",
+      [keys],
+    );
     await client.query("DELETE FROM notes WHERE id=$1", [id]);
     for (const source of sources.rows) await materializeLinks(client, source.id, source.body);
-    return paths;
   });
-  // Files must survive a failed COMMIT; already-missing files are harmless.
-  await Promise.all(files.map((file) => rm(file, { force: true })));
+  // Cleanup failures retain their keys but never turn a committed purge into 500.
+  await retryAttachmentCleanup();
 }
 
 type Cursor = { updatedAt: string; id: string };

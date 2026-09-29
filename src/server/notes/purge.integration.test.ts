@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeEach, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -82,6 +82,7 @@ test("does not unlink files when the note transaction fails at commit", async ()
 
     expect(await getNote(selected.note.id)).not.toBeNull();
     expect(await readFile(selected.file, "utf8")).toBe("keep until purge");
+    expect(await query("SELECT storage_key FROM attachment_cleanup")).toEqual([]);
   } finally {
     await query(`DROP TRIGGER IF EXISTS ${trigger} ON notes`);
     await query(`DROP FUNCTION ${trigger}()`);
@@ -96,6 +97,48 @@ test("a missing physical attachment does not block permanent deletion", async ()
   await purgeNote(selected.note.id);
 
   expect(await getNote(selected.note.id)).toBeNull();
+});
+
+test("a committed purge succeeds and failed file cleanup survives a process restart", async () => {
+  const failed = await noteWithFile();
+  const next = await noteWithFile();
+  await trashNote(failed.note.id);
+  await trashNote(next.note.id);
+  await rm(failed.file);
+  await mkdir(failed.file);
+  await writeFile(path.join(failed.file, "blocker"), "filesystem failure fixture");
+  const warning = spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    await expect(purgeNote(failed.note.id)).resolves.toBeUndefined();
+
+    expect(await getNote(failed.note.id)).toBeNull();
+    expect(warning).toHaveBeenCalled();
+    expect(JSON.stringify(warning.mock.calls)).not.toContain(failed.file);
+    expect(JSON.stringify(warning.mock.calls)).not.toContain(path.basename(failed.file));
+    await closeDb();
+    await rm(failed.file, { recursive: true });
+    await writeFile(failed.file, "retry after filesystem recovery");
+    const child = Bun.spawn([
+      process.execPath, "--no-env-file", "-e",
+      `import { purgeNote } from "./src/server/notes/service.ts";
+       import { closeDb } from "./src/server/db/index.ts";
+       const id = process.env.PURGE_NOTE_ID;
+       if (!id) throw new Error("Missing fixture note");
+       try { await purgeNote(id); } finally { await closeDb(); }`,
+    ], {
+      cwd: path.resolve(import.meta.dir, "../../.."),
+      env: { ...process.env, PURGE_NOTE_ID: next.note.id },
+      stdout: "ignore",
+      stderr: "pipe",
+    });
+    const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+    expect(stderr).toBe("");
+    expect(exitCode).toBe(0);
+    await expect(readFile(failed.file)).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(readFile(next.file)).rejects.toMatchObject({ code: "ENOENT" });
+  } finally {
+    warning.mockRestore();
+  }
 });
 
 test("purging an attachment symlink removes the link but never its outside target", async () => {
@@ -114,4 +157,39 @@ test("purging an attachment symlink removes the link but never its outside targe
 
   await expect(readFile(path.join(directory, "attachments", key))).rejects.toMatchObject({ code: "ENOENT" });
   expect(await readFile(outside, "utf8")).toBe("outside file");
+});
+
+test("a failed cleanup key does not starve later batches of removable files", async () => {
+  const note = await createNote({ title: "Cleanup batches" });
+  const keys = Array.from({ length: 35 }, (_, index) =>
+    `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`);
+  const blocked = keys[0];
+  if (!blocked) throw new Error("Missing blocked fixture key");
+  for (const key of keys) {
+    const file = path.join(directory, "attachments", key);
+    if (key === blocked) {
+      await mkdir(file);
+      await writeFile(path.join(file, "blocker"), "keep this directory");
+    } else {
+      await writeFile(file, "removable");
+    }
+  }
+  await query(
+    `INSERT INTO attachments (note_id,filename,mime,size_bytes,storage_key)
+     SELECT $1,'fixture.txt','text/plain',9,key FROM unnest($2::text[]) AS key`,
+    [note.id, keys],
+  );
+  await trashNote(note.id);
+  const warning = spyOn(console, "warn").mockImplementation(() => undefined);
+  try {
+    await purgeNote(note.id);
+
+    for (const key of keys.slice(1)) {
+      await expect(readFile(path.join(directory, "attachments", key))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+    expect(await query("SELECT storage_key FROM attachment_cleanup")).toEqual([{ storage_key: blocked }]);
+    expect(await readFile(path.join(directory, "attachments", blocked, "blocker"), "utf8")).toBe("keep this directory");
+  } finally {
+    warning.mockRestore();
+  }
 });

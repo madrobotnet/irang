@@ -395,6 +395,15 @@ without changing the active chat connection.
 
 ## 9. Data, backup, and upgrades
 
+Permanent note deletion records attachment cleanup in the same database
+transaction. Physical files are removed only after that transaction commits.
+If storage is temporarily unavailable, the note remains deleted successfully
+and the file keys stay in a private retry queue instead of becoming unreachable.
+The app retries queued work on server startup and after subsequent permanent
+deletions. Restore the storage directory's access permissions and restart the
+app to retry immediately; deferred-cleanup logs contain counts/error codes,
+never attachment names or paths. Moving a note to trash does not remove files.
+
 **Back up before every upgrade.** The two named volumes (section 1) hold
 everything: `postgres-data` (database) and `app-data` (attachment files + CLI
 credentials).
