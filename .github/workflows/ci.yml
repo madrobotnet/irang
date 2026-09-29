@@ -57,6 +57,13 @@ jobs:
         with:
           bun-version: 1.4.2
 
+      # Compose <5.1 eagerly evaluates required variables in unused defaults.
+      # Use the same supported interpolation behavior as the installation guide.
+      - name: Set up Docker Compose 5.5.1
+        uses: docker/setup-compose-action@v2
+        with:
+          version: v5.5.1
+
       - name: Install dependencies (frozen lockfile)
         run: bun install --frozen-lockfile
 

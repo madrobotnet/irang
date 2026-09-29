@@ -26,13 +26,21 @@ default, e.g. `second-brain_app-data`):
 
 ## 2. Prerequisites
 
-- Docker Engine + Docker Compose v2 (this guide was verified with Docker 29 /
-  Compose v5.5.1 on Linux arm64).
+- Docker Engine + Docker Compose **5.1.0 or newer**. CI pins Compose 5.5.1;
+  this guide was verified with Docker 29 / Compose 5.5.1 on Linux arm64.
 - Linux or macOS. For anything reachable beyond `127.0.0.1`, a TLS-terminating
   reverse proxy you control (section 6).
 - No host Node or Bun: one-shot scripts run via `docker run` with the mounted
   repository (section 3). You only need them once, before the first
   `docker compose up`.
+
+Check `docker compose version` before installing or upgrading. Older Compose
+clients, including 2.38.2, eagerly evaluate required variables inside unused
+conditional defaults and can reject a valid current or legacy configuration.
+Compose 5.1.0 includes the
+[upstream interpolation fix](https://github.com/compose-spec/compose-go/commit/ddb94f10f3a0751c628e24afd3cc436ad8d1c55a).
+Update the Compose plugin before proceeding; do not work around those errors
+by regenerating existing passwords or selecting a different data volume.
 
 ## 3. Step 1 — generate the operator `.env`
 

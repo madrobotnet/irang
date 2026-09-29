@@ -25,7 +25,9 @@
 
 ## Docker 퀵스타트
 
-Linux와 macOS에서 동작합니다. Docker(Compose 포함)만 있으면 됩니다.
+Linux와 macOS에서 동작합니다. Docker와 **Compose 5.1.0 이상**이 필요합니다.
+`docker compose version`으로 확인하세요. 이전 Compose에는 조건부 환경 변수의
+보간 버그가 있으므로, 업그레이드 전에 플러그인부터 갱신해야 합니다.
 
 ```sh
 git clone https://github.com/madrobotnet/second-brain.git
