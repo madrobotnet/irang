@@ -4,6 +4,48 @@ import { ChatProviderError } from "./provider";
 
 const encoder = new TextEncoder();
 
+describe("consumeJsonSse line endings", () => {
+  for (const [name, newline] of [["LF", "\n"], ["CRLF", "\r\n"], ["CR", "\r"]] as const) {
+    for (const fragmented of [false, true]) {
+      test(`parses ${name} events with ${fragmented ? "single-byte and empty" : "whole"} chunks`, async () => {
+        const bytes = encoder.encode([
+          ": heartbeat",
+          "event: message",
+          "data: {",
+          'data: "value": "한글"',
+          "data: }",
+          "",
+          'data: {"value":"second"}',
+          "",
+          "data: [DONE]",
+          "",
+          "",
+        ].join(newline));
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            if (fragmented) {
+              for (const byte of bytes) {
+                controller.enqueue(Uint8Array.of(byte));
+                controller.enqueue(new Uint8Array());
+              }
+            } else {
+              controller.enqueue(bytes);
+            }
+            controller.close();
+          },
+        });
+        const events: unknown[] = [];
+        let done = 0;
+
+        await consumeJsonSse(body, (event) => events.push(event), () => { done += 1; });
+
+        expect(events).toEqual([{ value: "한글" }, { value: "second" }]);
+        expect(done).toBe(1);
+      });
+    }
+  }
+});
+
 async function expectCancellation(promise: Promise<void>): Promise<void> {
   const timeoutSignal = AbortSignal.timeout(1_000);
   const timeout = new Promise<never>((_resolve, reject) => {

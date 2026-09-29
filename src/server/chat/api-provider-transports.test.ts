@@ -44,6 +44,33 @@ function successfulStream(format: ApiFormat, text = "wire-ok"): Response {
 }
 
 describe("custom API transports", () => {
+  for (const format of ["chat-completions", "responses", "anthropic-messages"] as const) {
+    test(`streams CR-delimited ${format} events over the actual HTTP transport`, async () => {
+      const server = Bun.serve({
+        hostname: "127.0.0.1",
+        port: 0,
+        async fetch() {
+          const body = (await successfulStream(format).text()).replaceAll("\n", "\r");
+          return new Response(body, { headers: { "content-type": "text/event-stream" } });
+        },
+      });
+      servers.push(server);
+      const provider = createApiProvider({
+        provider: format === "anthropic-messages" ? "anthropic-compatible" : "openai-compatible",
+        apiKey: "",
+        model: "cr-fixture",
+        baseUrl: server.url.toString(),
+        apiFormat: format,
+      });
+      const deltas: string[] = [];
+
+      const output = await provider.stream(TEST_INPUT, (delta) => deltas.push(delta), new AbortController().signal);
+
+      expect(output).toBe("wire-ok");
+      expect(deltas).toEqual(["wire-ok"]);
+    });
+  }
+
   test("sends Chat Completions to a root URL with merged headers and output limit", async () => {
     const requests: Request[] = [];
     const bodies: unknown[] = [];

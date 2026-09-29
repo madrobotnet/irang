@@ -17,6 +17,7 @@ export async function consumeJsonSse(
   let buffer = "";
   let streamBytes = 0;
   let didReceiveDone = false;
+  let previousWasCr = false;
 
   const consumeEvent = (block: string): void => {
     if (Buffer.byteLength(block) > MAX_EVENT_BYTES) throw new ChatProviderError();
@@ -44,8 +45,13 @@ export async function consumeJsonSse(
       const { done, value } = await reader.read();
       streamBytes += value?.byteLength ?? 0;
       if (streamBytes > MAX_STREAM_BYTES) throw new ChatProviderError();
-      buffer += decoder.decode(value, { stream: !done });
-      buffer = buffer.replaceAll("\r\n", "\n");
+      let text = decoder.decode(value, { stream: !done });
+      if (text) {
+        // A CR ends the line immediately; ignore its LF if it arrives later.
+        if (previousWasCr && text.startsWith("\n")) text = text.slice(1);
+        previousWasCr = text.endsWith("\r");
+        buffer += text.replace(/\r\n?/g, "\n");
+      }
       let boundary = buffer.indexOf("\n\n");
       while (boundary >= 0) {
         consumeEvent(buffer.slice(0, boundary));
