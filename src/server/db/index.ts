@@ -5,6 +5,11 @@ type DbGlobal = { pool: Pool | null; ready: Promise<Pool> | null };
 const g = globalThis as unknown as { __sbDb?: DbGlobal };
 const state: DbGlobal = (g.__sbDb ??= { pool: null, ready: null });
 
+/** Configuration already bound to the cached pool, independent of later env changes. */
+export function connectedDatabaseUrl(): string | undefined {
+  return state.pool?.options.connectionString;
+}
+
 export function databaseUrl(): string {
   const url = process.env.DATABASE_URL?.trim();
   if (!url) {
