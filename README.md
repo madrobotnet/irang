@@ -52,8 +52,11 @@ INSECURE_COOKIES=1 docker compose up -d --build
   `INSECURE_COOKIES=0`으로 실행하세요. Windows, HTTPS, 업그레이드 절차는
   [docs/SETUP.md](docs/SETUP.md)에 정리되어 있습니다.
 - `docker compose down`은 named 볼륨(`postgres-data`, `app-data`)을 유지합니다.
-  업그레이드는 `git pull` 후 `docker compose up -d --build`로 충분하고, 노트와
-  첨부파일은 보존됩니다.
+  2.1 이후 같은 Compose 프로젝트의 업그레이드는 백업 후 `git pull`과
+  `docker compose up -d --build`로 진행합니다. **1.x 설치는 먼저
+  [기존 배포 이전 절차](docs/SETUP.md#10-existing-deployments)에 따라
+  `POSTGRES_DATA_VOLUME=second_brain_pg18`을 선택하고 기존 DB URL·암호와
+  첨부파일을 보존해야 합니다.** 볼륨 이름을 바꾸거나 `down -v`를 실행하지 마세요.
 
 ## 시스템 구성
 

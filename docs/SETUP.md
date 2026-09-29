@@ -74,9 +74,11 @@ docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \
 # prints: SETUP_TOKEN=<64 hex chars>
 ```
 
-Compose hard-requires `POSTGRES_PASSWORD`, `POSTGRES_ADMIN_PASSWORD`, and
-`SETUP_TOKEN` (it fails with "Run bun run setup-env first" otherwise), so
-existing deployments that manage their own env files must still set all three.
+New installations require `POSTGRES_PASSWORD`, `POSTGRES_ADMIN_PASSWORD`, and
+`SETUP_TOKEN`. Existing 1.x credential names are supported without changing the
+stored passwords, but require an explicit data-volume choice (section 10).
+Do not run `setup-env` over an existing installation or generate replacement
+database passwords during an upgrade.
 
 **Windows note (untested):** the equivalent in PowerShell is
 
@@ -112,12 +114,14 @@ application role `second_brain` — login authorized with `POSTGRES_PASSWORD`,
 the `public` schema but nothing beyond. Entrypoint init scripts run only when the
 data volume is empty; they never re-run on an existing volume.
 
-Keep the generated `POSTGRES_PASSWORD` (64 hex chars) if you edit `.env` by hand:
-Compose interpolates it directly into the Postgres connection URL, so a value with
-URL-special characters would break the connection string.
+Keep the generated `POSTGRES_PASSWORD` (64 hex chars) if you edit `.env` by hand.
+An explicit `DATABASE_URL` takes precedence; use a percent-encoded URL for
+passwords with URL-special characters. Without one, Compose constructs the URL
+from `POSTGRES_APP_PASSWORD` when present, otherwise `POSTGRES_PASSWORD`.
 
-Credential boundary: the application connects only as the `second_brain` role, via
-the `DATABASE_URL` that Compose builds from `POSTGRES_PASSWORD`. The `postgres`
+Credential boundary: the default application connection uses the `second_brain`
+role. An operator-supplied `DATABASE_URL` must also use an application role, not
+the database administrator. The `postgres`
 superuser account and `POSTGRES_ADMIN_PASSWORD` exist for operator maintenance
 inside the db container (for example an interactive `psql` session). Never put
 `POSTGRES_ADMIN_PASSWORD` into `DATABASE_URL`, the app environment, or any
@@ -219,7 +223,7 @@ the entire operator `.env` into the app, so the database admin password stays
 DB-only. Custom attachment or credential directories must remain under the
 mounted `/app/.data` directory, or use an additional persistent volume.
 
-Local development env reference (beyond what `.env.example` comments inline):
+Local development and legacy upgrade env reference:
 `DATABASE_URL` with a password containing special characters can be produced with
 `bun run database-url` (reads `POSTGRES_APP_PASSWORD`, percent-encodes, prints the
 URL — keep it out of logs). `bun run seed` adds demo notes to the dev database.
@@ -228,7 +232,7 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 
 | Variable | Read by | Default | Meaning |
 | --- | --- | --- | --- |
-| `DATABASE_URL` | app (db layer) | — (required in Docker via Compose) | Postgres connection string |
+| `DATABASE_URL` | app (db layer) | Constructed from the app password | Explicit percent-encoded Postgres URL takes precedence over the constructed URL |
 | `SETUP_TOKEN` | first-run wizard | — (required by `compose.yml`) | Guards `/setup`; 32–256 chars accepted, generated value is 64 hex chars |
 | `AUTH_PASSWORD_HASH` | login + setup state | empty | Argon2id PHC hash; when set it wins over any wizard-created owner password and permanently disables the wizard |
 | `INSECURE_COOKIES` | login and provider Auth | `0` | `1` disables the cookie `Secure` flag (loopback HTTP only) |
@@ -236,8 +240,10 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 | `SESSION_TTL_DAYS` | sessions | `30` | Session lifetime in days |
 | `ATTACHMENTS_DIR` | attachment storage | `.data/attachments` (relative to the app's working directory) | Attachment file location; in Docker this is inside the `app-data` volume |
 | `APP_PORT` | `compose.yml` | `3000` | Loopback host port |
-| `POSTGRES_PASSWORD` | `compose.yml` | — (required) | Application DB role (`second_brain`) password, interpolated into `DATABASE_URL` and handed to the db init script |
-| `POSTGRES_ADMIN_PASSWORD` | `compose.yml` db service | — (required) | `postgres` superuser password inside the db container; operator maintenance only, never for the app |
+| `POSTGRES_PASSWORD` | `compose.yml` | — (required) | Current installs: application role password. Legacy installs with `POSTGRES_APP_PASSWORD`: original administrator password |
+| `POSTGRES_ADMIN_PASSWORD` | `compose.yml` db service | Required for current installs | Explicit administrator password; legacy installs fall back to their original `POSTGRES_PASSWORD` |
+| `POSTGRES_APP_PASSWORD` | `compose.yml` db service | `POSTGRES_PASSWORD` | Legacy application password; requires an explicit volume choice and is never forwarded as a separate app environment variable |
+| `POSTGRES_DATA_VOLUME` | `compose.yml` db volume mount | `postgres-data` | Existing volume key: `postgres-data` for 2.1+, `second_brain_pg18` for 1.x; keep the original Compose project name |
 | `TYPESAFE_API_KEY` | Jev (legacy fallback) | empty | Jev API key used while no settings exist, or while Jev explicitly keeps the environment-managed selection |
 | `TYPESAFE_JEV_MODEL` | Jev (legacy fallback) | `jev-latest` | Jev model for the env-key fallback |
 | `TYPESAFE_BASE_URL` | Jev (legacy fallback) | `https://api.typesafe.ai` | Legacy SDK endpoint; the UI can retain keys only for `https://api.typesafe.ai` or `https://openrouter.ai/api` |
@@ -439,6 +445,9 @@ if they should not remain valid after recovery.
 
 **Upgrading without losing data:**
 
+For installations already using the 2.1+ `postgres-data`/`app-data` volumes,
+keep the same project name and environment file:
+
 ```sh
 docker compose build app
 docker compose up -d
@@ -453,17 +462,62 @@ verify the upgrade on a restored copy first.
 
 ## 10. Existing deployments
 
-Deployments that predate the first-run wizard keep working unchanged:
+### Upgrading from 1.x
+
+The old `docker-compose.yml` used the `second_brain_pg18` volume key and a
+different password naming scheme. Merely switching to `compose.yml` used to
+select a new empty `postgres-data` volume. The old volume was not erased, but
+the application could appear empty. The compatibility path now requires an
+explicit choice when `POSTGRES_APP_PASSWORD` is present and fails before
+creating resources if that choice is missing.
+
+1. **Before pulling the new version**, back up the database and attachment
+   directory. Record the existing Compose project name and DB mount:
+   `docker inspect --format '{{json .Mounts}}' "$(docker compose ps -q db)"`.
+   The actual volume is normally `<project>_second_brain_pg18`. Preserve the
+   project name, including any `-p` argument or `COMPOSE_PROJECT_NAME` value.
+2. Keep the original `DATABASE_URL`, `POSTGRES_APP_PASSWORD`, `POSTGRES_PASSWORD`
+   and `AUTH_PASSWORD_HASH`. `DATABASE_URL` is used verbatim, including its
+   percent-encoded password. Do not swap or regenerate these secrets.
+3. Add `POSTGRES_DATA_VOLUME=second_brain_pg18` to that same `.env`. If this is
+   actually a 2.1+ installation that also defines the legacy app-password name,
+   explicitly choose `postgres-data` instead. Confirm the chosen physical
+   volume already exists with `docker volume inspect <recorded-volume-name>`.
+4. Add an installation code with `bun run setup-token` if `SETUP_TOKEN` is
+   absent. It remains unused when the existing login hash or owner is present.
+   A new `POSTGRES_ADMIN_PASSWORD` is not required for a legacy installation:
+   the original `POSTGRES_PASSWORD` remains the administrator password.
+5. Stop the old app before starting the new one; do not run both versions
+   against the same database. Preserve any custom attachment/auth mounts.
+   The old stock Compose did not persist attachments: copy that directory
+   out of the old app container **before** removing or recreating it.
+   Restore it under the new `app-data` volume with UID/GID 1001, following
+   section 9. Do not assume preserving the DB also preserves those files.
+6. Build and start using the same project name and the existing volume.
+   Verify login, an existing note and an existing attachment before removing
+   the backup. Never run `down -v` as part of the upgrade.
+
+Compose keeps current installs on `postgres-data` by default; changing that
+default back to `second_brain_pg18` would detach already-created 2.1+ databases.
+Entrypoint password settings do not change passwords in an initialized volume.
+The compatibility path preserves both names and role semantics; it does not
+reset credentials or copy data into a different cluster.
+
+This path is for the PostgreSQL 18 layout. Older PostgreSQL 16 installations
+need a logical dump/restore, not mounting a PostgreSQL 16 data directory in18.
+
+### Existing authentication and AI settings
+
+Deployments that predate the first-run wizard retain these application rules:
 
 - If `AUTH_PASSWORD_HASH` is set, the wizard is permanently disabled (`/setup`
   redirects to `/login`) and the env hash remains authoritative for login.
 - If any users or protected data already exist (notes, inbox items, chat threads,
   attachments, installation settings), public account adoption is disabled the
   same way — the wizard cannot be claimed on an occupied server.
-- `compose.yml` still requires `SETUP_TOKEN` and `POSTGRES_PASSWORD` even for
-  env-auth deployments — and now `POSTGRES_ADMIN_PASSWORD` as well; keep all
-  three in the operator `.env` (the token is then simply unused after setup is
-  complete).
+- `SETUP_TOKEN` is still required by Compose even for env-auth deployments;
+  it is unused after setup is complete. Database secrets follow the current
+  or legacy scheme above.
 - Postgres entrypoint variables apply only when the data volume is first
   initialized. A deployment created with the earlier single-secret topology
   therefore keeps its original database role and privileges unchanged — the new
