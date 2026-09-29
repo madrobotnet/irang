@@ -1,3 +1,4 @@
+import { baseUrlFromToken } from "@/server/ai-auth/github-copilot";
 import { createAnthropicApiProvider } from "./api-provider-anthropic";
 import { createChatCompletionsApiProvider } from "./api-provider-chat-completions";
 import { createGoogleApiProvider } from "./api-provider-google";
@@ -138,7 +139,18 @@ export function createApiProvider(
     }
     case "github-copilot": {
       format = input.apiFormat ?? "responses";
-      const base = input.baseUrl?.trim() || "https://api.individual.githubcopilot.com";
+      let base = input.baseUrl?.trim();
+      if (!base) {
+        base = baseUrlFromToken(apiKey);
+        const host = new URL(base).hostname;
+        // A manually supplied API token must not introduce arbitrary credential destinations.
+        if (
+          !host.endsWith(".githubcopilot.com") && !host.endsWith(".ghe.com")
+          && host !== "copilot-proxy.githubusercontent.com"
+        ) {
+          throw new ChatProviderError();
+        }
+      }
       url = requestUrl(base, format, false);
       if (format === "anthropic-messages") {
         const path = new URL(base).pathname.replace(/\/+$/, "");

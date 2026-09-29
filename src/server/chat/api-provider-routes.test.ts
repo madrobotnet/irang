@@ -29,10 +29,60 @@ function successfulStream(format: ApiFormat): Response {
 
 const ROUTES = [
   {
+    name: "Copilot GHE token Responses",
+    input: {
+      provider: "github-copilot",
+      apiKey: "tid=1;proxy-ep=copilot-api.fixture.ghe.com;sig=fixture",
+      model: "copilot-enterprise",
+      maxOutputTokens: 204,
+    },
+    format: "responses",
+    url: "https://copilot-api.fixture.ghe.com/responses",
+    outputLimit: ["max_output_tokens", 204],
+  },
+  {
+    name: "Copilot Business token Responses default",
+    input: {
+      provider: "github-copilot",
+      apiKey: "tid=1;proxy-ep=proxy.business.githubcopilot.com;sig=fixture",
+      model: "copilot-business",
+      maxOutputTokens: 201,
+    },
+    format: "responses",
+    url: "https://api.business.githubcopilot.com/responses",
+    outputLimit: ["max_output_tokens", 201],
+  },
+  {
+    name: "Copilot Enterprise token Chat Completions",
+    input: {
+      provider: "github-copilot",
+      apiKey: "tid=1;proxy-ep=proxy.enterprise.githubcopilot.com;sig=fixture",
+      model: "copilot-enterprise",
+      apiFormat: "chat-completions",
+      maxOutputTokens: 202,
+    },
+    format: "chat-completions",
+    url: "https://api.enterprise.githubcopilot.com/chat/completions",
+    outputLimit: ["max_tokens", 202],
+  },
+  {
+    name: "Copilot Enterprise token Anthropic Messages",
+    input: {
+      provider: "github-copilot",
+      apiKey: "tid=1;proxy-ep=proxy.enterprise.githubcopilot.com;sig=fixture",
+      model: "claude-sonnet-4.6",
+      apiFormat: "anthropic-messages",
+      maxOutputTokens: 203,
+    },
+    format: "anthropic-messages",
+    url: "https://api.enterprise.githubcopilot.com/v1/messages",
+    outputLimit: ["max_tokens", 203],
+  },
+  {
     name: "Copilot Responses default",
     input: {
       provider: "github-copilot",
-      apiKey: "copilot-key",
+      apiKey: "tid=1;proxy-ep=proxy.business.githubcopilot.com;sig=fixture",
       model: "copilot-model",
       baseUrl: "https://copilot.example/account",
       maxOutputTokens: 101,

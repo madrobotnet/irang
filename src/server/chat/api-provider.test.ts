@@ -25,6 +25,16 @@ const PROVIDERS = [
 ] as const satisfies readonly ApiProviderInput[];
 
 describe("API provider failures", () => {
+  for (const host of ["127.0.0.1", "proxy.business.githubcopilot.com.attacker.invalid", "proxy.tenant.ghe.com.attacker.invalid"]) {
+    test(`rejects a native Copilot token pointing outside GitHub service domains: ${host}`, () => {
+      expect(() => createApiProvider({
+        provider: "github-copilot",
+        apiKey: `tid=1;proxy-ep=${host};sig=fixture`,
+        model: "model",
+      })).toThrow(ChatProviderError);
+    });
+  }
+
   test("maps authentication and rate-limit responses to safe errors", async () => {
     for (const input of PROVIDERS) {
       for (const status of [401, 429]) {

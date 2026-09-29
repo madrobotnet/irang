@@ -67,7 +67,7 @@ function verificationUrl(value: string): string {
   return url.href;
 }
 
-function baseUrlFromToken(token: string, domain: string | undefined): string {
+export function baseUrlFromToken(token: string, domain?: string): string {
   const proxyHost = /(?:^|;)proxy-ep=([a-zA-Z0-9.-]+)(?:;|$)/.exec(token)?.[1];
   if (proxyHost !== undefined) {
     const apiHost = proxyHost.replace(/^proxy\./, "api.");
