@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { rm } from "node:fs/promises";
 import type { PoolClient, QueryResultRow } from "pg";
 import type { LinkContext, Note, NoteLinks, NoteRef, NoteSummary, TagCount } from "@/lib/types";
 import { embedText, vectorLiteral } from "@/lib/embed";
@@ -13,6 +14,7 @@ import {
 } from "@/lib/wikilinks";
 import { db, tx } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { storagePath } from "./attachment-storage";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Executor = Pick<PoolClient, "query">;
@@ -241,14 +243,25 @@ export async function restoreNote(id: string): Promise<Note> {
 
 export async function purgeNote(id: string): Promise<void> {
   assertNoteId(id);
-  await tx(async (client) => {
+  const files = await tx(async (client) => {
+    // Block new attachment foreign-key inserts before collecting deleted rows.
+    const note = await client.query(
+      "SELECT id FROM notes WHERE id=$1 AND deleted_at IS NOT NULL FOR UPDATE", [id],
+    );
+    if (note.rowCount === 0) throw new ApiError("conflict", "휴지통에 있는 노트만 영구 삭제할 수 있습니다.");
     const sources = await client.query<{ id: string; body: string }>(
       "SELECT n.id,n.body FROM links l JOIN notes n ON n.id=l.from_note_id WHERE l.to_note_id=$1 AND n.deleted_at IS NULL", [id],
     );
-    const deleted = await client.query("DELETE FROM notes WHERE id=$1 AND deleted_at IS NOT NULL RETURNING id", [id]);
-    if (deleted.rowCount === 0) throw new ApiError("conflict", "휴지통에 있는 노트만 영구 삭제할 수 있습니다.");
+    const attachments = await client.query<{ storage_key: string }>(
+      "DELETE FROM attachments WHERE note_id=$1 RETURNING storage_key", [id],
+    );
+    const paths = attachments.rows.map((row) => storagePath(row.storage_key));
+    await client.query("DELETE FROM notes WHERE id=$1", [id]);
     for (const source of sources.rows) await materializeLinks(client, source.id, source.body);
+    return paths;
   });
+  // Files must survive a failed COMMIT; already-missing files are harmless.
+  await Promise.all(files.map((file) => rm(file, { force: true })));
 }
 
 type Cursor = { updatedAt: string; id: string };

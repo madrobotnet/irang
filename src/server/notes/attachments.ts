@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { mkdir, open, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { QueryResultRow } from "pg";
 import { db } from "@/server/db";
 import { ApiError } from "@/server/http";
 import { assertNoteId } from "./service";
+import { attachmentsDir, storagePath } from "./attachment-storage";
+
+export { attachmentsDir } from "./attachment-storage";
 
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
-const STORAGE_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type AttachmentRow = QueryResultRow & {
   id: string;
@@ -25,15 +28,6 @@ export type Attachment = {
   sizeBytes: number;
   storageKey: string;
 };
-
-export function attachmentsDir(): string {
-  return process.env.ATTACHMENTS_DIR?.trim() || path.join(process.cwd(), ".data", "attachments");
-}
-
-function storagePath(key: string): string {
-  if (!STORAGE_KEY_RE.test(key)) throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
-  return path.join(attachmentsDir(), key);
-}
 
 function safeFilename(filename: string): string {
   const cleaned = path.basename(filename).replace(/[\r\n\0]/g, "").trim();
@@ -88,9 +82,16 @@ export async function loadAttachment(id: string): Promise<{ attachment: Attachme
   const row = result.rows[0];
   if (!row) throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
   try {
-    return { attachment: mapAttachment(row), bytes: await readFile(storagePath(row.storage_key)) };
+    const file = await open(storagePath(row.storage_key), constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      return { attachment: mapAttachment(row), bytes: await file.readFile() };
+    } finally {
+      await file.close();
+    }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
+    if (error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ELOOP")) {
+      throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
+    }
     throw error;
   }
 }
