@@ -214,4 +214,17 @@ CREATE INDEX ai_auth_attempts_expiry_idx ON ai_auth_attempts (expires_at);
 CREATE INDEX ai_auth_attempts_scope_idx ON ai_auth_attempts (scope_key);
 `,
   },
+  {
+    id: "0004_reset_legacy_embeddings",
+    sql: `
+-- v1 used the same content hash for a different 128-dimensional feature space.
+-- Clear every cache, including archives/trash that may be restored later.
+-- Current search rebuilds active notes in bounded batches before using them.
+UPDATE notes
+SET search_embedding = NULL, search_embedded_at = NULL, search_source_hash = NULL
+WHERE search_embedding IS NOT NULL
+   OR search_embedded_at IS NOT NULL
+   OR search_source_hash IS NOT NULL;
+`,
+  },
 ];
