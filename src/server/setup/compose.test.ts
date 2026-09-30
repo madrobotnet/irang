@@ -33,8 +33,13 @@ afterEach(async () => {
 });
 
 for (const scenario of [
-  { name: "default", values: {}, expected: defaults },
-  { name: "operator-provided", values: overrides, expected: overrides },
+  { name: "default", image: "ghcr.io/madrobotnet/irang:2.2.0", values: {}, expected: defaults },
+  {
+    name: "operator-provided",
+    image: "ghcr.io/example/irang:operator-test",
+    values: { IRANG_IMAGE: "ghcr.io/example/irang:operator-test", ...overrides },
+    expected: overrides,
+  },
 ]) {
   test(`passes ${scenario.name} runtime settings into the app without database admin secrets`, async () => {
     const directory = await mkdtemp(path.join(tmpdir(), "second-brain-compose-"));
@@ -61,7 +66,10 @@ for (const scenario of [
     expect(stderr).toBe("");
     expect(exitCode).toBe(0);
     const config: unknown = JSON.parse(stdout);
-    expect(config).toMatchObject({ services: { app: { environment: scenario.expected } } });
+    expect(config).toMatchObject({
+      services: { app: { image: scenario.image, environment: scenario.expected } },
+    });
+    expect(config).not.toHaveProperty("services.app.build");
     expect(config).not.toHaveProperty("services.app.environment.POSTGRES_ADMIN_PASSWORD");
     expect(config).not.toHaveProperty("services.app.environment.UNRELATED_SECRET");
   });
