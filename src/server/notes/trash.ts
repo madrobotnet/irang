@@ -61,3 +61,27 @@ export async function runNoteMaintenance(): Promise<void> {
     console.warn("[revisions] pruning deferred", { code: errorCode(error) });
   }
 }
+
+/** Retention repeats on this cadence, so a long-running server keeps the 30-day limits without a restart. */
+export const MAINTENANCE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Runs maintenance now and then every `intervalMs`, one run at a time. The timer does not keep
+ * the process alive; the returned function stops it.
+ */
+export function startNoteMaintenance(run: () => Promise<void> = runNoteMaintenance, intervalMs = MAINTENANCE_INTERVAL_MS): () => void {
+  let running = false;
+  const tick = () => {
+    if (running) return;
+    running = true;
+    void run()
+      .catch((error: unknown) => console.warn("[maintenance] run failed", { code: errorCode(error) }))
+      .finally(() => {
+        running = false;
+      });
+  };
+  tick();
+  const timer = setInterval(tick, intervalMs);
+  timer.unref();
+  return () => clearInterval(timer);
+}
