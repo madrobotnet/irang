@@ -5,7 +5,7 @@ import type { InboxItem, InboxSuggestions, NoteTitleMatch } from "@/lib/types";
 import { INBOX_COPY } from "./inbox-copy";
 
 /** Wire shape of GET /api/inbox; also the SWR cache entry the shell badge reads. */
-export type InboxListData = { items: InboxItem[]; count: number; snoozedCount: number };
+export type InboxListData = { items: InboxItem[]; count: number; snoozedCount: number; nextReturnAt: string | null };
 
 export const INBOX_KEY = "/api/inbox";
 export const INBOX_LATER_KEY = "/api/inbox?view=later";
@@ -74,21 +74,24 @@ export function neighbourAfterRemoval(items: readonly { id: string }[], id: stri
   return items[index + 1]?.id ?? items[index - 1]?.id ?? null;
 }
 
-function listData(items: InboxItem[], snoozedCount: number): InboxListData {
-  return { items, count: items.length, snoozedCount: Math.max(0, snoozedCount) };
+function listData(items: InboxItem[], snoozedCount: number, nextReturnAt: string | null): InboxListData {
+  return { items, count: items.length, snoozedCount: Math.max(0, snoozedCount), nextReturnAt };
 }
 
 export function withoutItem(data: InboxListData | undefined, id: string): InboxListData {
-  return listData((data?.items ?? []).filter((item) => item.id !== id), data?.snoozedCount ?? 0);
+  return listData((data?.items ?? []).filter((item) => item.id !== id), data?.snoozedCount ?? 0, data?.nextReturnAt ?? null);
 }
 
 export function withItem(data: InboxListData | undefined, item: InboxItem): InboxListData {
-  return listData([item, ...(data?.items ?? []).filter((existing) => existing.id !== item.id)], data?.snoozedCount ?? 0);
+  return listData([item, ...(data?.items ?? []).filter((existing) => existing.id !== item.id)], data?.snoozedCount ?? 0, data?.nextReturnAt ?? null);
 }
 
 export function replaceItem(data: InboxListData | undefined, item: InboxItem): InboxListData {
-  return listData((data?.items ?? []).map((existing) => (existing.id === item.id ? item : existing)), data?.snoozedCount ?? 0);
+  return listData((data?.items ?? []).map((existing) => (existing.id === item.id ? item : existing)), data?.snoozedCount ?? 0, data?.nextReturnAt ?? null);
 }
+
+const sooner = (a: string | null, b: string | null): string | null =>
+  a === null ? b : b === null ? a : Date.parse(b) < Date.parse(a) ? b : a;
 
 /** Server order: open is newest capture first, later is soonest return first; both break ties by id. */
 function comesBefore(view: InboxView, a: InboxItem, b: InboxItem): boolean {
@@ -118,27 +121,47 @@ export type InboxChange =
 /**
  * One triage result applied to one cached view, so the list, `count` and the Later
  * badge (`snoozedCount`) move together without a refetch. Counts only change when
- * the view actually gains or loses the item, so replaying a change is harmless.
+ * the view actually gains or loses the item, so replaying a change is harmless. A snooze
+ * can only bring `nextReturnAt` forward; other changes keep it, and a time left stale by
+ * them costs one extra refetch, which corrects it.
  */
 export function applyInboxChange(view: InboxView, data: InboxListData | undefined, change: InboxChange): InboxListData {
   const items = data?.items ?? [];
   const snoozed = data?.snoozedCount ?? 0;
+  const next = data?.nextReturnAt ?? null;
   if (change.type === "removed") return withoutItem(data, change.id);
   const { item } = change;
   const present = items.some((existing) => existing.id === item.id);
   const without = items.filter((existing) => existing.id !== item.id);
   switch (change.type) {
     case "restored":
-      return view === "open" ? listData(insertInOrder(items, item, "open"), snoozed) : listData([...items], snoozed);
-    case "snoozed":
+      return view === "open" ? listData(insertInOrder(items, item, "open"), snoozed, next) : listData([...items], snoozed, next);
+    case "snoozed": {
+      const soonest = sooner(next, item.snoozedUntil);
       return view === "open"
-        ? listData(without, snoozed + (present ? 1 : 0))
-        : listData(insertInOrder(items, item, "later"), snoozed + (present ? 0 : 1));
+        ? listData(without, snoozed + (present ? 1 : 0), soonest)
+        : listData(insertInOrder(items, item, "later"), snoozed + (present ? 0 : 1), soonest);
+    }
     case "unsnoozed":
       return view === "open"
-        ? listData(insertInOrder(items, item, "open"), snoozed - (present ? 0 : 1))
-        : listData(without, snoozed - (present ? 1 : 0));
+        ? listData(insertInOrder(items, item, "open"), snoozed - (present ? 0 : 1), next)
+        : listData(without, snoozed - (present ? 1 : 0), next);
   }
+}
+
+// setTimeout fires at once for longer delays; a return further off is re-checked after this.
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+/**
+ * Milliseconds until the inbox should be refetched because a snoozed item comes back, or
+ * null when nothing is snoozed. A second of slack lets the server's clock pass the return
+ * time first; a return that is already due is re-checked every five seconds until it lands.
+ */
+export function snoozeRefreshDelay(nextReturnAt: string | null, now: number): number | null {
+  if (nextReturnAt === null) return null;
+  const at = Date.parse(nextReturnAt);
+  if (Number.isNaN(at)) return null;
+  return Math.min(Math.max(at - now + 1_000, 5_000), MAX_TIMER_MS);
 }
 
 export type SnoozePresetId = "evening" | "tomorrow" | "nextMonday";

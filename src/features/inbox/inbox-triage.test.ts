@@ -21,6 +21,7 @@ import {
   resolveTriageKey,
   snoozeLimit,
   snoozePresets,
+  snoozeRefreshDelay,
   stripUrlStatus,
   suggestionView,
   syncTriageDraft,
@@ -113,13 +114,13 @@ describe("selection movement", () => {
 
 describe("cache helpers", () => {
   test("keep count in step with items and carry the Later count", () => {
-    const data = { items: [item("a"), item("b")], count: 2, snoozedCount: 4 };
-    expect(withoutItem(data, "a")).toEqual({ items: [item("b")], count: 1, snoozedCount: 4 });
-    expect(withItem(data, item("c"))).toEqual({ items: [item("c"), item("a"), item("b")], count: 3, snoozedCount: 4 });
+    const data = { items: [item("a"), item("b")], count: 2, snoozedCount: 4, nextReturnAt: null };
+    expect(withoutItem(data, "a")).toEqual({ items: [item("b")], count: 1, snoozedCount: 4, nextReturnAt: null });
+    expect(withItem(data, item("c"))).toEqual({ items: [item("c"), item("a"), item("b")], count: 3, snoozedCount: 4, nextReturnAt: null });
     expect(withItem(data, item("a", { title: "새 제목" })).items.map((i) => i.title)).toEqual(["새 제목", "제목 b"]);
     expect(replaceItem(data, item("b", { title: "바뀜" })).items[1]?.title).toBe("바뀜");
-    expect(withoutItem(undefined, "a")).toEqual({ items: [], count: 0, snoozedCount: 0 });
-    expect(withItem(undefined, item("a"))).toEqual({ items: [item("a")], count: 1, snoozedCount: 0 });
+    expect(withoutItem(undefined, "a")).toEqual({ items: [], count: 0, snoozedCount: 0, nextReturnAt: null });
+    expect(withItem(undefined, item("a"))).toEqual({ items: [item("a")], count: 1, snoozedCount: 0, nextReturnAt: null });
   });
 });
 
@@ -127,7 +128,7 @@ describe("list order and triage changes", () => {
   const newest = item("c", { createdAt: "2026-09-29T00:00:00.000Z" });
   const middle = item("b", { createdAt: "2026-09-28T00:00:00.000Z" });
   const oldest = item("a", { createdAt: "2026-09-27T00:00:00.000Z" });
-  const open = { items: [newest, middle, oldest], count: 3, snoozedCount: 1 };
+  const open = { items: [newest, middle, oldest], count: 3, snoozedCount: 1, nextReturnAt: null };
   const later = (id: string, until: string) => item(id, { snoozedUntil: until });
 
   test("inserts where the server lists it: newest capture first, soonest return first, ties by id", () => {
@@ -145,7 +146,7 @@ describe("list order and triage changes", () => {
 
   test("a discard and its undo return the item to its place", () => {
     const discarded = applyInboxChange("open", open, { type: "removed", id: "b" });
-    expect(discarded).toEqual({ items: [newest, oldest], count: 2, snoozedCount: 1 });
+    expect(discarded).toEqual({ items: [newest, oldest], count: 2, snoozedCount: 1, nextReturnAt: null });
     expect(applyInboxChange("open", discarded, { type: "restored", item: middle })).toEqual(open);
     expect(applyInboxChange("open", open, { type: "restored", item: middle })).toEqual(open);
   });
@@ -153,32 +154,43 @@ describe("list order and triage changes", () => {
   test("snoozing moves the item to Later and raises the badge once", () => {
     const snoozedItem = later("b", "2026-10-01T09:00:00.000Z");
     const afterOpen = applyInboxChange("open", open, { type: "snoozed", item: snoozedItem });
-    expect(afterOpen).toEqual({ items: [newest, oldest], count: 2, snoozedCount: 2 });
+    expect(afterOpen).toEqual({ items: [newest, oldest], count: 2, snoozedCount: 2, nextReturnAt: snoozedItem.snoozedUntil });
     expect(applyInboxChange("open", afterOpen, { type: "snoozed", item: snoozedItem })).toEqual(afterOpen);
 
     const existing = later("x", "2026-12-01T09:00:00.000Z");
-    const laterList = { items: [existing], count: 1, snoozedCount: 1 };
+    const laterList = { items: [existing], count: 1, snoozedCount: 1, nextReturnAt: existing.snoozedUntil };
     const afterLater = applyInboxChange("later", laterList, { type: "snoozed", item: snoozedItem });
-    expect(afterLater).toEqual({ items: [snoozedItem, existing], count: 2, snoozedCount: 2 });
+    expect(afterLater).toEqual({ items: [snoozedItem, existing], count: 2, snoozedCount: 2, nextReturnAt: snoozedItem.snoozedUntil });
     expect(applyInboxChange("later", afterLater, { type: "snoozed", item: snoozedItem })).toEqual(afterLater);
+    const farther = later("f", "2027-01-01T09:00:00.000Z");
+    expect(applyInboxChange("open", afterOpen, { type: "snoozed", item: farther }).nextReturnAt).toBe(snoozedItem.snoozedUntil);
   });
 
   test("unsnoozing brings the item back in order and lowers the badge once", () => {
     const returned = item("b", { createdAt: middle.createdAt });
-    const withoutB = { items: [newest, oldest], count: 2, snoozedCount: 2 };
+    const withoutB = { items: [newest, oldest], count: 2, snoozedCount: 2, nextReturnAt: null };
     const afterOpen = applyInboxChange("open", withoutB, { type: "unsnoozed", item: returned });
-    expect(afterOpen).toEqual({ items: [newest, returned, oldest], count: 3, snoozedCount: 1 });
+    expect(afterOpen).toEqual({ items: [newest, returned, oldest], count: 3, snoozedCount: 1, nextReturnAt: null });
     expect(applyInboxChange("open", afterOpen, { type: "unsnoozed", item: returned })).toEqual(afterOpen);
 
-    const laterList = { items: [later("b", "2026-10-01T09:00:00.000Z")], count: 1, snoozedCount: 1 };
+    const laterList = { items: [later("b", "2026-10-01T09:00:00.000Z")], count: 1, snoozedCount: 1, nextReturnAt: null };
     const afterLater = applyInboxChange("later", laterList, { type: "unsnoozed", item: returned });
-    expect(afterLater).toEqual({ items: [], count: 0, snoozedCount: 0 });
+    expect(afterLater).toEqual({ items: [], count: 0, snoozedCount: 0, nextReturnAt: null });
     expect(applyInboxChange("later", afterLater, { type: "unsnoozed", item: returned })).toEqual(afterLater);
   });
 
   test("a missing cache starts empty and counts never go negative", () => {
-    expect(applyInboxChange("open", undefined, { type: "unsnoozed", item: middle })).toEqual({ items: [middle], count: 1, snoozedCount: 0 });
-    expect(applyInboxChange("later", undefined, { type: "removed", id: "b" })).toEqual({ items: [], count: 0, snoozedCount: 0 });
+    expect(applyInboxChange("open", undefined, { type: "unsnoozed", item: middle })).toEqual({ items: [middle], count: 1, snoozedCount: 0, nextReturnAt: null });
+    expect(applyInboxChange("later", undefined, { type: "removed", id: "b" })).toEqual({ items: [], count: 0, snoozedCount: 0, nextReturnAt: null });
+  });
+
+  test("the return refresh waits for the soonest return, with slack, a floor and the timer limit", () => {
+    const now = Date.parse("2026-09-30T12:00:00.000Z");
+    expect(snoozeRefreshDelay(null, now)).toBeNull();
+    expect(snoozeRefreshDelay("2026-09-30T12:10:00.000Z", now)).toBe(601_000);
+    expect(snoozeRefreshDelay("2026-09-30T12:00:02.000Z", now)).toBe(5_000);
+    expect(snoozeRefreshDelay("2026-09-30T11:59:00.000Z", now)).toBe(5_000);
+    expect(snoozeRefreshDelay("2027-09-30T12:00:00.000Z", now)).toBe(2 ** 31 - 1);
   });
 
   test("isSnoozed compares against the injected clock", () => {

@@ -25,11 +25,13 @@ describe("snooze", () => {
   test("hides a snoozed item from the open view, home, and counts it in the later view", async () => {
     const snoozed = await captureInbox({ text: "나중에" });
     const open = await captureInbox({ text: "지금" });
+    expect(await listInbox()).toMatchObject({ snoozedCount: 0, nextReturnAt: null });
 
     const item = await snoozeInbox(snoozed.id, tomorrow());
 
     expect(item.snoozedUntil).not.toBeNull();
-    expect(await listInbox()).toMatchObject({ count: 1, snoozedCount: 1 });
+    expect(await listInbox()).toMatchObject({ count: 1, snoozedCount: 1, nextReturnAt: item.snoozedUntil });
+    expect(await listInbox("later")).toMatchObject({ nextReturnAt: item.snoozedUntil });
     expect(await openIds()).toEqual([open.id]);
     const later = await listInbox("later");
     expect(later.items.map((entry) => entry.id)).toEqual([snoozed.id]);

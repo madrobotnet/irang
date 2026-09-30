@@ -2,9 +2,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import useSWR, { SWRConfig } from "swr";
+import useSWR, { SWRConfig, useSWRConfig } from "swr";
 import { api, fetcher } from "@/lib/api-client";
 import { CaptureDialog } from "@/features/capture/CaptureDialog";
+import { INBOX_KEY, INBOX_LATER_KEY, snoozeRefreshDelay, type InboxListData } from "@/features/inbox/inbox-triage";
 import { hasUnsavedNoteDrafts } from "@/features/notes/draft-store";
 import { useCopy } from "@/components/i18n/LocaleProvider";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
@@ -70,13 +71,28 @@ function ShellState({ children }: { children: ReactNode }) {
     setPaletteOpen(false);
   }
 
-  const inbox = useSWR<{ items: unknown[]; count: number }>("/api/inbox", fetcher, {
+  const { mutate: mutateSWR } = useSWRConfig();
+  const inbox = useSWR<Pick<InboxListData, "count" | "nextReturnAt">>(INBOX_KEY, fetcher, {
     revalidateOnFocus: true,
     shouldRetryOnError: false,
     onError: () => undefined,
   });
   const inboxCount = typeof inbox.data?.count === "number" ? inbox.data.count : null;
   const refreshInbox = useCallback(() => void inbox.mutate(), [inbox]);
+
+  // A snoozed item comes back on its own, so refetch both inbox views then; the badge and
+  // lists follow without a focus or reload. `returnCheck` re-arms the timer when the refetch
+  // still reports the same time (the server's clock not there yet, or a failed request).
+  const nextReturnAt = inbox.data?.nextReturnAt ?? null;
+  const [returnCheck, setReturnCheck] = useState(0);
+  useEffect(() => {
+    const delay = snoozeRefreshDelay(nextReturnAt, Date.now());
+    if (delay === null) return;
+    const timer = window.setTimeout(() => {
+      void Promise.allSettled([mutateSWR(INBOX_KEY), mutateSWR(INBOX_LATER_KEY)]).then(() => setReturnCheck((count) => count + 1));
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [nextReturnAt, returnCheck, mutateSWR]);
 
   const openCapture = useCallback(() => {
     setPaletteOpen(false);

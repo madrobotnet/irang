@@ -19,7 +19,8 @@ export type InboxRow = QueryResultRow & {
 };
 export type InboxItemDto = InboxItem;
 export type InboxView = "open" | "later";
-export type InboxList = { items: InboxItemDto[]; count: number; snoozedCount: number };
+/** `nextReturnAt` is when the soonest snoozed item comes back, so clients can refresh then. */
+export type InboxList = { items: InboxItemDto[]; count: number; snoozedCount: number; nextReturnAt: string | null };
 
 export type CaptureInboxInput = { text?: string; url?: string; title?: string; source?: InboxSource };
 export type PromoteInboxInput = { title?: string; body?: string; tags?: string[] };
@@ -102,9 +103,17 @@ export async function listInbox(view: InboxView = "open"): Promise<InboxList> {
   const pool = await db();
   const [result, snoozed] = await Promise.all([
     pool.query<InboxRow>(VIEW_SQL[view]),
-    pool.query<{ count: number }>(`SELECT count(*)::int AS count FROM inbox_items WHERE ${OPEN} AND snoozed_until > now()`),
+    pool.query<{ count: number; next: string | Date | null }>(
+      `SELECT count(*)::int AS count, min(snoozed_until) AS next FROM inbox_items WHERE ${OPEN} AND snoozed_until > now()`,
+    ),
   ]);
-  return { items: result.rows.map(mapItem), count: result.rows.length, snoozedCount: snoozed.rows[0]?.count ?? 0 };
+  const next = snoozed.rows[0]?.next ?? null;
+  return {
+    items: result.rows.map(mapItem),
+    count: result.rows.length,
+    snoozedCount: snoozed.rows[0]?.count ?? 0,
+    nextReturnAt: next ? new Date(next).toISOString() : null,
+  };
 }
 
 async function rowById(id: string, client?: PoolClient): Promise<InboxRow | null> {
