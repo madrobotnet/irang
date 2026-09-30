@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
+import { z } from "zod";
 
 const directories: string[] = [];
 const script = path.resolve(import.meta.dir, "../../..", "scripts/setup-env.mjs");
@@ -42,4 +43,45 @@ test("refuses to overwrite an existing environment file", async () => {
   const second = Bun.spawn([Bun.which("bun") ?? "bun", "--no-env-file", script, file], { stdout: "ignore", stderr: "pipe" });
   expect(await second.exited).toBe(1);
   expect(await readFile(file, "utf8")).toBe(original);
+});
+
+test("exports a password hash that survives Compose dotenv parsing", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "second-brain-password-env-"));
+  directories.push(directory);
+  const root = path.resolve(path.dirname(script), "..");
+  const password = "fixture-Compose-literal-hash";
+  const child = Bun.spawn([Bun.which("bun") ?? "bun", "--no-env-file", path.join(root, "scripts/hash-password.mjs"), "--env"], {
+    stdin: "pipe", stdout: "pipe", stderr: "pipe",
+  });
+  const output = new Response(child.stdout).text();
+  const errors = new Response(child.stderr).text();
+  child.stdin.write(`${password}\n`);
+  child.stdin.end();
+  expect(await child.exited).toBe(0);
+  const exported = await output;
+  await errors;
+  const file = path.join(directory, ".env");
+  await writeFile(file, [
+    "SESSION_SECRET=fixture-session-secret",
+    `SETUP_TOKEN=${"a".repeat(64)}`,
+    "POSTGRES_PASSWORD=fixture-app-password",
+    "POSTGRES_ADMIN_PASSWORD=fixture-admin-password",
+    exported,
+  ].join("\n"), { mode: 0o600 });
+  const compose = Bun.spawn(["docker", "compose", "-f", path.join(root, "compose.yml"), "--env-file", file, "config", "--format", "json"], {
+    env: { PATH: process.env.PATH }, stdout: "pipe", stderr: "pipe",
+  });
+  const json = new Response(compose.stdout).text();
+  const diagnostics = new Response(compose.stderr).text();
+  const composeExit = await compose.exited;
+  const composeErrors = await diagnostics;
+  expect(composeExit, composeErrors).toBe(0);
+  const config = z.object({
+    services: z.object({
+      app: z.object({ environment: z.object({ AUTH_PASSWORD_HASH: z.string() }) }),
+    }),
+  }).parse(JSON.parse(await json));
+  const hash = config.services.app.environment.AUTH_PASSWORD_HASH.replaceAll("$$", "$");
+  expect(hash.slice(0, 10)).toBe("$argon2id$");
+  expect(await Bun.password.verify(password, hash)).toBe(true);
 });
