@@ -1,4 +1,4 @@
-import { api } from "@/lib/api-client";
+import { api, ApiClientError } from "@/lib/api-client";
 import { AuthCodeInputSchema, type AuthAttemptView } from "@/lib/ai-auth-flow";
 import type { WebAuthProvider } from "@/lib/ai-auth";
 import { localizedApiError } from "@/lib/i18n/api-error";
@@ -131,8 +131,16 @@ export class AuthAttemptController {
     this.stopPolling();
     this.update({ ...IDLE, starting: true });
     this.onReadyChange(undefined);
+    // Once the previous attempt is gone server-side it must never come back: restarting from it would loop on not_found.
+    let previousGone = false;
     try {
-      if (previous) await abandonAuthAttempt(previous.id, { setupToken }, this.request);
+      if (previous) {
+        await abandonAuthAttempt(previous.id, { setupToken }, this.request).catch((cause: unknown) => {
+          // Already cancelled, finished or purged after expiry: nothing is left to abandon.
+          if (!(cause instanceof ApiClientError && cause.code === "not_found")) throw cause;
+        });
+        previousGone = true;
+      }
       if (generation !== this.generation) return;
       const next = await this.request<AuthAttemptView>("/api/ai/auth", {
         method: "POST",
@@ -149,7 +157,8 @@ export class AuthAttemptController {
       this.show(next);
     } catch (cause) {
       if (generation !== this.generation) return;
-      if (previous) this.show({ ...previous, status: "failed" });
+      // Only an attempt that may still exist stays visible, so the next start retries its cleanup.
+      if (previous && !previousGone) this.show({ ...previous, status: "failed" });
       this.update({ error: failure("startFailed", cause) });
     } finally {
       if (generation === this.generation) this.update({ starting: false });

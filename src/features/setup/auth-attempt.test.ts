@@ -35,8 +35,11 @@ const ready = (patch: Partial<AuthAttemptView> = {}): AuthAttemptView => ({
   id: ID, provider: "google", status: "ready", expiresAt: 1, ...patch,
 });
 
-/** `setupToken: null` models authenticated settings, which send no installer token. */
-function harness(provider: WebAuthProvider = "google", setupToken: string | null = TOKEN) {
+/**
+ * `setupToken: null` models authenticated settings, which send no installer token.
+ * `deleteError` makes every cleanup request fail with it; otherwise cleanups succeed.
+ */
+function harness(provider: WebAuthProvider = "google", setupToken: string | null = TOKEN, deleteError?: unknown) {
   const calls: Call[] = [];
   const waiters: { readonly index: number; readonly resolve: (call: Call) => void }[] = [];
   const request: AuthRequest = <T,>(path: string, init: RequestInit & { json?: unknown }) => new Promise<T>((resolve, reject) => {
@@ -47,7 +50,10 @@ function harness(provider: WebAuthProvider = "google", setupToken: string | null
     calls.push(call);
     for (const waiter of waiters.filter((entry) => entry.index === calls.length - 1)) waiter.resolve(call);
     // Cleanup requests succeed unless a test says otherwise; their outcome is asserted via `calls`.
-    if (init.method === "DELETE") call.resolve({ ok: true });
+    if (init.method === "DELETE") {
+      if (deleteError === undefined) call.resolve({ ok: true });
+      else call.reject(deleteError);
+    }
   });
   /** Resolves when the request with this index is issued, for flows that make it after internal awaits. */
   const waitForCall = (index: number) => new Promise<Call>((resolve, reject) => {
@@ -286,7 +292,7 @@ describe("device and shared login lifecycle", () => {
     expect(qa.controller.getSnapshot().attempt?.id).toBe(NEXT_ID);
   });
 
-  test("a failed restart keeps the previous attempt visible as failed without polling", async () => {
+  test("a restart that fails after deleting the previous attempt does not restore it, and the next start begins fresh", async () => {
     const qa = harness("xai", null);
     await qa.start(view({ provider: "xai", requiresCode: undefined, userCode: "WXYZ" }));
     const restarted = qa.controller.start();
@@ -298,9 +304,41 @@ describe("device and shared login lifecycle", () => {
 
     expect(qa.routes()).toEqual(["POST /api/ai/auth", `DELETE /api/ai/auth/${ID}`, "POST /api/ai/auth"]);
     expect(qa.controller.getSnapshot()).toMatchObject({
-      starting: false, error: { key: "startFailed", cause: conflict }, attempt: { id: ID, status: "failed" },
+      starting: false, error: { key: "startFailed", cause: conflict }, attempt: null,
     });
     expect(qa.scheduled.size).toBe(0);
+
+    await qa.start(view({ id: NEXT_ID, provider: "xai", requiresCode: undefined, userCode: "ABCD" }));
+    expect(qa.routes().slice(3)).toEqual(["POST /api/ai/auth"]);
+    expect(qa.controller.getSnapshot()).toMatchObject({ error: null, attempt: { id: NEXT_ID, status: "pending" } });
+  });
+
+  test("a restart that cannot delete the previous attempt keeps it visible as failed and retries the cleanup next time", async () => {
+    const outage = new ApiClientError(503, "unavailable", "detail");
+    const qa = harness("xai", null, outage);
+    await qa.start(view({ provider: "xai", requiresCode: undefined, userCode: "WXYZ" }));
+    await qa.controller.start();
+
+    expect(qa.routes()).toEqual(["POST /api/ai/auth", `DELETE /api/ai/auth/${ID}`]);
+    expect(qa.controller.getSnapshot()).toMatchObject({
+      starting: false, error: { key: "startFailed", cause: outage }, attempt: { id: ID, status: "failed" },
+    });
+    expect(qa.scheduled.size).toBe(0);
+
+    await qa.controller.start();
+    expect(qa.routes().slice(2)).toEqual([`DELETE /api/ai/auth/${ID}`]);
+  });
+
+  test("a previous attempt the server already removed does not block a restart", async () => {
+    const qa = harness("xai", null, new ApiClientError(404, "not_found", "gone"));
+    await qa.start(view({ provider: "xai", requiresCode: undefined, userCode: "WXYZ" }));
+    const restarted = qa.controller.start();
+    const startCall = await qa.waitForCall(2);
+    startCall.resolve(view({ id: NEXT_ID, provider: "xai", requiresCode: undefined, userCode: "ABCD" }));
+    await restarted;
+
+    expect(qa.routes()).toEqual(["POST /api/ai/auth", `DELETE /api/ai/auth/${ID}`, "POST /api/ai/auth"]);
+    expect(qa.controller.getSnapshot()).toMatchObject({ error: null, attempt: { id: NEXT_ID, status: "pending" } });
   });
 
   test("an invalid installer code blocks the start without clearing a ready login", async () => {
