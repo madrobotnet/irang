@@ -14,6 +14,7 @@ on:
       - main
       - "feat/**"
       - "feature/**"
+  workflow_call:
 
 permissions:
   contents: read
