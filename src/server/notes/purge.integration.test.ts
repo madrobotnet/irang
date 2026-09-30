@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { query } from "@/server/db";
 import { closeDb, connectTestDatabase, resetData } from "@/server/test/db";
-import { saveAttachment } from "./attachments";
+import { loadAttachment, saveAttachment } from "./attachments";
 import { createNote, getNote, purgeNote, trashNote } from "./service";
 
 connectTestDatabase();
@@ -49,6 +49,25 @@ test("permanent deletion removes current and legacy files belonging only to the 
   await expect(readFile(legacyPath)).rejects.toMatchObject({ code: "ENOENT" });
   expect(await readFile(retained.file, "utf8")).toBe("keep until purge");
   expect(await readFile(path.join(directory, "attachments", unowned.storageKey), "utf8")).toBe("unowned");
+});
+
+test("an attachment another note still links to moves to that note instead of being deleted", async () => {
+  const selected = await noteWithFile();
+  const [shared] = await query<{ id: string }>("SELECT id FROM attachments WHERE note_id=$1", [selected.note.id]);
+  if (!shared) throw new Error("Missing shared fixture attachment");
+  const unshared = await saveAttachment(new File(["only here"], "unshared.txt"), selected.note.id);
+  const embed = `![fixture](/api/attachments/${shared.id.toUpperCase()})`;
+  const active = await createNote({ title: "Active linker", body: embed });
+  const trashed = await createNote({ title: "Trashed linker", body: embed });
+  await trashNote(trashed.id);
+  await trashNote(selected.note.id);
+
+  await purgeNote(selected.note.id);
+
+  expect(await query("SELECT note_id FROM attachments WHERE id=$1", [shared.id])).toEqual([{ note_id: active.id }]);
+  expect(new TextDecoder().decode((await loadAttachment(shared.id)).bytes)).toBe("keep until purge");
+  await expect(readFile(path.join(directory, "attachments", unshared.storageKey))).rejects.toMatchObject({ code: "ENOENT" });
+  expect(await query("SELECT id FROM attachments WHERE id=$1", [unshared.id])).toEqual([]);
 });
 
 test("moving a note to trash leaves its attachment bytes intact", async () => {

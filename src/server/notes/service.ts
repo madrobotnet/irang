@@ -273,6 +273,18 @@ export async function purgeInTransaction(client: PoolClient, id: string, scope: 
   const sources = await client.query<{ id: string; body: string }>(
     "SELECT n.id,n.body FROM links l JOIN notes n ON n.id=l.from_note_id WHERE l.to_note_id=$1 AND n.deleted_at IS NULL", [id],
   );
+  // An attachment another note still links to moves to that note instead of being deleted: an
+  // active note first (a trashed one can still be restored), then the most recently edited.
+  await client.query(
+    `UPDATE attachments a SET note_id=ref.note_id
+       FROM (SELECT DISTINCT ON (owned.id) owned.id AS attachment_id, n.id AS note_id
+               FROM attachments owned
+               JOIN notes n ON n.id<>$1 AND strpos(lower(n.body), '/api/attachments/' || owned.id::text) > 0
+              WHERE owned.note_id=$1
+              ORDER BY owned.id, (n.deleted_at IS NOT NULL), n.updated_at DESC, n.id) ref
+      WHERE a.id=ref.attachment_id`,
+    [id],
+  );
   const attachments = await client.query<{ storage_key: string }>(
     "DELETE FROM attachments WHERE note_id=$1 RETURNING storage_key", [id],
   );
