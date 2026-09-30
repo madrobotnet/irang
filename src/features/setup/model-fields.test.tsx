@@ -10,6 +10,7 @@ import { ChatAiFields } from "./ChatAiFields";
 import { ChatModelField } from "./ChatApiFields";
 import { JevAiFields } from "./JevAiFields";
 import { emptyAiForm, type ChatFormState, type JevFormState } from "./ai-form";
+import { buildChatConnection } from "./connection-form";
 import { captureTree, hangulIn, html, renderInLocale } from "./test-locale";
 
 const renderToStaticMarkup = (node: ReactNode) => renderInLocale(node, "en");
@@ -159,6 +160,25 @@ describe("chat model switching", () => {
     expect(select("xai")).toMatchObject({ provider: "xai", mode: "auth", model: "grok-3", otherModeModel: undefined });
     expect(select("github-copilot")).toMatchObject({ mode: "auth", model: chatAuthModels("github-copilot")?.defaultId });
     expect(select("anthropic")).toMatchObject({ mode: "api", model: "claude-sonnet-5-5" });
+  });
+
+  test("provider switch drops an output limit the new provider's form no longer shows", () => {
+    const current = {
+      ...base.chat, enabled: true, provider: "openai-compatible" as const, model: "local-model",
+      baseUrl: "http://127.0.0.1:1234/v1", apiKey: "local-key", maxOutputTokens: "64", consent: true,
+    };
+    const { tree, changes } = chatTree(current);
+    const provider = findOne(tree, (element) => element.type === "select" && element.props.id === "qa-chat-provider");
+    (provider.props.onChange as (event: Pick<ChangeEvent<HTMLSelectElement>, "target">) => void)({
+      target: { value: "openai" } as HTMLSelectElement,
+    });
+    const next = changes.at(-1);
+    if (!next) throw new Error("Provider switch did not update the form");
+    expect(next).toMatchObject({ provider: "openai", mode: "api", maxOutputTokens: "" });
+
+    const built = buildChatConnection({ ...next, apiKey: "openai-key", consent: true }, null);
+    if (!built.ok) throw new Error("The switched connection did not build");
+    expect(built.connection).not.toHaveProperty("maxOutputTokens");
   });
 
   test("choosing a model keeps a ready Auth attempt and the login panel identity", () => {

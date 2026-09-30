@@ -142,6 +142,7 @@ export function ChatAiFields({
                     baseUrl: "",
                     headersJson: "",
                     headerAction: "retain",
+                    maxOutputTokens: "",
                     enterpriseDomain: "",
                     authAttemptId: undefined,
                     apiFormat: provider === "github-copilot" ? "responses"
