@@ -1,4 +1,5 @@
-import { INTL_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { formatDateTime } from "@/lib/i18n/format-date";
+import type { Locale } from "@/lib/i18n/locale";
 
 /** Whole days until `expiresAt` (rounded up, never negative); null for a missing or invalid timestamp. */
 export function daysUntil(expiresAt: string | null, now: number): number | null {
@@ -8,16 +9,9 @@ export function daysUntil(expiresAt: string | null, now: number): number | null 
   return Math.max(0, Math.ceil((at - now) / 86_400_000));
 }
 
-/** "2026년 10월 27일 (화) 오후 9:00" / "Tue, October 27, 2026 at 9:00 PM" in the viewer's zone. */
+/** "2026-10-27 오후 9:00" / "Oct 27, 2026, 9:00 PM" in the viewer's zone. */
 export function formatExpiry(expiresAt: string, locale: Locale): string {
-  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(expiresAt));
+  return formatDateTime(expiresAt, locale);
 }
 
 export type SessionInfo = { ok: boolean; expiresAt: string | null };

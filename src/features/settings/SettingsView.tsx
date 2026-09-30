@@ -11,9 +11,11 @@ import { cn } from "@/components/ui/cn";
 import { Shortcut } from "@/components/ui/Kbd";
 import { INSTALL_NAME } from "@/lib/brand";
 import { AiConnections } from "./AiConnections";
+import { ExportSection } from "./ExportSection";
 import { Section } from "./SettingsSection";
 import { SessionSection } from "./SettingsSession";
 import { SETTINGS_COPY } from "./settings-copy";
+import { TemplatesSection } from "./TemplatesSection";
 
 export function SettingsView() {
   const copy = useCopy(SETTINGS_COPY);
@@ -29,8 +31,10 @@ export function SettingsView() {
         <LanguageSection />
         <SessionSection />
         <AiConnections />
+        <TemplatesSection />
         <InstallSection />
         <DataSection />
+        <ExportSection />
         <ShortcutSection />
       </div>
     </div>
@@ -132,6 +136,7 @@ function ShortcutSection() {
     [["g", "h"], copy.home],
     [["g", "i"], copy.inbox],
     [["g", "n"], copy.notes],
+    [["g", "t"], copy.tasks],
     [["g", "s"], copy.search],
     [["g", "g"], copy.graph],
     [["g", "c"], copy.chat],

@@ -1,6 +1,22 @@
-import { CalendarDays, FileText, House, Inbox, MessageSquare, Search, Settings, Waypoints, type LucideIcon } from "lucide-react";
+import { CalendarDays, FileText, House, Inbox, ListChecks, MessageSquare, Search, Settings, Waypoints, type LucideIcon } from "lucide-react";
 
-export type NavId = "home" | "inbox" | "notes" | "daily" | "search" | "graph" | "chat" | "settings";
+/**
+ * Desktop rail order (docs/ARCHITECTURE.md "Shell"). Adding a destination is one entry here plus its
+ * label in `SHELL_COPY[locale].nav`; `NavId` and the mobile "more" sheet derive from this list.
+ */
+const ITEMS = [
+  { id: "home", href: "/", icon: House, goKey: "h" },
+  { id: "inbox", href: "/inbox", icon: Inbox, goKey: "i" },
+  { id: "notes", href: "/notes", icon: FileText, goKey: "n" },
+  { id: "tasks", href: "/tasks", icon: ListChecks, goKey: "t" },
+  { id: "daily", href: "/daily", icon: CalendarDays },
+  { id: "search", href: "/search", icon: Search, goKey: "s" },
+  { id: "graph", href: "/graph", icon: Waypoints, goKey: "g" },
+  { id: "chat", href: "/chat", icon: MessageSquare, goKey: "c" },
+  { id: "settings", href: "/settings", icon: Settings },
+] as const;
+
+export type NavId = (typeof ITEMS)[number]["id"];
 
 /** Route, icon and chord key of a rail entry; its visible label is `SHELL_COPY[locale].nav[id]` in copy.ts. */
 export type NavItem = {
@@ -11,17 +27,7 @@ export type NavItem = {
   goKey?: string;
 };
 
-/** Desktop rail order (docs/ARCHITECTURE.md "Shell"). */
-export const NAV_ITEMS: readonly NavItem[] = [
-  { id: "home", href: "/", icon: House, goKey: "h" },
-  { id: "inbox", href: "/inbox", icon: Inbox, goKey: "i" },
-  { id: "notes", href: "/notes", icon: FileText, goKey: "n" },
-  { id: "daily", href: "/daily", icon: CalendarDays },
-  { id: "search", href: "/search", icon: Search, goKey: "s" },
-  { id: "graph", href: "/graph", icon: Waypoints, goKey: "g" },
-  { id: "chat", href: "/chat", icon: MessageSquare, goKey: "c" },
-  { id: "settings", href: "/settings", icon: Settings },
-];
+export const NAV_ITEMS: readonly NavItem[] = ITEMS;
 
 const BY_ID = new Map(NAV_ITEMS.map((item) => [item.id, item]));
 
@@ -31,8 +37,8 @@ export function navItem(id: NavId): NavItem {
   return item;
 }
 
-/** Bottom bar: home · notes · [capture] · search · more. The capture slot is rendered by MobileNav. */
-export const MOBILE_PRIMARY: readonly NavId[] = ["home", "notes", "search"];
+/** Bottom bar: home · inbox · [capture] · notes · more. The capture slot is rendered by MobileNav; search stays in the top bar. */
+export const MOBILE_PRIMARY: readonly NavId[] = ["home", "inbox", "notes"];
 
 /** Everything else lives in the "more" sheet, in rail order. */
 export const MOBILE_MORE: readonly NavId[] = NAV_ITEMS.filter((item) => !MOBILE_PRIMARY.includes(item.id)).map((item) => item.id);

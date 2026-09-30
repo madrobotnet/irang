@@ -28,13 +28,18 @@ export const HOME_COPY = defineCopy({
     },
     loading: "홈 정보를 불러오는 중",
     asideLabel: "고정한 노트와 다시 볼 노트",
+    firstRun: {
+      title: "아직 노트도 캡처도 없어요",
+      description: "떠오른 생각은 캡처해 두고 나중에 정리하세요. 바로 쓰고 싶다면 새 노트를 만드세요.",
+    },
+    folded: {
+      title: "고정한 노트와 다시 볼 노트가 여기에 모여요",
+      description: "자주 여는 노트를 고정하거나 2주 넘게 두면 이곳에 나타나요.",
+    },
     inbox: {
       title: "인박스",
       reviewAll: (count: number) => `${count}개 모두 정리하기`,
       review: "정리하기",
-      emptyTitle: "인박스가 비어 있어요",
-      emptyDescription: "떠오른 생각이나 링크를 분류 없이 먼저 캡처해 두세요.",
-      capture: "캡처하기",
       untitled: "제목 없는 캡처",
     },
     today: {
@@ -55,15 +60,10 @@ export const HOME_COPY = defineCopy({
     moreTags: (count: number) => `외 ${count}개`,
     pinned: {
       title: "고정한 노트",
-      emptyTitle: "고정한 노트가 없어요",
-      emptyDescription: "자주 여는 노트를 노트 화면에서 고정하면 여기에 모여요.",
-      browse: "노트 보기",
     },
     resurface: {
       title: "다시 볼 노트",
       description: "2주 넘게 손대지 않은 노트 가운데 오늘 고른 노트예요.",
-      emptyTitle: "아직 다시 꺼낼 노트가 없어요",
-      emptyDescription: "2주 넘게 손대지 않은 노트가 생기면 하루에 몇 개씩 여기에 다시 보여 드려요.",
     },
     time: {
       justNow: "방금",
@@ -93,13 +93,18 @@ export const HOME_COPY = defineCopy({
     },
     loading: "Loading your home page",
     asideLabel: "Pinned notes and notes to revisit",
+    firstRun: {
+      title: "No notes or captures yet",
+      description: "Capture thoughts now and sort them out later, or create a note to start writing right away.",
+    },
+    folded: {
+      title: "Pinned notes and notes to revisit collect here",
+      description: "Pin notes you open often, or leave notes for two weeks, and they'll show up here.",
+    },
     inbox: {
       title: "Inbox",
       reviewAll: (count) => `Review all ${count}`,
       review: "Review",
-      emptyTitle: "Your inbox is empty",
-      emptyDescription: "Capture thoughts and links now. Sort them out later.",
-      capture: "Capture",
       untitled: "Untitled capture",
     },
     today: {
@@ -120,15 +125,10 @@ export const HOME_COPY = defineCopy({
     moreTags: (count) => `+${count} more`,
     pinned: {
       title: "Pinned notes",
-      emptyTitle: "No pinned notes",
-      emptyDescription: "Pin the notes you open often on the Notes page, and they'll gather here.",
-      browse: "Browse notes",
     },
     resurface: {
       title: "Notes to revisit",
       description: "Picked today from notes you haven't touched in over two weeks.",
-      emptyTitle: "Nothing to revisit yet",
-      emptyDescription: "Once notes go untouched for more than two weeks, a few will show up here each day.",
     },
     time: {
       justNow: "just now",

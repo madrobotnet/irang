@@ -31,7 +31,7 @@ type Props = {
   onPinChange(nodeId: string, pinned: boolean): void;
 };
 
-const COLOR_VARS = ["--accent", "--ok", "--warn", "--danger"] as const;
+const COLOR_VARS = ["--graph-1", "--graph-2", "--graph-3", "--graph-4", "--graph-5", "--graph-6"] as const;
 
 function subscribeTheme(onChange: () => void) {
   const observer = new MutationObserver(onChange);

@@ -3,7 +3,7 @@
 import { ArrowLeft, BookOpen, CircleAlert, MessageSquare, MoreHorizontal, Pencil, Plus, RefreshCw, Send, Square, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import useSWR, { useSWRConfig } from "swr";
@@ -14,9 +14,10 @@ import { Button, Dialog, EmptyState, Input, Skeleton, SkeletonLines, Textarea, b
 import { ApiClientError } from "@/lib/api-client";
 import { localizedApiError } from "@/lib/i18n/api-error";
 import { textInEveryLocale } from "@/lib/i18n/copy";
+import { formatDate } from "@/lib/i18n/format-date";
 import type { ChatMessage, ChatThread, Citation } from "@/lib/types";
 import { STATUS_KEY, THREADS_KEY, createThread, deleteThread, getChatStatus, listThreads, renameThread, type ChatStatus } from "./api";
-import { failureMessage, threadDateFormat } from "./chat-model";
+import { failureMessage, partitionCitations } from "./chat-model";
 import { CHAT_COPY } from "./copy";
 import { useChatThread, type Exchange } from "./use-chat-thread";
 
@@ -28,7 +29,6 @@ export function ChatWorkspace({ selectedThreadId }: { selectedThreadId?: string 
   const copy = useCopy(CHAT_COPY);
   // Null through SSR and hydration, so dates render only once the viewer's own zone is known.
   const timeZone = useTimeZone();
-  const dateFormat = useMemo(() => (timeZone ? threadDateFormat(locale, timeZone) : null), [locale, timeZone]);
   const threads = useSWR<{ threads: ChatThread[] }>(THREADS_KEY, listThreads, { revalidateOnFocus: true, shouldRetryOnError: false });
   const status = useSWR<ChatStatus>(STATUS_KEY, getChatStatus, { revalidateOnFocus: false, shouldRetryOnError: false });
   const [creating, setCreating] = useState(false);
@@ -46,27 +46,27 @@ export function ChatWorkspace({ selectedThreadId }: { selectedThreadId?: string 
     }
   };
 
+  // On desktop the landing already shows the setup notice and the new-chat button, so the list hides its copies.
+  const landingDuplicate = selectedThreadId ? undefined : "lg:hidden";
+
   return (
-    <div className="mx-auto grid h-[var(--workspace-h)] w-full max-w-7xl overflow-hidden lg:h-dvh lg:grid-cols-[18rem_minmax(0,1fr)]">
+    <div className="mx-auto grid h-[var(--workspace-h)] w-full max-w-[100rem] overflow-hidden lg:h-dvh lg:grid-cols-[18rem_minmax(0,1fr)]">
       <DocumentTitle title={copy.title} />
       <aside aria-label={copy.threadsHeading} className={cn("min-w-0 border-line bg-desk lg:flex lg:flex-col lg:border-r", selectedThreadId ? "hidden lg:flex" : "flex flex-col")}>
         <header className="flex items-center gap-3 border-b border-line px-4 py-4">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">{copy.title}</h1>
-            <p className="mt-0.5 line-clamp-2 text-sm text-mute">{copy.lead}</p>
-          </div>
+          <h1 className="min-w-0 flex-1 text-xl font-semibold tracking-tight">{copy.title}</h1>
           <Button variant="primary" size="lg" iconOnly aria-label={copy.newThread} loading={creating} onClick={() => void create()}>
             <Plus aria-hidden className="size-5" />
           </Button>
         </header>
-        <StatusNotice status={status.data} loading={status.isLoading} error={status.error} retry={() => void status.mutate()} compact />
+        <StatusNotice status={status.data} loading={status.isLoading} error={status.error} retry={() => void status.mutate()} compact className={landingDuplicate} />
         <nav aria-label={copy.threadsHeading} className="min-h-0 flex-1 overflow-y-auto p-2 scrollbar-thin">
           {threads.isLoading && !threads.data ? <ThreadListSkeleton /> : null}
           {threads.error && !threads.data ? (
             <EmptyState variant="plain" icon={CircleAlert} title={copy.threadsLoadFailed} action={<Button size="lg" leading={<RefreshCw aria-hidden className="size-4" />} onClick={() => void threads.mutate()}>{copy.retry}</Button>} />
           ) : null}
           {threads.data?.threads.length === 0 ? (
-            <EmptyState variant="plain" icon={MessageSquare} title={copy.threadsEmptyTitle} description={copy.threadsEmptyDescription} action={<Button variant="primary" size="lg" loading={creating} leading={<Plus aria-hidden className="size-4" />} onClick={() => void create()}>{copy.newThread}</Button>} />
+            <EmptyState variant="plain" icon={MessageSquare} title={copy.threadsEmptyTitle} description={copy.threadsEmptyDescription} action={<Button className={landingDuplicate} variant="primary" size="lg" loading={creating} leading={<Plus aria-hidden className="size-4" />} onClick={() => void create()}>{copy.newThread}</Button>} />
           ) : null}
           {threads.data?.threads.length ? (
             <ul className="space-y-1">
@@ -74,7 +74,7 @@ export function ChatWorkspace({ selectedThreadId }: { selectedThreadId?: string 
                 <li key={thread.id}>
                   <Link href={`/chat/${thread.id}`} aria-current={thread.id === selectedThreadId ? "page" : undefined} className={cn("flex min-h-touch flex-col justify-center rounded-ctl px-3 py-2 focus-ring", thread.id === selectedThreadId ? "bg-accent-soft" : "hover:bg-line/50")}>
                     <span className="truncate text-md font-medium">{thread.title}</span>
-                    <span className="text-xs text-mute">{dateFormat?.format(new Date(thread.updatedAt))}</span>
+                    <span className="text-xs text-mute">{timeZone ? formatDate(thread.updatedAt, locale, { timeZone }) : null}</span>
                   </Link>
                 </li>
               ))}
@@ -106,13 +106,13 @@ function ChatLanding({ status, loading, error, retry, create, creating }: { stat
   );
 }
 
-function StatusNotice({ status, loading, error, retry, compact = false }: { status?: ChatStatus; loading: boolean; error: unknown; retry: () => void; compact?: boolean }) {
+function StatusNotice({ status, loading, error, retry, compact = false, className }: { status?: ChatStatus; loading: boolean; error: unknown; retry: () => void; compact?: boolean; className?: string }) {
   const copy = useCopy(CHAT_COPY);
   if (status?.available) return null;
-  if (loading && !status) return <p className={cn("text-sm text-mute", compact ? "border-b border-line px-4 py-3" : "mt-5")}>{copy.statusChecking}</p>;
+  if (loading && !status) return <p className={cn("text-sm text-mute", compact ? "border-b border-line px-4 py-3" : "mt-5", className)}>{copy.statusChecking}</p>;
   const failed = Boolean(error);
   return (
-    <div role={failed ? "alert" : "status"} className={cn("border-warn/30 bg-warn-soft text-ink", compact ? "border-b px-4 py-3" : "mt-5 rounded-card border px-4 py-4")}>
+    <div role={failed ? "alert" : "status"} className={cn("border-warn/30 bg-warn-soft text-ink", compact ? "border-b px-4 py-3" : "mt-5 rounded-card border px-4 py-4", className)}>
       <div className="flex items-start gap-2.5">
         <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-warn" />
         <div className="min-w-0 flex-1">
@@ -204,9 +204,9 @@ function Message({ message }: { message: ChatMessage }) {
   return (
     <article aria-label={assistant ? copy.assistantLabel : copy.userLabel} className={cn("flex", assistant ? "justify-start" : "justify-end")}>
       <div className={cn("max-w-[92%] sm:max-w-[82%]", assistant ? "w-full" : "rounded-card bg-accent px-4 py-3 text-accent-ink")}>
-        <p className={cn("mb-1 text-xs font-medium", assistant ? "text-mute" : "text-accent-ink/80")}>{assistant ? copy.assistantLabel : copy.userLabel}</p>
+        {assistant ? <p className="mb-1 text-xs font-medium text-mute">{copy.assistantLabel}</p> : null}
         {assistant ? <SafeMarkdown content={message.content} /> : <p className="whitespace-pre-wrap text-md leading-relaxed">{message.content}</p>}
-        {assistant && message.citations.length > 0 ? <Sources citations={message.citations} /> : null}
+        {assistant && message.citations.length > 0 ? <Sources citations={message.citations} answer={message.content} /> : null}
       </div>
     </article>
   );
@@ -219,10 +219,10 @@ function SafeMarkdown({ content }: { content: string }) {
       h1: ({ children }) => <h2 className="mb-2 mt-4 text-xl font-semibold first:mt-0">{children}</h2>,
       h2: ({ children }) => <h3 className="mb-2 mt-4 text-lg font-semibold first:mt-0">{children}</h3>,
       h3: ({ children }) => <h4 className="mb-1 mt-3 text-md font-semibold first:mt-0">{children}</h4>,
-      p: ({ children }) => <p className="my-2 text-md leading-relaxed first:mt-0 last:mb-0">{children}</p>,
-      ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5 text-md">{children}</ul>,
-      ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5 text-md">{children}</ol>,
-      blockquote: ({ children }) => <blockquote className="my-3 border-l-2 border-accent pl-3 text-mute">{children}</blockquote>,
+      p: ({ children }) => <p className="my-2 text-read first:mt-0 last:mb-0">{children}</p>,
+      ul: ({ children }) => <ul className="my-2 list-disc space-y-1 pl-5 text-read">{children}</ul>,
+      ol: ({ children }) => <ol className="my-2 list-decimal space-y-1 pl-5 text-read">{children}</ol>,
+      blockquote: ({ children }) => <blockquote className="my-3 border-l-2 border-line-strong pl-3 text-mute">{children}</blockquote>,
       code: ({ children, className }) => className ? <code className={cn("block overflow-x-auto rounded-ctl bg-rail p-3 text-sm text-rail-ink scrollbar-thin", className)}>{children}</code> : <code className="rounded bg-line/60 px-1 py-0.5 text-sm">{children}</code>,
       pre: ({ children }) => <pre className="my-3 overflow-x-auto">{children}</pre>,
       a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="rounded-sm font-medium text-accent underline underline-offset-2 focus-ring">{children}</a>,
@@ -234,14 +234,34 @@ function SafeMarkdown({ content }: { content: string }) {
   );
 }
 
-function Sources({ citations }: { citations: Citation[] }) {
+/**
+ * Retrieved sources under an answer. With the settled `answer` text, the sources it cites with [n]
+ * markers come first as cards and the rest of the retrieved notes follow as a quieter list; while
+ * an answer is still streaming (no `answer`), every source stays a card so nothing reshuffles mid-read.
+ */
+function Sources({ citations, answer }: { citations: Citation[]; answer?: string }) {
   const copy = useCopy(CHAT_COPY);
+  const { cited, others } = answer === undefined ? { cited: citations, others: [] } : partitionCitations(answer, citations);
   return (
     <section aria-label={copy.sources} className="mt-4 border-t border-line pt-3">
       <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-mute"><BookOpen aria-hidden className="size-4" />{copy.sources}</h3>
       <div className="grid gap-2 sm:grid-cols-2">
-        {citations.map((citation) => <Link key={`${citation.index}-${citation.noteId}`} href={`/notes/${citation.noteId}`} className="surface-desk group min-w-0 p-3 hover:border-accent focus-ring"><span className="text-xs font-medium text-accent">{copy.sourceLabel(citation.index)}</span><p className="mt-0.5 truncate text-sm font-semibold group-hover:text-accent">{citation.title}</p>{citation.excerpt ? <p className="mt-1 line-clamp-3 text-xs text-mute">{citation.excerpt}</p> : null}<span className="mt-2 inline-block text-xs font-medium text-mute">{copy.sourceOpen}</span></Link>)}
+        {cited.map((citation) => <Link key={`${citation.index}-${citation.noteId}`} href={`/notes/${citation.noteId}`} className="surface-desk group min-w-0 p-3 hover:bg-card hover:shadow-card focus-ring"><span className="text-xs font-medium text-accent">{copy.sourceLabel(citation.index)}</span><p className="mt-0.5 truncate text-sm font-semibold group-hover:text-accent">{citation.title}</p>{citation.excerpt ? <p className="mt-1 line-clamp-3 text-xs text-mute">{citation.excerpt}</p> : null}<span className="mt-2 inline-block text-xs font-medium text-mute">{copy.sourceOpen}</span></Link>)}
       </div>
+      {others.length > 0 ? (
+        <div className="mt-3">
+          <h4 className="mb-1 px-2 text-xs font-medium text-mute">{copy.sourcesAlso}</h4>
+          <ul className="grid gap-x-2 sm:grid-cols-2">
+            {others.map((citation) => (
+              <li key={`${citation.index}-${citation.noteId}`} className="min-w-0">
+                <Link href={`/notes/${citation.noteId}`} className="flex min-h-touch items-center rounded-ctl px-2 text-sm text-mute hover:bg-desk hover:text-ink focus-ring sm:min-h-9">
+                  <span className="truncate">{citation.title}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

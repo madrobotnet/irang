@@ -1,13 +1,22 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "./cn";
 
+/** `cn` does not merge conflicting classes, so surface colors come from a variant, never a className override. */
+export type KbdVariant = "default" | "onAccent" | "onRail";
+
+const VARIANT: Record<KbdVariant, string> = {
+  default: "border-line-strong/80 bg-desk text-mute shadow-[inset_0_-1px_0_var(--line-strong)]",
+  onAccent: "border-transparent bg-accent-ink/20 text-accent-ink",
+  onRail: "border-rail-line bg-rail-hover text-rail-mute",
+};
+
 /** Keyboard key cap. Callers supply the platform modifier text when needed. */
-export function Kbd({ className, children, ...rest }: HTMLAttributes<HTMLElement>) {
+export function Kbd({ className, children, variant = "default", ...rest }: HTMLAttributes<HTMLElement> & { variant?: KbdVariant }) {
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border border-line-strong/80 bg-desk px-1 text-2xs font-medium text-mute",
-        "shadow-[inset_0_-1px_0_var(--line-strong)]",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-[5px] border px-1 text-2xs font-medium",
+        VARIANT[variant],
         className,
       )}
       {...rest}
@@ -18,11 +27,11 @@ export function Kbd({ className, children, ...rest }: HTMLAttributes<HTMLElement
 }
 
 /** "⌘K"-style hint: a row of Kbd caps. */
-export function Shortcut({ keys, className }: { keys: readonly string[]; className?: string }) {
+export function Shortcut({ keys, className, variant }: { keys: readonly string[]; className?: string; variant?: KbdVariant }) {
   return (
     <span className={cn("inline-flex items-center gap-0.5", className)} aria-hidden>
       {keys.map((key, index) => (
-        <Kbd key={`${key}-${index}`}>{key}</Kbd>
+        <Kbd key={`${key}-${index}`} variant={variant}>{key}</Kbd>
       ))}
     </span>
   );

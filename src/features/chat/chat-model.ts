@@ -1,4 +1,5 @@
-import { INTL_LOCALE, type Locale, type LocalizedText } from "@/lib/i18n/locale";
+import type { Locale, LocalizedText } from "@/lib/i18n/locale";
+import type { Citation } from "@/lib/types";
 import { CHAT_COPY } from "./copy";
 import type { StreamOutcome } from "./sse";
 
@@ -49,7 +50,35 @@ export function isDefaultThreadTitle(title: string | null | undefined): boolean 
   return title === DEFAULT_THREAD_TITLES.ko || title === DEFAULT_THREAD_TITLES.en;
 }
 
-/** Thread-list date (e.g. "Sep 29") in the UI language and the viewer's own time zone. */
-export function threadDateFormat(locale: Locale, timeZone: string): Intl.DateTimeFormat {
-  return new Intl.DateTimeFormat(INTL_LOCALE[locale], { month: "short", day: "numeric", timeZone });
+/** Fenced blocks and inline code, where `[1]` is code (an index), not a citation. */
+const CODE = /```[\s\S]*?(?:```|$)|`[^`\n]*`/g;
+/**
+ * A bracketed citation marker as the grounding prompt numbers sources: "[3]", "[1, 2]", "[2-4]",
+ * optionally labelled "[출처 3]" / "[Source 3]". A following "(" makes it Markdown link text instead.
+ */
+const MARKER = /\[(?:(?:출처|source)\s*)?(\d{1,3}(?:\s*[,–-]\s*\d{1,3})*)\](?!\()/giu;
+const MAX_RANGE = 20;
+
+/** Source numbers an answer cites with bracketed markers, ignoring code. */
+export function citedIndices(answer: string): Set<number> {
+  const cited = new Set<number>();
+  for (const [, list = ""] of answer.replace(CODE, " ").matchAll(MARKER)) {
+    for (const item of list.split(",")) {
+      const [start = NaN, end = start] = item.split(/[–-]/).map((part) => Number(part.trim()));
+      if (end < start || end - start > MAX_RANGE) continue;
+      for (let index = start; index <= end; index += 1) cited.add(index);
+    }
+  }
+  return cited;
+}
+
+/**
+ * Splits retrieved sources into the ones the answer cites and the rest, each in source order.
+ * An answer without a marker for any of them claims nothing, so every source stays in `cited`.
+ */
+export function partitionCitations(answer: string, citations: readonly Citation[]): { cited: Citation[]; others: Citation[] } {
+  const indices = citedIndices(answer);
+  const cited = citations.filter((citation) => indices.has(citation.index));
+  if (cited.length === 0) return { cited: [...citations], others: [] };
+  return { cited, others: citations.filter((citation) => !indices.has(citation.index)) };
 }

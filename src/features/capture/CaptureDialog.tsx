@@ -1,10 +1,11 @@
 "use client";
 
 import { Eraser, Inbox, Link2, Save } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useSWRConfig } from "swr";
 import { useCopy, useLocale } from "@/components/i18n";
-import { Button, Dialog, Input, Textarea, useToast } from "@/components/ui";
+import { modKey } from "@/components/shell/shortcuts";
+import { Button, Dialog, Input, Shortcut, Textarea, useToast } from "@/components/ui";
 import { api } from "@/lib/api-client";
 import { localizedApiError } from "@/lib/i18n/api-error";
 import { textInEveryLocale } from "@/lib/i18n/copy";
@@ -76,6 +77,13 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
     }
   };
 
+  const onFormKeyDown = (event: ReactKeyboardEvent<HTMLFormElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      event.currentTarget.requestSubmit();
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -93,13 +101,20 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
           <Button variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>
             {copy.close}
           </Button>
-          <Button variant="primary" loading={saving} leading={<Save aria-hidden className="size-4" />} onClick={() => textRef.current?.form?.requestSubmit()}>
+          <Shortcut keys={[modKey(), "↵"]} className="max-sm:hidden" />
+          <Button
+            variant="primary"
+            loading={saving}
+            aria-keyshortcuts="Control+Enter Meta+Enter"
+            leading={<Save aria-hidden className="size-4" />}
+            onClick={() => textRef.current?.form?.requestSubmit()}
+          >
             {copy.save}
           </Button>
         </>
       }
     >
-      <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
+      <form noValidate className="flex flex-col gap-4" onSubmit={submit} onKeyDown={onFormKeyDown}>
         <Textarea
           ref={textRef}
           label={copy.textLabel}

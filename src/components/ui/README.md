@@ -7,6 +7,22 @@ Everything here is token-driven: colors, radii, shadows and spacing come from th
 add a token instead. Copy lives in per-area `copy.ts` catalogs (Korean source, English
 translation) read with `useCopy`; the product name comes from `brandName(locale)` in `@/lib/brand`.
 
+Shared tokens beyond the palette:
+
+- `--focus`: focus color, solid accent. `:focus-visible` draws a 2px `--focus` outline and
+  `focus-ring` a 2px `--focus` box-shadow; accent-filled controls use `focus-ring-offset`
+  (outline with a 2px gap). The desktop rail sets `[--focus:var(--rail-ink)]`
+  on its `<nav>`; a custom inset rule can use `var(--focus)` too.
+- `text-rail-accent` (`--rail-accent`): the active rail icon; the rail is dark in both themes.
+- `text-read` (`--text-read-size` 16px / `--text-read-leading` 28px): long-form reading text;
+  `prose-ko` uses the same pair.
+- `bg-graph-1` … `bg-graph-6` (`--graph-1` … `--graph-6`): categorical colors for graph tags,
+  separate from the `ok`/`warn`/`danger` states.
+
+Never mark selection or the active item with an accent edge (stripe, side border, accent
+outline); use a tonal wash plus a label or glyph. Page headers follow the recipe in
+`DESIGN.md` §4 (no eyebrow).
+
 ## `@/components/ui`
 
 | Export | Signature | Notes |
@@ -23,7 +39,7 @@ translation) read with `useCopy`; the product name comes from `brandName(locale)
 | `EmptyState` | `({ icon?, title, description?, action?, variant?: "panel" \| "plain", className? })` | One-sentence description that says what to do next. |
 | `Badge` / `TagBadge` | `({ tone?: "neutral" \| "accent" \| "ok" \| "warn" \| "danger" \| "rail", count?, ... })` / `({ tag })` | `count` renders a numeric pill (99+ cap). |
 | `ToastProvider` / `useToast` / `toastText` | `useToast(): { toast(message: LocalizedText, { tone?, action?: { label: LocalizedText, onClick }, durationMs? }): number; dismiss(id): void }` | Live region; `durationMs: 0` keeps the toast until closed. Messages and action labels carry `{ ko, en }` and render in the current locale. Use `textInEveryLocale` from `@/lib/i18n/copy` to retain both catalog or API-error translations; passing a preselected string is a type error. |
-| `Kbd` / `Shortcut` | `Kbd(props)` / `Shortcut({ keys: readonly string[] })` | Keycaps for hints. |
+| `Kbd` / `Shortcut` | `Kbd({ variant?: "default" \| "onAccent" \| "onRail", ...props })` / `Shortcut({ keys: readonly string[], variant? })` | Keycaps for hints. Pick the surface with `variant`; a color `className` cannot override the base (`cn` does not merge classes). |
 | `Skeleton` / `SkeletonLines` | `Skeleton(divProps)` / `SkeletonLines({ lines? })` | Loading placeholders. |
 | `UI_COPY` | copy catalog | Accessible names of the primitives' close and dismiss buttons. |
 
@@ -32,15 +48,29 @@ translation) read with `useCopy`; the product name comes from `brandName(locale)
 | Export | Signature | Notes |
 | --- | --- | --- |
 | `AppShell` | `({ children })` | Rail (desktop), top bar + bottom nav (mobile), `main#main`, palette, capture launcher, toasts. Rendered by `src/app/(app)/layout.tsx` after the server session check. |
-| `ShellProvider` / `useShell` | `useShell(): { openCapture(): void; closeCapture(); captureOpen; openPalette(mode?: "all" \| "notes"); closePalette(); paletteOpen; inboxCount: number \| null; refreshInbox(); railExpanded; setRailExpanded(bool); logout(): Promise<void>; theme; resolvedTheme; setTheme(theme); cycleTheme() }` | `openCapture` renders the inbox lane's `<CaptureDialog open onOpenChange />`. Global keys: `Ctrl/⌘+K` palette, `Ctrl/⌘+P` note switcher, `c` capture, `/` search, `g` + `h i n s g c` go-to; single keys are ignored inside inputs, textareas, contenteditable and the CodeMirror editor. |
+| `ShellProvider` / `useShell` | `useShell(): { openCapture(): void; closeCapture(); captureOpen; openPalette(mode?: "all" \| "notes"); closePalette(); paletteOpen; inboxCount: number \| null; refreshInbox(); railExpanded; setRailExpanded(bool); logout(): Promise<void>; theme; resolvedTheme; setTheme(theme); cycleTheme() }` | `openCapture` renders the inbox lane's `<CaptureDialog open onOpenChange />`. Global keys: `Ctrl/⌘+K` palette, `Ctrl/⌘+P` note switcher, `c` capture, `/` search, `g` + `h i n t s g c` go-to; single keys are ignored inside inputs, textareas, contenteditable and the CodeMirror editor. |
 | `ThemeProvider` / `useTheme` | `useTheme(): { theme: "system" \| "light" \| "dark"; resolvedTheme: "light" \| "dark"; setTheme; cycleTheme }` | `useSyncExternalStore` over localStorage + `prefers-color-scheme`; the inline `THEME_INIT_SCRIPT` in the root layout applies `.dark` before hydration, so no hydration mismatch. |
 | `CommandPalette` | `({ open, mode, onOpenChange, onModeChange, onCapture? })` | cmdk over `/api/notes/titles`; actions (capture, new note, today), navigation, theme, and "New note: <query>" when the query matches no title. Search matches labels in both languages. |
-| `NAV_ITEMS`, `navItem`, `isNavActive`, `activeNavId`, `MOBILE_PRIMARY`, `MOBILE_MORE`, `isMoreActive`, `goToHref` | see `nav.ts` | Single source of routes, icons and chord keys; labels are `SHELL_COPY[locale].nav[id]`. |
+| `NAV_ITEMS`, `navItem`, `isNavActive`, `activeNavId`, `MOBILE_PRIMARY`, `MOBILE_MORE`, `isMoreActive`, `goToHref` | see `nav.ts` | Single source of routes, icons and chord keys; labels are `SHELL_COPY[locale].nav[id]`. `NavId` derives from the item list. The mobile bar is `MOBILE_PRIMARY` = home, inbox, notes (capture sits between inbox and notes, then More); everything else is in the More sheet. |
 | `resolveShortcut`, `isEditableTarget`, `modKey`, `IDLE_CHORD`, `CHORD_TIMEOUT_MS` | see `shortcuts.ts` | Pure keymap; unit-tested. |
-| `THEME_INIT_SCRIPT`, `RAIL_INIT_SCRIPT`, `*_STORAGE_KEY` | strings | Inlined by `src/app/layout.tsx`. |
+| `THEME_INIT_SCRIPT`, `RAIL_INIT_SCRIPT`, `*_STORAGE_KEY` | strings | Inlined by `src/app/layout.tsx`. With no stored rail choice, `RAIL_INIT_SCRIPT` and `readRailExpanded` expand the rail at `(min-width: 1280px)`; a stored `open`/`closed` wins. |
 | `SHELL_COPY`, `BOUNDARY_COPY`, `everyLocale`, `keywordsInEveryLocale` | see `copy.ts` | Shell and error-page copy. `everyLocale(pick)` returns a `LocalizedText` for toasts that stay open; `keywordsInEveryLocale(...picks)` feeds palette search in both languages. |
 | `StatusScreen` | `({ kind: "notFound" } \| { kind: "error", onRetry, digest? })` | Brand card for the root not-found, error and global-error boundaries; shows the error digest, never the raw message, and sets the tab title. |
 | `Mark` | alias of `BrandMark` | Deprecated; import `BrandMark` from `@/components/ui`. |
+
+## `@/lib/i18n/format-date`
+
+The only way to display a date or time. Pure; `timeZone` defaults to the runtime (browser) zone, and no output shows seconds.
+
+| Export | Signature | Output |
+| --- | --- | --- |
+| `formatDate` | `(value: DateInput, locale, { timeZone? }?) => string` | ko `2026-09-29`, en `Sep 29, 2026`; invalid input gives `""`. |
+| `formatDateTime` | `(value: DateInput, locale, { timeZone? }?) => string` | ko `2026-09-29 오후 7:18`, en `Sep 29, 2026, 7:18 PM`; invalid input gives `""`. |
+| `formatDayHeading` | `(key: "YYYY-MM-DD", locale, { weekday? }?) => string` | `9월 29일 화요일` / `Tuesday, September 29`; `weekday: false` gives `9월 29일` / `September 29`. Reads the key as a calendar date, with no zone shift. |
+| `localDateKey` | `(value?: DateInput, timeZone?) => string` | `YYYY-MM-DD` of `value` (default now) in the zone. |
+| `calendarDaysAgo` | `(value: DateInput, now?: number, timeZone?) => number` | Calendar days from `value` to `now`: 0 is the same date, 1 is the day before. |
+
+`DateInput` is `string | number | Date`.
 
 ## `@/features/auth`
 

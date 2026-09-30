@@ -10,7 +10,6 @@ export const GRAPH_COPY = defineCopy({
   ko: {
     page: {
       title: "지식 그래프",
-      eyebrow: "연결 탐색",
       description: "노트, 링크, 태그 사이의 관계를 살펴보고 연결된 생각으로 이동하세요.",
     },
     region: { explorer: "지식 그래프 탐색기", local: "로컬 지식 그래프" },
@@ -67,7 +66,6 @@ export const GRAPH_COPY = defineCopy({
   en: {
     page: {
       title: "Knowledge graph",
-      eyebrow: "Explore connections",
       description: "See how your notes, links, and tags relate, then jump to a connected idea.",
     },
     region: { explorer: "Knowledge graph explorer", local: "Local knowledge graph" },

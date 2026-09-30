@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { INTL_LOCALE, LOCALES } from "@/lib/i18n/locale";
-import { DEFAULT_THREAD_TITLES, failureMessage, isDefaultThreadTitle, threadDateFormat, type StreamFailure } from "./chat-model";
+import { LOCALES } from "@/lib/i18n/locale";
+import type { Citation } from "@/lib/types";
+import { DEFAULT_THREAD_TITLES, citedIndices, failureMessage, isDefaultThreadTitle, partitionCitations, type StreamFailure } from "./chat-model";
 import { CHAT_COPY } from "./copy";
 
 type Copy = typeof CHAT_COPY.ko;
@@ -61,23 +62,40 @@ describe("isDefaultThreadTitle", () => {
   });
 });
 
-describe("threadDateFormat", () => {
-  // 01:30 on the 29th in Seoul is 09:30 on the 28th in Los Angeles.
-  const instant = new Date("2026-09-28T16:30:00.000Z");
-  const day = (format: Intl.DateTimeFormat) => format.formatToParts(instant).find((part) => part.type === "day")?.value;
+describe("citedIndices", () => {
+  const sorted = (answer: string) => [...citedIndices(answer)].sort((a, b) => a - b);
 
-  test("uses the viewer's time zone instead of a fixed one", () => {
-    for (const locale of LOCALES) {
-      expect(day(threadDateFormat(locale, "Asia/Seoul"))).toBe("29");
-      expect(day(threadDateFormat(locale, "America/Los_Angeles"))).toBe("28");
-    }
+  test("reads single, repeated, listed and ranged markers", () => {
+    expect(sorted("성산일출봉은 아침에 가요[3]. 우도는 오후에 가요 [1][3].")).toEqual([1, 3]);
+    expect(sorted("Both notes agree [2, 5].")).toEqual([2, 5]);
+    expect(sorted("See [2-4] and [6–7].")).toEqual([2, 3, 4, 6, 7]);
+    expect(sorted("[출처 2]와 [Source 4]")).toEqual([2, 4]);
   });
 
-  test("formats in the UI language", () => {
-    for (const locale of LOCALES) {
-      const options = threadDateFormat(locale, "America/Los_Angeles").resolvedOptions();
-      expect(options.locale).toBe(INTL_LOCALE[locale]);
-      expect(options.timeZone).toBe("America/Los_Angeles");
+  test("ignores code, Markdown link text and implausible ranges", () => {
+    expect(sorted("Use `items[0]` here.\n\n```ts\nconst a = list[2];\n```\nDone [1].")).toEqual([1]);
+    expect(sorted("Read [3](https://example.com) first.")).toEqual([]);
+    expect(sorted("Years [1-999] are not a citation.")).toEqual([]);
+    expect(sorted("No markers at all.")).toEqual([]);
+  });
+});
+
+describe("partitionCitations", () => {
+  const source = (index: number): Citation => ({ index, noteId: `note-${index}`, title: `Note ${index}`, excerpt: "" });
+  const sources = [1, 2, 3, 4, 5].map(source);
+  const indices = (list: Citation[]) => list.map((citation) => citation.index);
+
+  test("puts cited sources first and keeps the rest as also retrieved, both in source order", () => {
+    const { cited, others } = partitionCitations("우도는 오후[3], 성산은 아침[1].", sources);
+    expect(indices(cited)).toEqual([1, 3]);
+    expect(indices(others)).toEqual([2, 4, 5]);
+  });
+
+  test("claims nothing when the answer cites none of the returned sources", () => {
+    for (const answer of ["An answer without markers.", "Only an unknown source [9]."]) {
+      const { cited, others } = partitionCitations(answer, sources);
+      expect(indices(cited)).toEqual([1, 2, 3, 4, 5]);
+      expect(others).toEqual([]);
     }
   });
 });

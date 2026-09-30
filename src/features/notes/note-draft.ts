@@ -1,3 +1,4 @@
+import { parseTasks, toggleTask, type TaskToggle } from "@/lib/tasks";
 import type { Note } from "@/lib/types";
 
 export type EditableNote = Pick<Note, "title" | "body" | "tags" | "aliases">;
@@ -13,6 +14,25 @@ export type DraftSnapshot = EditableNote & {
 
 type Save = (noteId: string, value: EditableNote) => Promise<Note>;
 type Listener = () => void;
+
+export type TaskToggleMerge = { kind: "replace" } | { kind: "update"; body: string } | { kind: "keep" };
+
+/**
+ * How a task toggle saved by the server joins the local draft. A clean draft still in preview adopts
+ * the returned note (`replace`). Otherwise the same one-character change is applied to the local body
+ * (`update`), so the next autosave carries both the typing and the toggle; if edits moved the task,
+ * the one task with the same text receives it. `keep` means the draft already has that state or no
+ * longer holds that task, and the draft wins.
+ */
+export function mergeTaskToggle(draft: Pick<DraftSnapshot, "state" | "body">, toggle: TaskToggle, inPreview: boolean): TaskToggleMerge {
+  if (inPreview && draft.state === "saved") return { kind: "replace" };
+  let result = toggleTask(draft.body, toggle);
+  if (!result.ok) {
+    const moved = parseTasks(draft.body).filter((task) => task.text === toggle.expectedText);
+    if (moved.length === 1) result = toggleTask(draft.body, { ...toggle, line: moved[0]!.line });
+  }
+  return result.ok && result.changed ? { kind: "update", body: result.body } : { kind: "keep" };
+}
 
 export class NoteDraftController {
   private snapshot: DraftSnapshot;
@@ -34,6 +54,16 @@ export class NoteDraftController {
     if (note.id !== this.snapshot.noteId || this.snapshot.state !== "saved") return;
     if (Date.parse(note.updatedAt) <= Date.parse(this.snapshot.updatedAt)) return;
     this.snapshot = fromNote(note);
+    this.emit();
+  }
+
+  /**
+   * Adopt a server-side replacement (a version restore) over any local state, so no queued
+   * autosave sends the old text. A save still in flight re-sends the replacement once it settles.
+   */
+  replace(note: Note): void {
+    if (note.id !== this.snapshot.noteId) return;
+    this.snapshot = { ...fromNote(note), version: this.snapshot.version + 1 };
     this.emit();
   }
 

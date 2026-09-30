@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Note } from "@/lib/types";
-import { NoteDraftController, type EditableNote } from "./note-draft";
+import { mergeTaskToggle, NoteDraftController, type EditableNote } from "./note-draft";
 import { forgetNoteDraft, getNoteDraft, hasUnsavedNoteDrafts } from "./draft-store";
 
 const note = (body = "old"): Note => ({
@@ -9,6 +9,7 @@ const note = (body = "old"): Note => ({
   body,
   tags: [],
   aliases: [],
+  purgeAt: null,
   excerpt: body,
   pinned: false,
   archived: false,
@@ -119,6 +120,39 @@ describe("NoteDraftController", () => {
     expect(controller.getSnapshot()).toMatchObject({ body: "latest", state: "saved", updatedAt: "2026-01-03T00:00:00.000Z" });
   });
 
+  test("a restored version replaces a dirty draft and leaves nothing to autosave", async () => {
+    const writes: string[] = [];
+    const controller = new NoteDraftController(note(), async (_id, value) => {
+      writes.push(value.body);
+      return note(value.body);
+    });
+    controller.update({ body: "unsaved local edit" });
+
+    controller.replace({ ...note("restored body"), updatedAt: "2026-01-05T00:00:00.000Z" });
+
+    expect(controller.getSnapshot()).toMatchObject({ body: "restored body", state: "saved", updatedAt: "2026-01-05T00:00:00.000Z" });
+    expect(await controller.flush()).toBe(true);
+    expect(writes).toEqual([]);
+  });
+
+  test("a save acknowledged after a restore cannot bring back the old text", async () => {
+    const first = Promise.withResolvers<Note>();
+    const writes: string[] = [];
+    const controller = new NoteDraftController(note(), async (_id, value) => {
+      writes.push(value.body);
+      return writes.length === 1 ? first.promise : { ...note(value.body), updatedAt: "2026-01-06T00:00:00.000Z" };
+    });
+    controller.update({ body: "in flight" });
+    const saving = controller.flush();
+
+    controller.replace({ ...note("restored body"), updatedAt: "2026-01-05T00:00:00.000Z" });
+    first.resolve({ ...note("in flight"), updatedAt: "2026-01-04T00:00:00.000Z" });
+    await saving;
+
+    expect(writes).toEqual(["in flight", "restored body"]);
+    expect(controller.getSnapshot()).toMatchObject({ body: "restored body", state: "saved" });
+  });
+
   test("does not hydrate over a dirty draft and retries the retained value", async () => {
     let fail = true;
     const offline = new Error("offline");
@@ -142,5 +176,53 @@ describe("NoteDraftController", () => {
 
     controller.hydrate({ ...note("older server body"), updatedAt: "2026-01-03T00:00:00.000Z" });
     expect(controller.getSnapshot().body).toBe("local");
+  });
+});
+
+describe("mergeTaskToggle", () => {
+  const body = "# Day\n- [ ] call Bob\n- [x] ship\n";
+  const check = { line: 2, expectedText: "call Bob", done: true };
+
+  test("a clean draft in preview adopts the server note", () => {
+    expect(mergeTaskToggle({ state: "saved", body }, check, true)).toEqual({ kind: "replace" });
+  });
+
+  test.each(["dirty", "saving", "failed"] as const)("a %s draft gets the toggle applied to its own body", (state) => {
+    const typed = "# Day\n- [ ] call Bob\n- [x] ship\nnew typing";
+    expect(mergeTaskToggle({ state, body: typed }, check, true)).toEqual({ kind: "update", body: "# Day\n- [x] call Bob\n- [x] ship\nnew typing" });
+  });
+
+  test("back in the editor even a clean draft is updated in place instead of replaced", () => {
+    expect(mergeTaskToggle({ state: "saved", body }, check, false)).toEqual({ kind: "update", body: "# Day\n- [x] call Bob\n- [x] ship\n" });
+  });
+
+  test("a task moved by typed lines above it still receives the toggle", () => {
+    const moved = "# Day\nintro\n\n- [ ] call Bob\n- [x] ship\n";
+    expect(mergeTaskToggle({ state: "dirty", body: moved }, check, false)).toEqual({ kind: "update", body: "# Day\nintro\n\n- [x] call Bob\n- [x] ship\n" });
+  });
+
+  test("keeps the draft when it already has the state, the task text changed, or the match is ambiguous", () => {
+    expect(mergeTaskToggle({ state: "dirty", body: "# Day\n- [x] call Bob\n" }, check, false)).toEqual({ kind: "keep" });
+    expect(mergeTaskToggle({ state: "dirty", body: "# Day\n- [ ] call Robert\n" }, check, false)).toEqual({ kind: "keep" });
+    expect(mergeTaskToggle({ state: "dirty", body: "x\n\n- [ ] call Bob\n- [ ] call Bob\n" }, check, false)).toEqual({ kind: "keep" });
+  });
+
+  test("a toggle merged during an in-flight autosave is sent by the follow-up save", async () => {
+    const first = Promise.withResolvers<Note>();
+    const writes: string[] = [];
+    const controller = new NoteDraftController(note(body), async (_id, value) => {
+      writes.push(value.body);
+      return writes.length === 1 ? first.promise : note(value.body);
+    });
+    controller.update({ body: `${body}typed` });
+    const saving = controller.flush();
+
+    const merge = mergeTaskToggle(controller.getSnapshot(), check, false);
+    if (merge.kind === "update") controller.update({ body: merge.body });
+    first.resolve(note(`${body}typed`));
+    await saving;
+
+    expect(writes).toEqual([`${body}typed`, "# Day\n- [x] call Bob\n- [x] ship\ntyped"]);
+    expect(controller.getSnapshot()).toMatchObject({ body: "# Day\n- [x] call Bob\n- [x] ship\ntyped", state: "saved" });
   });
 });

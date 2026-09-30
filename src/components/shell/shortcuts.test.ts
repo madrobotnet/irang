@@ -29,6 +29,7 @@ describe("resolveShortcut", () => {
     expect(first.action).toBeNull();
     expect(first.state.pendingGoAt).toBe(1000);
     expect(resolveShortcut(press("i"), first.state, 1000 + CHORD_TIMEOUT_MS).action).toEqual({ type: "go", href: "/inbox" });
+    expect(resolveShortcut(press("t"), first.state, 1000).action).toEqual({ type: "go", href: "/tasks" });
   });
 
   test("an expired or unknown chord does nothing and resets", () => {

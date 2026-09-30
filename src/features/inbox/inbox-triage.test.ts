@@ -5,17 +5,26 @@ import { URL_FAILED_MARKER, URL_PENDING_MARKER } from "@/lib/inbox-url-status";
 import type { InboxItem } from "@/lib/types";
 import { INBOX_COPY } from "./inbox-copy";
 import {
+  applyInboxChange,
   excerpt,
   formatCreated,
+  insertInOrder,
+  isSnoozed,
   kindLabel,
+  mergeBlock,
+  mergeOptions,
   mergeTags,
   moveSelection,
   neighbourAfterRemoval,
+  parseSnoozeInput,
   replaceItem,
   resolveTriageKey,
+  snoozeLimit,
+  snoozePresets,
   stripUrlStatus,
   suggestionView,
   syncTriageDraft,
+  toDateTimeLocalValue,
   urlStatus,
   withItem,
   withoutItem,
@@ -32,6 +41,7 @@ const item = (id: string, over: Partial<InboxItem> = {}): InboxItem => ({
   url: null,
   createdAt: "2026-09-27T00:00:00.000Z",
   suggestions: null,
+  snoozedUntil: null,
   ...over,
 });
 
@@ -43,19 +53,38 @@ describe("resolveTriageKey", () => {
     expect(key("Home")).toBe("first");
     expect(key("End")).toBe("last");
     expect(key("Enter")).toBe("open");
-    expect(key("p")).toBe("promote");
-    expect(key("d")).toBe("discard");
-    expect(key("#")).toBe("discard");
+    expect(key("o")).toBe("open");
     expect(key("Escape")).toBe("clear");
     expect(key("x")).toBeNull();
+  });
+
+  test("maps Linear-style number keys and keeps the letter aliases", () => {
+    expect(key("1")).toBe("promote");
+    expect(key("p")).toBe("promote");
+    expect(key("2")).toBe("discard");
+    expect(key("d")).toBe("discard");
+    expect(key("#", { shiftKey: true })).toBe("discard");
+    expect(key("3")).toBe("merge");
+    expect(key("h")).toBe("snooze");
+    expect(key("H", { shiftKey: true })).toBe("snooze");
+    expect(key("4")).toBeNull();
+  });
+
+  test("accepts digits typed with Shift, as some keyboard layouts require", () => {
+    expect(key("1", { shiftKey: true })).toBe("promote");
+    expect(key("2", { shiftKey: true })).toBe("discard");
+    expect(key("3", { shiftKey: true })).toBe("merge");
   });
 
   test("never intercepts typing or modifier chords", () => {
     expect(key("j", { editable: true })).toBeNull();
     expect(key("Enter", { editable: true })).toBeNull();
+    for (const k of ["1", "2", "3", "h"]) expect(key(k, { editable: true })).toBeNull();
     expect(key("p", { ctrlKey: true })).toBeNull();
     expect(key("k", { metaKey: true })).toBeNull();
     expect(key("d", { altKey: true })).toBeNull();
+    expect(key("1", { metaKey: true })).toBeNull();
+    expect(key("h", { ctrlKey: true })).toBeNull();
     expect(key("D", { shiftKey: true })).toBeNull();
     expect(key("P", { shiftKey: true })).toBeNull();
   });
@@ -83,13 +112,170 @@ describe("selection movement", () => {
 });
 
 describe("cache helpers", () => {
-  test("keep count in step with items", () => {
-    const data = { items: [item("a"), item("b")], count: 2 };
-    expect(withoutItem(data, "a")).toEqual({ items: [item("b")], count: 1 });
-    expect(withItem(data, item("c"))).toEqual({ items: [item("c"), item("a"), item("b")], count: 3 });
+  test("keep count in step with items and carry the Later count", () => {
+    const data = { items: [item("a"), item("b")], count: 2, snoozedCount: 4 };
+    expect(withoutItem(data, "a")).toEqual({ items: [item("b")], count: 1, snoozedCount: 4 });
+    expect(withItem(data, item("c"))).toEqual({ items: [item("c"), item("a"), item("b")], count: 3, snoozedCount: 4 });
     expect(withItem(data, item("a", { title: "새 제목" })).items.map((i) => i.title)).toEqual(["새 제목", "제목 b"]);
     expect(replaceItem(data, item("b", { title: "바뀜" })).items[1]?.title).toBe("바뀜");
-    expect(withoutItem(undefined, "a")).toEqual({ items: [], count: 0 });
+    expect(withoutItem(undefined, "a")).toEqual({ items: [], count: 0, snoozedCount: 0 });
+    expect(withItem(undefined, item("a"))).toEqual({ items: [item("a")], count: 1, snoozedCount: 0 });
+  });
+});
+
+describe("list order and triage changes", () => {
+  const newest = item("c", { createdAt: "2026-09-29T00:00:00.000Z" });
+  const middle = item("b", { createdAt: "2026-09-28T00:00:00.000Z" });
+  const oldest = item("a", { createdAt: "2026-09-27T00:00:00.000Z" });
+  const open = { items: [newest, middle, oldest], count: 3, snoozedCount: 1 };
+  const later = (id: string, until: string) => item(id, { snoozedUntil: until });
+
+  test("inserts where the server lists it: newest capture first, soonest return first, ties by id", () => {
+    expect(insertInOrder([newest, oldest], middle, "open").map((i) => i.id)).toEqual(["c", "b", "a"]);
+    expect(insertInOrder([middle, oldest], newest, "open").map((i) => i.id)).toEqual(["c", "b", "a"]);
+    expect(insertInOrder([newest, middle], oldest, "open").map((i) => i.id)).toEqual(["c", "b", "a"]);
+    const twin = item("z", { createdAt: middle.createdAt });
+    expect(insertInOrder([newest, middle, oldest], twin, "open").map((i) => i.id)).toEqual(["c", "z", "b", "a"]);
+    const soon = later("s", "2026-10-01T00:00:00.000Z");
+    const far = later("f", "2026-11-01T00:00:00.000Z");
+    expect(insertInOrder([far], soon, "later").map((i) => i.id)).toEqual(["s", "f"]);
+    expect(insertInOrder([soon], far, "later").map((i) => i.id)).toEqual(["s", "f"]);
+    expect(insertInOrder([soon, far], { ...soon, title: "새로" }, "later").map((i) => i.title)).toEqual(["새로", far.title]);
+  });
+
+  test("a discard and its undo return the item to its place", () => {
+    const discarded = applyInboxChange("open", open, { type: "removed", id: "b" });
+    expect(discarded).toEqual({ items: [newest, oldest], count: 2, snoozedCount: 1 });
+    expect(applyInboxChange("open", discarded, { type: "restored", item: middle })).toEqual(open);
+    expect(applyInboxChange("open", open, { type: "restored", item: middle })).toEqual(open);
+  });
+
+  test("snoozing moves the item to Later and raises the badge once", () => {
+    const snoozedItem = later("b", "2026-10-01T09:00:00.000Z");
+    const afterOpen = applyInboxChange("open", open, { type: "snoozed", item: snoozedItem });
+    expect(afterOpen).toEqual({ items: [newest, oldest], count: 2, snoozedCount: 2 });
+    expect(applyInboxChange("open", afterOpen, { type: "snoozed", item: snoozedItem })).toEqual(afterOpen);
+
+    const existing = later("x", "2026-12-01T09:00:00.000Z");
+    const laterList = { items: [existing], count: 1, snoozedCount: 1 };
+    const afterLater = applyInboxChange("later", laterList, { type: "snoozed", item: snoozedItem });
+    expect(afterLater).toEqual({ items: [snoozedItem, existing], count: 2, snoozedCount: 2 });
+    expect(applyInboxChange("later", afterLater, { type: "snoozed", item: snoozedItem })).toEqual(afterLater);
+  });
+
+  test("unsnoozing brings the item back in order and lowers the badge once", () => {
+    const returned = item("b", { createdAt: middle.createdAt });
+    const withoutB = { items: [newest, oldest], count: 2, snoozedCount: 2 };
+    const afterOpen = applyInboxChange("open", withoutB, { type: "unsnoozed", item: returned });
+    expect(afterOpen).toEqual({ items: [newest, returned, oldest], count: 3, snoozedCount: 1 });
+    expect(applyInboxChange("open", afterOpen, { type: "unsnoozed", item: returned })).toEqual(afterOpen);
+
+    const laterList = { items: [later("b", "2026-10-01T09:00:00.000Z")], count: 1, snoozedCount: 1 };
+    const afterLater = applyInboxChange("later", laterList, { type: "unsnoozed", item: returned });
+    expect(afterLater).toEqual({ items: [], count: 0, snoozedCount: 0 });
+    expect(applyInboxChange("later", afterLater, { type: "unsnoozed", item: returned })).toEqual(afterLater);
+  });
+
+  test("a missing cache starts empty and counts never go negative", () => {
+    expect(applyInboxChange("open", undefined, { type: "unsnoozed", item: middle })).toEqual({ items: [middle], count: 1, snoozedCount: 0 });
+    expect(applyInboxChange("later", undefined, { type: "removed", id: "b" })).toEqual({ items: [], count: 0, snoozedCount: 0 });
+  });
+
+  test("isSnoozed compares against the injected clock", () => {
+    const now = Date.parse("2026-09-30T12:00:00.000Z");
+    expect(isSnoozed(item("a"), now)).toBe(false);
+    expect(isSnoozed(item("a", { snoozedUntil: "2026-09-30T12:00:01.000Z" }), now)).toBe(true);
+    expect(isSnoozed(item("a", { snoozedUntil: "2026-09-30T12:00:00.000Z" }), now)).toBe(false);
+  });
+});
+
+describe("snooze presets", () => {
+  // Local-time constructors keep these checks independent of the machine's time zone.
+  const local = (y: number, m: number, d: number, h: number, min = 0) => new Date(y, m - 1, d, h, min);
+  const summary = (now: Date) => snoozePresets(now).map(({ id, until }) => [id, toDateTimeLocalValue(until)]);
+
+  test("offers this evening before 17:00, then tomorrow morning and next Monday", () => {
+    // 2026-09-30 is a Wednesday.
+    expect(summary(local(2026, 9, 30, 10, 15))).toEqual([
+      ["evening", "2026-09-30T18:00"],
+      ["tomorrow", "2026-10-01T09:00"],
+      ["nextMonday", "2026-10-05T09:00"],
+    ]);
+    expect(summary(local(2026, 9, 30, 16, 59)).map(([id]) => id)).toEqual(["evening", "tomorrow", "nextMonday"]);
+  });
+
+  test("drops this evening from 17:00", () => {
+    expect(summary(local(2026, 9, 30, 17, 0))).toEqual([
+      ["tomorrow", "2026-10-01T09:00"],
+      ["nextMonday", "2026-10-05T09:00"],
+    ]);
+    expect(summary(local(2026, 9, 30, 23, 30)).map(([id]) => id)).toEqual(["tomorrow", "nextMonday"]);
+  });
+
+  test("next Monday is a full week away on Monday and skipped on Sunday, when it is tomorrow", () => {
+    expect(summary(local(2026, 10, 5, 8))).toContainEqual(["nextMonday", "2026-10-12T09:00"]);
+    expect(summary(local(2026, 10, 3, 12))).toContainEqual(["nextMonday", "2026-10-05T09:00"]);
+    expect(summary(local(2026, 10, 4, 12))).toEqual([
+      ["evening", "2026-10-04T18:00"],
+      ["tomorrow", "2026-10-05T09:00"],
+    ]);
+  });
+
+  test("crosses month and year ends", () => {
+    expect(summary(local(2026, 12, 31, 20))).toEqual([
+      ["tomorrow", "2027-01-01T09:00"],
+      ["nextMonday", "2027-01-04T09:00"],
+    ]);
+  });
+});
+
+describe("custom snooze time", () => {
+  const now = new Date(2026, 8, 30, 10, 0);
+
+  test("reads the datetime-local value as local time", () => {
+    const result = parseSnoozeInput("2026-10-02T14:30", now);
+    expect(result.ok && toDateTimeLocalValue(result.until)).toBe("2026-10-02T14:30");
+    const withSeconds = parseSnoozeInput("2026-10-02T14:30:45", now);
+    expect(withSeconds.ok && withSeconds.until.getSeconds()).toBe(0);
+  });
+
+  test("rejects malformed, past and too-distant times", () => {
+    for (const value of ["", "tomorrow", "2026-10-02", "2026-02-30T09:00", "2026-10-02T24:00", "2026-10-02T09:60"]) {
+      expect(parseSnoozeInput(value, now)).toEqual({ ok: false, reason: "invalid" });
+    }
+    expect(parseSnoozeInput("2026-09-30T10:00", now)).toEqual({ ok: false, reason: "past" });
+    expect(parseSnoozeInput("2026-09-29T23:00", now)).toEqual({ ok: false, reason: "past" });
+    const limit = snoozeLimit(now);
+    expect(parseSnoozeInput(toDateTimeLocalValue(limit), now).ok).toBe(true);
+    expect(parseSnoozeInput(toDateTimeLocalValue(new Date(limit.getTime() + 60_000)), now)).toEqual({ ok: false, reason: "tooFar" });
+  });
+
+  test("the limit is one calendar year ahead", () => {
+    expect(snoozeLimit(new Date("2026-09-30T12:00:00.000Z")).toISOString()).toBe("2027-09-30T12:00:00.000Z");
+  });
+});
+
+describe("merge preview", () => {
+  test("matches the block the server appends", () => {
+    expect(mergeBlock({ title: "제목", body: "새 인용문", url: "https://example.com/a" })).toBe("새 인용문\n\nhttps://example.com/a");
+    expect(mergeBlock({ title: "제목", body: "see https://example.com/a", url: "https://example.com/a" })).toBe("see https://example.com/a");
+    expect(mergeBlock({ title: "제목만", body: "", url: null })).toBe("제목만");
+    expect(mergeBlock({ title: "제목", body: `메모\n\n${URL_PENDING_MARKER}`, url: null })).toBe("메모");
+  });
+
+  test("leads with Jev's suggestion until the owner types a query", () => {
+    const results = [
+      { id: "n1", title: "바질 키우기", matchedAlias: null },
+      { id: "n2", title: "허브", matchedAlias: "바질" },
+    ];
+    const suggestion = { noteId: "n2", title: "허브" };
+    expect(mergeOptions(results, suggestion, "").map((o) => [o.id, o.suggested])).toEqual([["n2", true], ["n1", false]]);
+    expect(mergeOptions(results, suggestion, "바질").map((o) => [o.id, o.suggested, o.matchedAlias])).toEqual([
+      ["n1", false, null],
+      ["n2", true, "바질"],
+    ]);
+    expect(mergeOptions([], { noteId: "n9", title: "휴지통 노트" }, " ").map((o) => o.id)).toEqual(["n9"]);
+    expect(mergeOptions(results, null, "").map((o) => o.id)).toEqual(["n1", "n2"]);
   });
 });
 
@@ -147,6 +333,11 @@ describe("formatCreated", () => {
     for (const iso of ["2026-09-27T11:55:00.000Z", "2026-09-27T09:00:00.000Z", "2026-09-25T12:00:00.000Z", "2026-09-01T12:00:00.000Z"]) {
       expect(formatCreated(iso, "en", now)).not.toBe(formatCreated(iso, "ko", now));
     }
+  });
+
+  test("shows older items as a full date and time without seconds", () => {
+    for (const locale of LOCALES) expect(formatCreated("2026-09-01T12:00:45.000Z", locale, now)).not.toMatch(/\d:\d{2}:\d{2}/);
+    expect(formatCreated("2026-09-01T12:00:45.000Z", "ko", now)).toMatch(/^\d{4}-\d{2}-\d{2} /);
   });
 });
 

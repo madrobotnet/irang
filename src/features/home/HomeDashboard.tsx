@@ -11,7 +11,7 @@ import { Badge, TagBadge } from "@/components/ui/Badge";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Shortcut } from "@/components/ui/Kbd";
+import { Kbd } from "@/components/ui/Kbd";
 import { Skeleton, SkeletonLines } from "@/components/ui/Skeleton";
 import { useToast } from "@/components/ui/Toast";
 import { api } from "@/lib/api-client";
@@ -67,9 +67,10 @@ export function HomeDashboard() {
   const home = data?.home;
   const daily = home && today ? dailyForDate(home, today) : null;
   const headline = home ? homeHeadline(home, daily !== null) : null;
+  const firstRun = home ? home.stats.notes === 0 && home.inboxCount === 0 : false;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-6 lg:px-10 lg:pt-10">
+    <div className="mx-auto w-full max-w-6xl px-4 pb-12 pt-5 sm:px-6 lg:px-10 lg:pt-10">
       <header className="flex flex-col gap-4 border-b border-line pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="min-h-5 text-sm text-mute">{today ? formatDateKey(today, locale) : null}</p>
@@ -87,7 +88,11 @@ export function HomeDashboard() {
             variant="primary"
             size="lg"
             leading={<Zap aria-hidden className="size-4" />}
-            trailing={<span className="ml-1 hidden lg:inline-flex"><Shortcut keys={["c"]} /></span>}
+            trailing={
+              <span aria-hidden className="ml-1 hidden lg:inline-flex">
+                <Kbd variant="onAccent">c</Kbd>
+              </span>
+            }
             onClick={shell.openCapture}
           >
             {copy.capture}
@@ -118,10 +123,13 @@ export function HomeDashboard() {
 
       {isLoading && !home ? <HomeSkeleton /> : null}
 
-      {home && data ? (
+      {home && data && firstRun ? (
+        <FirstRunPanel busy={busy} onCapture={shell.openCapture} onCreate={() => void open("note")} />
+      ) : null}
+
+      {home && data && !firstRun ? (
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)] lg:gap-10">
           <div className="flex min-w-0 flex-col gap-8">
-            <InboxSection count={home.inboxCount} items={home.inboxPreview} now={data.fetchedAt} onCapture={shell.openCapture} />
             <TodaySection
               today={today}
               daily={daily}
@@ -129,11 +137,15 @@ export function HomeDashboard() {
               disabled={busy !== null || !today}
               onCreate={() => void open("daily")}
             />
+            {home.inboxCount > 0 ? <InboxSection count={home.inboxCount} items={home.inboxPreview} now={data.fetchedAt} /> : null}
             <RecentSection notes={recentWithoutPinned(home)} hasAnyNote={home.stats.notes > 0} now={data.fetchedAt} onCreate={() => void open("note")} busy={busy !== null} />
           </div>
           <aside aria-label={copy.asideLabel} className="flex min-w-0 flex-col gap-8">
-            <PinnedSection notes={home.pinned} now={data.fetchedAt} />
-            <ResurfaceSection notes={home.resurface} now={data.fetchedAt} />
+            {home.pinned.length > 0 ? <PinnedSection notes={home.pinned} now={data.fetchedAt} /> : null}
+            {home.resurface.length > 0 ? <ResurfaceSection notes={home.resurface} now={data.fetchedAt} /> : null}
+            {home.pinned.length === 0 && home.resurface.length === 0 ? (
+              <EmptyState variant="plain" icon={Pin} title={copy.folded.title} description={copy.folded.description} />
+            ) : null}
           </aside>
         </div>
       ) : null}
@@ -175,7 +187,7 @@ function SectionHeading({ id, icon: Icon, title, count, action }: { id: string; 
   return (
     <div className="mb-2 flex min-h-touch items-center gap-2 lg:min-h-9">
       <Icon aria-hidden className="size-4 text-mute" />
-      <h2 id={id} className="text-md font-semibold tracking-tight">
+      <h2 id={id} className="text-lg font-semibold tracking-tight">
         {title}
       </h2>
       {count !== undefined && count > 0 ? <Badge tone="accent" count={count} /> : null}
@@ -186,7 +198,29 @@ function SectionHeading({ id, icon: Icon, title, count, action }: { id: string; 
 
 const SECTION_LINK = cn(buttonClassName({ variant: "ghost", size: "sm" }), "h-touch text-mute hover:text-ink lg:h-8");
 
-function InboxSection({ count, items, now, onCapture }: { count: number; items: InboxItem[]; now: number; onCapture: () => void }) {
+/** First run (no notes, nothing captured): one panel with both ways to start, instead of five empty sections. */
+function FirstRunPanel({ busy, onCapture, onCreate }: { busy: "note" | "daily" | null; onCapture: () => void; onCreate: () => void }) {
+  const copy = useCopy(HOME_COPY);
+  return (
+    <EmptyState
+      className="mt-6"
+      title={copy.firstRun.title}
+      description={copy.firstRun.description}
+      action={
+        <>
+          <Button variant="primary" size="lg" leading={<Zap aria-hidden className="size-4" />} onClick={onCapture}>
+            {copy.capture}
+          </Button>
+          <Button size="lg" leading={<FilePlus2 aria-hidden className="size-4" />} loading={busy === "note"} disabled={busy !== null} onClick={onCreate}>
+            {copy.newNote}
+          </Button>
+        </>
+      }
+    />
+  );
+}
+
+function InboxSection({ count, items, now }: { count: number; items: InboxItem[]; now: number }) {
   const { locale } = useLocale();
   const copy = useCopy(HOME_COPY).inbox;
   const { source: sources, editor: urlCopy } = useCopy(INBOX_COPY);
@@ -205,18 +239,7 @@ function InboxSection({ count, items, now, onCapture }: { count: number; items: 
           ) : null
         }
       />
-      {items.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title={copy.emptyTitle}
-          description={copy.emptyDescription}
-          action={
-            <Button size="lg" leading={<Zap aria-hidden className="size-4" />} onClick={onCapture}>
-              {copy.capture}
-            </Button>
-          }
-        />
-      ) : (
+      {items.length > 0 ? (
         <ul className="surface-card divide-y divide-line overflow-hidden">
           {items.map((item) => {
             const status = inboxUrlStatus(item.body);
@@ -235,7 +258,7 @@ function InboxSection({ count, items, now, onCapture }: { count: number; items: 
             );
           })}
         </ul>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -256,16 +279,18 @@ function TodaySection({
   const { locale } = useLocale();
   const copy = useCopy(HOME_COPY).today;
   return (
-    <section aria-labelledby="home-today" className="relative overflow-hidden rounded-card border border-line bg-accent-soft/60 px-4 py-4 sm:px-5">
-      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-accent" />
+    <section aria-labelledby="home-today" className="rounded-card border border-line bg-accent-soft/60 px-4 py-4 sm:px-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="min-w-0 flex-1">
           <h2 id="home-today" className="flex items-center gap-2 text-sm font-medium text-mute">
             <CalendarDays aria-hidden className="size-4" />
             {copy.title}
-            {today ? <span className="text-ink">{formatDateKey(today, locale, { month: "long", day: "numeric" })}</span> : null}
+            {today ? <span className="text-ink">{formatDateKey(today, locale, { weekday: false })}</span> : null}
           </h2>
-          {daily ? (
+          {daily && daily.title === daily.dailyDate ? (
+            // The default daily title is the date the heading already shows, so lead with the excerpt.
+            <p className="mt-1 line-clamp-2 text-md text-ink">{daily.excerpt || copy.emptyExcerpt}</p>
+          ) : daily ? (
             <>
               <p className="mt-1 truncate text-lg font-semibold tracking-tight">{daily.title}</p>
               <p className="mt-0.5 line-clamp-2 text-sm text-mute">{daily.excerpt || copy.emptyExcerpt}</p>
@@ -368,26 +393,13 @@ function PinnedSection({ notes, now }: { notes: NoteSummary[]; now: number }) {
   return (
     <section aria-labelledby="home-pinned" className="surface-desk px-4 py-3 sm:px-5">
       <SectionHeading id="home-pinned" icon={Pin} title={copy.title} />
-      {notes.length === 0 ? (
-        <EmptyState
-          variant="plain"
-          title={copy.emptyTitle}
-          description={copy.emptyDescription}
-          action={
-            <Link href="/notes" className={buttonClassName({ size: "lg" })}>
-              {copy.browse}
-            </Link>
-          }
-        />
-      ) : (
-        <ul className="divide-y divide-line">
-          {notes.map((note) => (
-            <li key={note.id}>
-              <NoteRow note={note} now={now} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="divide-y divide-line">
+        {notes.map((note) => (
+          <li key={note.id}>
+            <NoteRow note={note} now={now} />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -398,21 +410,13 @@ function ResurfaceSection({ notes, now }: { notes: NoteSummary[]; now: number })
     <section aria-labelledby="home-resurface" className="px-1">
       <SectionHeading id="home-resurface" icon={RefreshCw} title={copy.title} />
       <p className="-mt-1 mb-2 text-sm text-mute">{copy.description}</p>
-      {notes.length === 0 ? (
-        <EmptyState
-          variant="plain"
-          title={copy.emptyTitle}
-          description={copy.emptyDescription}
-        />
-      ) : (
-        <ul className="divide-y divide-line border-y border-line">
-          {notes.map((note) => (
-            <li key={note.id}>
-              <NoteRow note={note} now={now} clamp={2} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="divide-y divide-line border-y border-line">
+        {notes.map((note) => (
+          <li key={note.id}>
+            <NoteRow note={note} now={now} clamp={2} />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

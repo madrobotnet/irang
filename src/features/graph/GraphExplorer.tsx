@@ -24,7 +24,9 @@ const ForceGraphCanvas = dynamic(() => import("./ForceGraphCanvas").then((module
 });
 
 type Props = { noteId?: string; depth?: 1 | 2 | 3; height?: number; compact?: boolean };
-const PALETTE_CLASSES = ["bg-accent", "bg-ok", "bg-warn", "bg-danger"] as const;
+const PALETTE_CLASSES = ["bg-graph-1", "bg-graph-2", "bg-graph-3", "bg-graph-4", "bg-graph-5", "bg-graph-6"] as const;
+// Segmented scope toggle: the pressed state is a raised card on a tonal track, never an accent fill.
+const SCOPE_BUTTON = "aria-pressed:bg-card aria-pressed:font-medium aria-pressed:text-ink aria-pressed:shadow-card aria-pressed:ring-1 aria-pressed:ring-line-strong not-aria-pressed:text-mute not-aria-pressed:hover:text-ink";
 
 export function GraphExplorer({ noteId, depth: initialDepth = 1, height = 560, compact = false }: Props) {
   const router = useRouter();
@@ -103,9 +105,9 @@ export function GraphExplorer({ noteId, depth: initialDepth = 1, height = 560, c
     <section className="space-y-3" aria-label={compact ? copy.region.local : copy.region.explorer}>
       <div className="flex flex-wrap items-center gap-2 rounded-card border border-line bg-desk p-2">
         {!noteId ? (
-          <div className="flex rounded-ctl border border-line bg-card p-0.5" aria-label={copy.toolbar.scope}>
-            <Button size="sm" variant={!focusId ? "primary" : "ghost"} onClick={() => { setFocusId(null); setSelectedId(null); }}>{copy.toolbar.all}</Button>
-            <Button size="sm" variant={focusId ? "primary" : "ghost"} disabled={!focusId && selected?.kind !== "note"} onClick={() => selected?.kind === "note" && enterLocal(selected.id)}>{copy.toolbar.local}</Button>
+          <div role="group" className="flex rounded-ctl bg-canvas p-1 ring-1 ring-inset ring-line" aria-label={copy.toolbar.scope}>
+            <Button size="sm" variant="ghost" className={SCOPE_BUTTON} aria-pressed={!focusId} onClick={() => { setFocusId(null); setSelectedId(null); }}>{copy.toolbar.all}</Button>
+            <Button size="sm" variant="ghost" className={SCOPE_BUTTON} aria-pressed={Boolean(focusId)} disabled={!focusId && selected?.kind !== "note"} onClick={() => selected?.kind === "note" && enterLocal(selected.id)}>{copy.toolbar.local}</Button>
           </div>
         ) : null}
         <label className="flex items-center gap-2 text-sm text-mute">

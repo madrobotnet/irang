@@ -43,7 +43,7 @@ export function MobileTopBar() {
   );
 }
 
-/** Mobile bottom bar: home · notes · [capture] · search · more. */
+/** Mobile bottom bar: home · inbox · [capture] · notes · more. */
 export function MobileNav() {
   const pathname = usePathname();
   const shell = useShell();
@@ -68,7 +68,7 @@ export function MobileNav() {
               type="button"
               aria-label={copy.actions.capture}
               onClick={() => shell.openCapture()}
-              className="-mt-5 flex size-14 items-center justify-center rounded-pill bg-accent text-accent-ink shadow-pop transition-[filter] active:brightness-90 focus-ring"
+              className="-mt-5 flex size-14 items-center justify-center rounded-pill bg-accent text-accent-ink shadow-pop transition-[filter] active:brightness-90 focus-ring-offset"
             >
               <Plus aria-hidden className="size-7" />
             </button>
@@ -84,11 +84,8 @@ export function MobileNav() {
               onClick={() => setMoreOpen(true)}
               className={cn(BOTTOM_ITEM, moreActive ? "text-accent" : "text-mute")}
             >
-              <span className="relative">
-                <Ellipsis aria-hidden className="size-5" />
-                {shell.inboxCount ? <span aria-hidden className="absolute -right-1.5 -top-0.5 size-2 rounded-pill bg-accent" /> : null}
-              </span>
-              <span className="text-2xs font-medium">{copy.mobile.more}</span>
+              <Ellipsis aria-hidden className="size-5" />
+              <span className="text-xs font-medium">{copy.mobile.more}</span>
             </button>
           </li>
         </ul>
@@ -112,7 +109,6 @@ export function MobileNav() {
                 >
                   <item.icon aria-hidden className="size-5 text-mute" />
                   <span className="flex-1">{copy.nav[id]}</span>
-                  {id === "inbox" && shell.inboxCount ? <Badge tone="accent" count={shell.inboxCount} /> : null}
                 </Link>
               </li>
             );
@@ -146,7 +142,7 @@ function BottomLink({ id, active, badge }: { id: (typeof MOBILE_PRIMARY)[number]
           <item.icon aria-hidden className="size-5" />
           {badge ? <Badge tone="rail" count={badge} className="absolute -right-2.5 -top-1.5" /> : null}
         </span>
-        <span className="text-2xs font-medium">{copy.nav[id]}</span>
+        <span className="text-xs font-medium">{copy.nav[id]}</span>
       </Link>
     </li>
   );

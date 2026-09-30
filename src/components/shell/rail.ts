@@ -5,12 +5,16 @@ export const RAIL_STORAGE_KEY = "sb-rail";
 /** In-tab change signal so every subscriber (useSyncExternalStore) re-reads storage. */
 export const RAIL_CHANGE_EVENT = "sb-rail-change";
 
-/** Runs before hydration: `<html data-rail="open">` when the rail was left expanded. */
-export const RAIL_INIT_SCRIPT = `(function(){try{if(localStorage.getItem(${JSON.stringify(RAIL_STORAGE_KEY)})==="open")document.documentElement.dataset.rail="open";}catch(e){}})();`;
+/** Without a stored choice, the rail starts expanded on viewports at least this wide. */
+const RAIL_WIDE_QUERY = "(min-width: 1280px)";
+
+/** Runs before hydration: `<html data-rail="open">` when the rail was left expanded, or has no stored choice on a wide screen. */
+export const RAIL_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem(${JSON.stringify(RAIL_STORAGE_KEY)});if(s==="open"||(s===null&&matchMedia(${JSON.stringify(RAIL_WIDE_QUERY)}).matches))document.documentElement.dataset.rail="open";}catch(e){}})();`;
 
 export function readRailExpanded(): boolean {
   try {
-    return window.localStorage.getItem(RAIL_STORAGE_KEY) === "open";
+    const stored = window.localStorage.getItem(RAIL_STORAGE_KEY);
+    return stored === "open" || (stored === null && window.matchMedia(RAIL_WIDE_QUERY).matches);
   } catch {
     return document.documentElement.dataset.rail === "open";
   }

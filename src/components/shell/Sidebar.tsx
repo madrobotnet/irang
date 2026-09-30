@@ -31,7 +31,7 @@ export function Sidebar() {
       aria-label={copy.rail.navLabel}
       data-expanded={expanded || undefined}
       className={cn(
-        "hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col border-r border-rail-line bg-rail text-rail-ink",
+        "hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col border-r border-rail-line bg-rail text-rail-ink [--focus:var(--rail-ink)]",
         "w-rail transition-[width] duration-200 ease-out-soft data-expanded:w-rail-open",
       )}
     >
@@ -51,7 +51,7 @@ export function Sidebar() {
           onClick={() => shell.openCapture()}
           title={expanded ? undefined : `${copy.actions.capture} (c)`}
           className={cn(
-            "flex h-10 w-full items-center gap-2.5 rounded-ctl bg-accent text-accent-ink transition-[filter] hover:brightness-95 focus-ring",
+            "flex h-10 w-full items-center gap-2.5 rounded-ctl bg-accent text-accent-ink transition-[filter] hover:brightness-95 focus-ring-offset",
             expanded ? "px-3" : "justify-center",
           )}
         >
@@ -59,7 +59,7 @@ export function Sidebar() {
           {expanded ? (
             <>
               <span className="flex-1 text-left text-base font-medium">{copy.actions.capture}</span>
-              <Kbd className="border-transparent bg-accent-ink/20 text-accent-ink">c</Kbd>
+              <Kbd variant="onAccent">c</Kbd>
             </>
           ) : (
             <span className="sr-only">{copy.actions.capture}</span>
@@ -112,8 +112,7 @@ function RailLink({ item, active, expanded, badge }: { item: NavItem; active: bo
         active && "bg-rail-hover text-rail-ink",
       )}
     >
-      {active ? <span aria-hidden className="absolute inset-y-2 -left-2.5 w-0.5 rounded-r bg-accent" /> : null}
-      <Icon aria-hidden className="size-5 shrink-0" />
+      <Icon aria-hidden className={cn("size-5 shrink-0", active && "text-rail-accent")} />
       {expanded ? <span className="flex-1 truncate text-base">{label}</span> : <span className="sr-only">{label}</span>}
       {badge ? (
         <Badge tone="rail" count={badge} className={cn(!expanded && "absolute right-1.5 top-1.5")} aria-label={copy.rail.pending(badge)} />
@@ -153,7 +152,7 @@ function RailButton({
       {expanded && hint ? (
         <span aria-hidden className="inline-flex gap-0.5">
           {hint.map((k) => (
-            <Kbd key={k} className="border-rail-line bg-rail-hover text-rail-mute shadow-none">
+            <Kbd key={k} variant="onRail">
               {k}
             </Kbd>
           ))}

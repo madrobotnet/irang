@@ -10,12 +10,12 @@ function submit(title: string, locale: Locale) {
   const item: InboxItem = {
     id: "123e4567-e89b-42d3-a456-426614174001",
     title, body: "Keep this body.", source: "web", url: null,
-    createdAt: "2026-09-29T00:00:00Z", suggestions: null,
+    createdAt: "2026-09-29T00:00:00Z", suggestions: null, snoozedUntil: null,
   };
   const form = captureTree(TriageEditor, {
     item, titleRef: createRef<HTMLInputElement>(), busy: null,
     onPromote: async (_item, draft) => { promotions.push(draft); },
-    onDiscard: () => {}, onSuggest: async () => {},
+    onDiscard: () => {}, onSnooze: () => {}, onMerge: () => {}, onSuggest: async () => {},
   }, locale);
   if (!isValidElement<{
     noValidate?: boolean;

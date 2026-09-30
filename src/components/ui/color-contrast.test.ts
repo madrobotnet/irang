@@ -8,6 +8,9 @@ const pairs = [
   ["accent-ink", "accent"], ["ok", "ok-soft"], ["ok", "canvas"],
   ["warn", "canvas"], ["warn", "warn-soft"],
 ] as const;
+/** Focus rings and graph marks are non-text UI: WCAG 1.4.11 needs 3:1 against their surface. */
+const focusPairs = [["accent", "card"], ["accent", "desk"], ["rail-ink", "rail"], ["rail-accent", "rail-hover"]] as const;
+const graphPairs = ([1, 2, 3, 4, 5, 6] as const).map((index) => [`graph-${index}`, "card"] as const);
 
 function colors(selector: string) {
   const block = css.match(new RegExp(`${selector}\\s*\\{([\\s\\S]*?)\\n\\}`))?.[1];
@@ -35,6 +38,14 @@ for (const theme of [":root", "\\.dark"]) {
   const color = colors(theme);
   test.each([...pairs])(`${theme} small text %s on %s meets AA contrast`, (foreground, background) => {
     expect(contrast(color(foreground), color(background))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test.each([...focusPairs])(`${theme} focus ring %s on %s meets non-text contrast`, (foreground, background) => {
+    expect(contrast(color(foreground), color(background))).toBeGreaterThanOrEqual(3);
+  });
+
+  test.each(graphPairs)(`${theme} graph color %s on %s meets non-text contrast`, (foreground, background) => {
+    expect(contrast(color(foreground), color(background))).toBeGreaterThanOrEqual(3);
   });
 
   test(`${theme} placeholder text remains readable on a card`, () => {

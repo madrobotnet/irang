@@ -1,10 +1,10 @@
 "use client";
 
-import { AlertTriangle, ArrowUpRight, Check, ExternalLink, Lightbulb, Sparkles, Trash2 } from "lucide-react";
+import { AlarmClock, AlertTriangle, ArrowUpRight, Check, ExternalLink, Lightbulb, Merge, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 import { useCopy, useLocale } from "@/components/i18n";
-import { Badge, Button, Input, TagBadge, Textarea } from "@/components/ui";
+import { Badge, Button, buttonClassName, Input, Kbd, TagBadge, Textarea } from "@/components/ui";
 import type { InboxItem } from "@/lib/types";
 import { INBOX_COPY } from "./inbox-copy";
 import { formatCreated, kindLabel, mergeTags, percent, stripUrlStatus, suggestionView, syncTriageDraft, urlStatus } from "./inbox-triage";
@@ -12,13 +12,19 @@ import { formatCreated, kindLabel, mergeTags, percent, stripUrlStatus, suggestio
 type EditorProps = {
   item: InboxItem;
   titleRef: RefObject<HTMLInputElement | null>;
-  busy: "promote" | "discard" | "suggest" | null;
+  busy: "promote" | "suggest" | null;
   onPromote: (item: InboxItem, draft: { title: string; body: string; tags: string[] }) => Promise<void>;
   onDiscard: () => void;
+  onSnooze: () => void;
+  /** `edited` reports whether the draft differs from the capture, which merging does not carry over. */
+  onMerge: (edited: boolean) => void;
   onSuggest: (item: InboxItem) => Promise<void>;
 };
 
-export function TriageEditor({ item, titleRef, busy, onPromote, onDiscard, onSuggest }: EditorProps) {
+/** Secondary actions share a three-column row on phones, so they tighten their padding there. */
+const SECONDARY_ACTION = "max-sm:gap-1.5 max-sm:px-2";
+
+export function TriageEditor({ item, titleRef, busy, onPromote, onDiscard, onSnooze, onMerge, onSuggest }: EditorProps) {
   const { locale } = useLocale();
   const copy = useCopy(INBOX_COPY);
   const incomingBody = stripUrlStatus(item.body);
@@ -36,6 +42,7 @@ export function TriageEditor({ item, titleRef, busy, onPromote, onDiscard, onSug
   const suggestions = suggestionView(item.suggestions);
   const status = urlStatus(item.body);
   const tags = mergeTags(manualTags, selectedTags);
+  const edited = edit.titleDirty || edit.bodyDirty;
 
   // Background URL/suggestion refreshes may update the item. Adopt server text
   // only while that field is pristine, so a late response never replaces typing.
@@ -118,7 +125,11 @@ export function TriageEditor({ item, titleRef, busy, onPromote, onDiscard, onSug
               </h2>
               <p className="mt-1 text-xs text-mute">{copy.suggestions.hint}</p>
             </div>
-            {suggestions.kind !== "ready" ? (
+            {suggestions.kind === "unavailable" ? (
+              <Link href="/settings" className={buttonClassName({ size: "sm" })}>
+                {copy.suggestions.openSettings}
+              </Link>
+            ) : suggestions.kind !== "ready" ? (
               <Button size="sm" loading={busy === "suggest"} disabled={busy !== null} onClick={() => void onSuggest(item)}>
                 {copy.suggestions.recheck}
               </Button>
@@ -151,9 +162,14 @@ export function TriageEditor({ item, titleRef, busy, onPromote, onDiscard, onSug
                 <p className="flex items-center gap-2 text-sm"><Lightbulb aria-hidden className="size-4 text-mute" />{copy.suggestions.kind} <strong>{kindLabel(suggestions.suggestions.kind.choice, copy.kind)}</strong> <span className="text-mute">{percent(suggestions.suggestions.kind.confidence)}</span></p>
               ) : null}
               {suggestions.suggestions.duplicateOf ? (
-                <p className="text-sm text-warn">
-                  {copy.suggestions.duplicate} <Link className="font-medium underline" href={`/notes/${suggestions.suggestions.duplicateOf.noteId}`}>{suggestions.suggestions.duplicateOf.title}</Link> ({percent(suggestions.suggestions.duplicateOf.probability)})
-                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <p className="text-sm text-warn">
+                    {copy.suggestions.duplicate} <Link className="font-medium underline" href={`/notes/${suggestions.suggestions.duplicateOf.noteId}`}>{suggestions.suggestions.duplicateOf.title}</Link> ({percent(suggestions.suggestions.duplicateOf.probability)})
+                  </p>
+                  <Button size="sm" className="max-lg:min-h-touch" disabled={busy !== null} leading={<Merge aria-hidden className="size-4" />} onClick={() => onMerge(edited)}>
+                    {copy.editor.mergeSuggested}
+                  </Button>
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -163,11 +179,63 @@ export function TriageEditor({ item, titleRef, busy, onPromote, onDiscard, onSug
         {tags.length ? <div className="flex flex-wrap gap-1.5" aria-label={copy.editor.appliedTags}>{tags.map((tag) => <TagBadge key={tag} tag={tag} />)}</div> : null}
       </div>
 
-      <div className="mt-5 flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:justify-end">
-        <Button type="button" variant="danger" size="lg" leading={<Trash2 aria-hidden className="size-4" />} disabled={busy !== null} onClick={onDiscard}>
-          {copy.editor.discard}
-        </Button>
-        <Button data-promote={item.id} type="submit" variant="primary" size="lg" loading={busy === "promote"} disabled={busy !== null} leading={<ArrowUpRight aria-hidden className="size-4" />}>
+      <div className="mt-5 flex flex-col-reverse gap-2 border-t border-line pt-4 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+          <Button
+            data-discard={item.id}
+            type="button"
+            variant="danger"
+            size="lg"
+            className={SECONDARY_ACTION}
+            aria-keyshortcuts="2 D"
+            leading={<Trash2 aria-hidden className="size-4" />}
+            trailing={<Kbd aria-hidden className="ml-1 max-lg:hidden">2</Kbd>}
+            disabled={busy !== null}
+            onClick={onDiscard}
+          >
+            {copy.editor.discard}
+          </Button>
+          <Button
+            data-snooze={item.id}
+            type="button"
+            size="lg"
+            className={SECONDARY_ACTION}
+            aria-keyshortcuts="H"
+            aria-haspopup="dialog"
+            leading={<AlarmClock aria-hidden className="size-4" />}
+            trailing={<Kbd aria-hidden className="ml-1 max-lg:hidden">H</Kbd>}
+            disabled={busy !== null}
+            onClick={onSnooze}
+          >
+            {copy.editor.snooze}
+          </Button>
+          <Button
+            data-merge={item.id}
+            type="button"
+            size="lg"
+            className={SECONDARY_ACTION}
+            aria-keyshortcuts="3"
+            aria-haspopup="dialog"
+            leading={<Merge aria-hidden className="size-4" />}
+            trailing={<Kbd aria-hidden className="ml-1 max-lg:hidden">3</Kbd>}
+            disabled={busy !== null}
+            onClick={() => onMerge(edited)}
+          >
+            {copy.editor.merge}
+          </Button>
+        </div>
+        <Button
+          data-promote={item.id}
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="sm:ml-auto"
+          aria-keyshortcuts="1 P"
+          loading={busy === "promote"}
+          disabled={busy !== null}
+          leading={<ArrowUpRight aria-hidden className="size-4" />}
+          trailing={<Kbd variant="onAccent" aria-hidden className="ml-1 max-lg:hidden">1</Kbd>}
+        >
           {copy.editor.promote}
         </Button>
       </div>

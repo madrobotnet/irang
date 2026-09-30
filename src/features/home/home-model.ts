@@ -1,14 +1,10 @@
+import { formatDate } from "@/lib/i18n/format-date";
 import { INTL_LOCALE, type Locale } from "@/lib/i18n/locale";
 import type { HomeData, NoteSummary } from "@/lib/types";
 import { HOME_COPY } from "./home-copy";
 
 /** Local calendar date as YYYY-MM-DD (the browser's zone, not UTC). */
-export function localDateKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+export { localDateKey } from "@/lib/i18n/format-date";
 
 /**
  * A cached dashboard can cross midnight. Only trust its daily note when it
@@ -48,16 +44,13 @@ export function relativeAge(iso: string, now: number): RelativeAge | null {
   return { unit: "date", sameYear: new Date(then).getFullYear() === new Date(now).getFullYear() };
 }
 
-/** Short relative time in `locale`; older dates use the viewer's local calendar. */
+/** Short relative time in `locale`; dates 30 or more days old use the shared absolute date format. */
 export function relativeTime(iso: string, now: number, locale: Locale): string {
   const age = relativeAge(iso, now);
   if (!age) return "";
   const { time } = HOME_COPY[locale];
   if (age.unit === "now") return time.justNow;
-  if (age.unit === "date") {
-    const options: Intl.DateTimeFormatOptions = age.sameYear ? { month: "long", day: "numeric" } : { year: "numeric", month: "long", day: "numeric" };
-    return new Intl.DateTimeFormat(INTL_LOCALE[locale], options).format(new Date(iso));
-  }
+  if (age.unit === "date") return formatDate(iso, locale);
   if (age.unit === "day" && age.value === 1) return time.yesterday;
   return new Intl.RelativeTimeFormat(INTL_LOCALE[locale], { numeric: "always" }).format(-age.value, age.unit);
 }

@@ -38,7 +38,8 @@ const ICON_ONLY: Record<ButtonSize, string> = {
 export const buttonClassName = (opts: { variant?: ButtonVariant; size?: ButtonSize; iconOnly?: boolean } = {}) =>
   cn(
     "inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-ctl border font-medium",
-    "transition-[background-color,filter,color] duration-150 focus-ring disabled:opacity-50 disabled:pointer-events-none",
+    "transition-[background-color,filter,color] duration-150 disabled:opacity-50 disabled:pointer-events-none",
+    opts.variant === "primary" ? "focus-ring-offset" : "focus-ring",
     VARIANT[opts.variant ?? "secondary"],
     opts.iconOnly ? ICON_ONLY[opts.size ?? "md"] : SIZE[opts.size ?? "md"],
   );
