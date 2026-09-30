@@ -9,8 +9,8 @@ export const HOME_COPY = defineCopy({
     title: "홈",
     headline: {
       inbox: (count: number) => `정리할 캡처가 ${count}개 있어요`,
-      firstNote: "첫 생각을 붙잡아 볼까요",
-      startDaily: "오늘 노트를 시작해 볼까요",
+      firstNote: "첫 생각을 캡처해 볼까요?",
+      startDaily: "오늘 노트를 시작해 볼까요?",
       clear: "인박스를 모두 정리했어요",
     },
     counts: {
@@ -20,10 +20,10 @@ export const HOME_COPY = defineCopy({
     },
     capture: "빠르게 캡처",
     newNote: "새 노트",
-    createFailed: "노트를 만들지 못했습니다.",
+    createFailed: "노트를 만들지 못했어요.",
     loadError: {
-      title: "홈 정보를 불러오지 못했습니다.",
-      help: "네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
+      title: "홈 정보를 불러오지 못했어요.",
+      help: "네트워크 연결을 확인한 뒤 다시 시도하세요.",
       retry: "다시 불러오기",
     },
     loading: "홈 정보를 불러오는 중",
@@ -40,14 +40,14 @@ export const HOME_COPY = defineCopy({
     today: {
       title: "오늘 노트",
       emptyExcerpt: "아직 아무것도 적지 않았어요.",
-      prompt: "오늘 한 일과 떠오른 생각을 한 곳에 모아 두세요.",
+      prompt: "오늘 한 일과 떠오른 생각을 한곳에 모아 두세요.",
       continue: "이어 쓰기",
       create: "오늘 노트 만들기",
     },
     recent: {
       title: "최근 수정한 노트",
       all: "전체 노트",
-      allPinnedTitle: "최근 노트는 모두 고정되어 있어요",
+      allPinnedTitle: "최근 노트는 모두 고정한 노트예요",
       allPinnedDescription: "고정한 노트 목록에서 바로 열 수 있어요.",
       noneTitle: "아직 노트가 없어요",
       noneDescription: "새 노트를 만들거나 인박스의 캡처를 노트로 옮겨 보세요.",
@@ -63,7 +63,7 @@ export const HOME_COPY = defineCopy({
       title: "다시 볼 노트",
       description: "2주 넘게 손대지 않은 노트 가운데 오늘 고른 노트예요.",
       emptyTitle: "아직 다시 꺼낼 노트가 없어요",
-      emptyDescription: "노트가 2주 넘게 쉬고 나면 하루에 몇 개씩 이곳에 다시 보여 드려요.",
+      emptyDescription: "2주 넘게 손대지 않은 노트가 생기면 하루에 몇 개씩 여기에 다시 보여 드려요.",
     },
     time: {
       justNow: "방금",
@@ -128,7 +128,7 @@ export const HOME_COPY = defineCopy({
       title: "Notes to revisit",
       description: "Picked today from notes you haven't touched in over two weeks.",
       emptyTitle: "Nothing to revisit yet",
-      emptyDescription: "Once a note has rested for more than two weeks, a few will show up here each day.",
+      emptyDescription: "Once notes go untouched for more than two weeks, a few will show up here each day.",
     },
     time: {
       justNow: "just now",

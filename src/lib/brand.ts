@@ -16,7 +16,7 @@ export const BRAND_NAMES: LocalizedText = { ko: "이랑", en: "Irang" };
 export const INSTALL_NAME = BRAND_NAMES.en;
 
 export const BRAND_DESCRIPTION: LocalizedText = {
-  ko: "캡처하고, 정리하고, 연결하는 개인 노트 작업대",
+  ko: "생각을 캡처하고 정리하고 연결하는 개인 노트 작업대",
   en: "A personal notes workbench for capturing, organizing and connecting ideas.",
 };
 

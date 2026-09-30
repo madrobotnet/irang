@@ -5,7 +5,7 @@ import { closeDb, connectTestDatabase, resetData } from "@/server/test/db";
 import { type CodexSession } from "./auth";
 import { ChatProviderError, createCodexProvider, type ChatProvider, type ProviderInput } from "./provider";
 import { DEFAULT_THREAD_TITLES } from "@/features/chat/chat-model";
-import { EMPTY_ANSWER, NEW_THREAD_TITLE } from "@/server/i18n/copy";
+import { chatCopy, EMPTY_ANSWER, NEW_THREAD_TITLE } from "@/server/i18n/copy";
 import {
   createChatMessageStream,
   createChatThread,
@@ -204,7 +204,7 @@ describe("streamed chat", () => {
 
     expect(streamed.at(-1)).toEqual({
       event: "error",
-      data: { code: "upstream_failed", message: "채팅 모델 응답을 받지 못했습니다." },
+      data: { code: "upstream_failed", message: chatCopy.upstream.ko },
     });
     expect((await getChatThread(thread.id)).messages).toEqual([]);
     expect(JSON.stringify(streamed)).not.toContain("header.payload.signature");
@@ -229,7 +229,7 @@ describe("streamed chat", () => {
     expect(streamed.map((event) => event.event)).toEqual(["citations", "delta", "error"]);
     expect(streamed.at(-1)).toEqual({
       event: "error",
-      data: { code: "upstream_failed", message: "채팅 모델 응답을 받지 못했습니다." },
+      data: { code: "upstream_failed", message: chatCopy.upstream.ko },
     });
     expect((await getChatThread(thread.id)).messages).toEqual([]);
   });
@@ -252,7 +252,7 @@ describe("streamed chat", () => {
     expect(called).toBe(false);
     expect(streamed[0]).toEqual({ event: "citations", data: [] });
     expect((streamed.at(-1)!.data as { message: { content: string } }).message.content)
-      .toBe("관련 노트에서 답변의 근거를 찾지 못했습니다.");
+      .toBe(EMPTY_ANSWER.ko);
   });
 
   test("uses request locale for empty-source replies and provider input", async () => {

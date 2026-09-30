@@ -4,8 +4,8 @@ import { defineCopy } from "@/lib/i18n/copy";
 export const SEARCH_COPY = defineCopy({
   ko: {
     title: "검색",
-    loading: "검색 화면을 불러오는 중입니다.",
-    description: "제목, 내용, 태그로 기록을 다시 찾아보세요.",
+    loading: "검색 화면을 불러오는 중…",
+    description: "제목, 내용, 태그로 노트를 다시 찾아보세요.",
     form: {
       queryLabel: "검색어",
       queryPlaceholder: "제목이나 내용을 검색하세요",
@@ -14,18 +14,18 @@ export const SEARCH_COPY = defineCopy({
       tagPlaceholder: "태그 이름",
       clearTag: "태그 필터 지우기",
     },
-    idle: { title: "검색어를 입력하세요", description: "노트 제목이나 내용에서 찾을 수 있습니다." },
-    error: { title: "검색하지 못했습니다", fallback: "연결을 확인한 뒤 다시 시도하세요.", retry: "다시 시도" },
-    empty: { title: "검색 결과가 없습니다", description: "다른 검색어나 태그를 입력해 보세요." },
-    resultCount: (count: number) => `${count}개의 노트`,
+    idle: { title: "검색어를 입력하세요", description: "노트 제목과 내용에서 일치하는 부분을 찾아요." },
+    error: { title: "검색하지 못했어요", fallback: "네트워크 연결을 확인한 뒤 다시 시도하세요.", retry: "다시 시도" },
+    empty: { title: "검색 결과가 없어요", description: "다른 검색어나 태그를 입력해 보세요." },
+    resultCount: (count: number) => `노트 ${count}개`,
     untitled: "제목 없는 노트",
-    searchTag: (tag: string) => `태그 ${tag}로 검색`,
+    searchTag: (tag: string) => `${tag} 태그로 검색`,
     /** Keyed by what each signal measures; search-model maps server signal names onto these keys. */
-    signals: { keyword: "키워드", similarSpelling: "오타 유사도", characterSimilarity: "문자 유사도" },
+    signals: { keyword: "키워드", similarSpelling: "비슷한 철자", characterSimilarity: "문자 유사도" },
   },
   en: {
     title: "Search",
-    loading: "Loading search...",
+    loading: "Loading search…",
     description: "Find your notes again by title, content, or tag.",
     form: {
       queryLabel: "Search terms",
