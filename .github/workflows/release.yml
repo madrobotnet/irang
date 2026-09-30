@@ -1,0 +1,448 @@
+name: Private native release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: irang-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  IMAGE: ghcr.io/madrobotnet/irang
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.identity.outputs.version }}
+      revision: ${{ steps.identity.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - id: identity
+        name: Require real stable tag on main and private repository
+        env:
+          REF: ${{ github.ref }}
+          PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          set -euo pipefail
+          test "$PRIVATE" = true
+          [[ "$REF" =~ ^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          revision="$(git rev-parse "$REF^{commit}")"
+          test "$revision" = "$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$revision" origin/main
+          version="${REF#refs/tags/v}"
+          bun --no-env-file scripts/verify-release.mjs validate --root . --version "$version" --ref "$REF" --revision "$revision"
+          printf 'version=%s\nrevision=%s\n' "$version" "$revision" >> "$GITHUB_OUTPUT"
+
+  ci:
+    needs: validate
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: [validate, ci]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-24.04, arch: amd64, platform: linux/amd64, machine: x86_64}
+          - {runner: ubuntu-24.04-arm, arch: arm64, platform: linux/arm64, machine: aarch64}
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      REVISION: ${{ needs.validate.outputs.revision }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.revision }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - uses: docker/setup-compose-action@54042514f505b273907334ae2b9cdbb9a0213c1a # v2
+        with:
+          version: v5.5.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: docker-container
+      - name: Record native toolchain
+        env:
+          MACHINE: ${{ matrix.machine }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "$MACHINE"
+          mkdir build
+          { uname -m; docker version; docker buildx version; docker compose version; bun --version; node --version; printf '%s\n' "$RUNNER_NAME" "$RUNNER_ARCH"; } > build/toolchain.txt
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: "{{defaultContext}}"
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=ghcr.io/madrobotnet/irang,push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=min
+          sbom: true
+          build-args: |
+            VERSION=${{ env.VERSION }}
+            REVISION=${{ env.REVISION }}
+          labels: |
+            org.opencontainers.image.title=Irang
+            org.opencontainers.image.source=https://github.com/madrobotnet/irang
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.revision=${{ env.REVISION }}
+            org.opencontainers.image.licenses=NOASSERTION
+      - name: Save build digest
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+          METADATA: ${{ steps.image.outputs.metadata }}
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          printf '%s\n' "$DIGEST" > build/digest.txt
+          printf '%s\n' "$METADATA" > build/build-metadata.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-${{ matrix.arch }}
+          path: build/
+          if-no-files-found: error
+          retention-days: 7
+
+  verify-pull:
+    needs: [validate, build]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {runner: ubuntu-24.04, arch: amd64, platform: linux/amd64, machine: x86_64}
+          - {runner: ubuntu-24.04-arm, arch: arm64, platform: linux/arm64, machine: aarch64}
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      REVISION: ${{ needs.validate.outputs.revision }}
+      PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.revision }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - uses: docker/setup-compose-action@54042514f505b273907334ae2b9cdbb9a0213c1a # v2
+        with:
+          version: v5.5.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-${{ matrix.arch }}
+          path: build
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Fresh native authenticated pull and smoke
+        env:
+          MACHINE: ${{ matrix.machine }}
+          ARCH: ${{ matrix.arch }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = "$MACHINE"
+          digest="$(<build/digest.txt)"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          image="$IMAGE@$digest"
+          mkdir receipt
+          docker pull --platform "$PLATFORM" "$image"
+          docker image inspect "$image" > receipt/inspect.json
+          bun --no-env-file scripts/verify-release.mjs image --inspect receipt/inspect.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION" --platform "$PLATFORM"
+          bun --no-env-file scripts/smoke-image.mjs --image "$image" --project "irang-package-qa-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --port 3316 --evidence-dir receipt/smoke
+          export BUILD_DIGEST="$digest"
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, urllib.request
+          p = pathlib.Path("receipt")
+          credentials = base64.b64encode((os.environ["GITHUB_ACTOR"]+":"+os.environ["GH_TOKEN"]).encode()).decode()
+          req = urllib.request.Request("https://ghcr.io/token?service=ghcr.io&scope=repository:madrobotnet/irang:pull",
+            headers={"Authorization":"Basic "+credentials})
+          with urllib.request.urlopen(req, timeout=60) as r: token = json.load(r)["token"]
+          req = urllib.request.Request("https://ghcr.io/v2/madrobotnet/irang/manifests/"+os.environ["BUILD_DIGEST"],
+            headers={"Authorization":"Bearer "+token, "Accept":"application/vnd.oci.image.index.v1+json"})
+          with urllib.request.urlopen(req, timeout=60) as r: index_bytes = r.read()
+          assert "sha256:"+hashlib.sha256(index_bytes).hexdigest() == os.environ["BUILD_DIGEST"]
+          (p/"build-index.json").write_bytes(index_bytes)
+          smoke = json.loads((p/"smoke/smoke-receipt.json").read_text())
+          assert smoke["status"] == "PASS" and smoke["scenarios"] and smoke["cleanup"]
+          assert all(c.get("success") is not False and not c.get("error") for c in smoke["cleanup"])
+          raw = json.loads((p/"build-index.json").read_text())
+          runnable = [d for d in raw["manifests"] if d["platform"]["os"] != "unknown"]
+          assert len(runnable) == 1
+          assert runnable[0]["platform"] == dict(zip(("os", "architecture"), os.environ["PLATFORM"].split("/")))
+          receipt = dict(platform=os.environ["PLATFORM"], revision=os.environ["REVISION"],
+            version=os.environ["VERSION"], buildDigest=os.environ["BUILD_DIGEST"],
+            runnableDigest=runnable[0]["digest"], image=os.environ["IMAGE"]+"@"+os.environ["BUILD_DIGEST"],
+            native=True, pull="PASS", cleanup="PASS",
+            checks=[dict(name=s["name"], status="PASS") for s in smoke["scenarios"]],
+            labels=json.loads((p/"inspect.json").read_text())[0]["Config"]["Labels"])
+          (p/"native-receipt.json").write_text(json.dumps(receipt, indent=2)+"\n")
+          PY
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tested-${{ matrix.arch }}
+          path: receipt/
+          if-no-files-found: error
+          retention-days: 7
+
+  merge-candidate:
+    needs: [validate, verify-pull]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.merge.outputs.digest }}
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      REVISION: ${{ needs.validate.outputs.revision }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.revision }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: tested-*
+          path: tested
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: merge
+        name: Merge tested descriptors and verify attestation subjects
+        run: |
+          set -euo pipefail
+          a="$(jq -r .buildDigest tested/tested-amd64/native-receipt.json)"
+          b="$(jq -r .buildDigest tested/tested-arm64/native-receipt.json)"
+          candidate="candidate-$REVISION-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker buildx imagetools create --tag "$IMAGE:$candidate" --annotation "index:org.opencontainers.image.description=Irang private native installation image" "$IMAGE@$a" "$IMAGE@$b"
+          mkdir merged
+          export CANDIDATE="$candidate"
+          # Registry credentials and bearer tokens stay in process memory.
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, urllib.request
+          root = pathlib.Path("merged")
+          credentials = base64.b64encode((os.environ["GITHUB_ACTOR"]+":"+os.environ["GH_TOKEN"]).encode()).decode()
+          req = urllib.request.Request("https://ghcr.io/token?service=ghcr.io&scope=repository:madrobotnet/irang:pull",
+            headers={"Authorization":"Basic "+credentials})
+          with urllib.request.urlopen(req, timeout=60) as r: token = json.load(r)["token"]
+          req = urllib.request.Request("https://ghcr.io/v2/madrobotnet/irang/manifests/"+os.environ["CANDIDATE"],
+            headers={"Authorization":"Bearer "+token, "Accept":"application/vnd.oci.image.index.v1+json"})
+          with urllib.request.urlopen(req, timeout=60) as r:
+            raw = r.read()
+            digest = r.headers["Docker-Content-Digest"]
+          assert "sha256:"+hashlib.sha256(raw).hexdigest() == digest
+          (root/"index.json").write_bytes(raw)
+          def get(kind, digest):
+            req = urllib.request.Request("https://ghcr.io/v2/madrobotnet/irang/"+kind+"/"+digest,
+              headers={"Authorization":"Bearer "+token, "Accept":"application/vnd.oci.image.manifest.v1+json"})
+            with urllib.request.urlopen(req, timeout=60) as r: data = r.read()
+            assert "sha256:"+hashlib.sha256(data).hexdigest() == digest
+            return json.loads(data)
+          receipts, builds, attestations = [], {}, {}
+          for arch in ("amd64", "arm64"):
+            p = pathlib.Path("tested/tested-"+arch)
+            receipt = json.loads((p/"native-receipt.json").read_text())
+            receipts.append(receipt)
+            builds[receipt["buildDigest"]] = (p/"build-index.json").read_text()
+          for descriptor in json.loads(raw)["manifests"]:
+            if descriptor["platform"]["os"] == "unknown":
+              manifest = get("manifests", descriptor["digest"])
+              statements = [get("blobs", layer["digest"]) for layer in manifest["layers"]]
+              attestations[descriptor["digest"]] = statements
+          metadata = dict(schemaVersion=1, version=os.environ["VERSION"], revision=os.environ["REVISION"],
+            ref=os.environ["GITHUB_REF"], indexRaw=raw.decode(), indexDigest=digest,
+            receipts=receipts, buildIndexes=builds, attestations=attestations)
+          (root/"metadata.json").write_text(json.dumps(metadata, indent=2)+"\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out: out.write("digest="+digest+"\n")
+          PY
+          bun --no-env-file scripts/verify-release.mjs verify --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: merged
+          path: merged/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-release:
+    needs: [validate, merge-candidate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      packages: write
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+      REVISION: ${{ needs.validate.outputs.revision }}
+      DIGEST: ${{ needs.merge-candidate.outputs.digest }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.revision }}
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - uses: docker/setup-compose-action@54042514f505b273907334ae2b9cdbb9a0213c1a # v2
+        with:
+          version: v5.5.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: merged
+          path: merged
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: tested-*
+          path: tested
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Assemble and smoke exact merged archive before final tags
+        run: |
+          set -euo pipefail
+          test "$(uname -m)" = x86_64
+          test "$(jq -r .indexDigest merged/metadata.json)" = "$DIGEST"
+          bun --no-env-file scripts/verify-release.mjs verify --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
+          bun --no-env-file scripts/verify-release.mjs assemble --root . --out assets --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
+          bun --no-env-file scripts/verify-release.mjs checksums --root assets
+          mkdir extracted
+          tar -xzf "assets/irang-$VERSION-install.tar.gz" -C extracted
+          docker pull --platform linux/amd64 "$IMAGE@$DIGEST"
+          bun --no-env-file scripts/smoke-image.mjs --image "$IMAGE@$DIGEST" --project "irang-package-qa-archive-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --port 3316 --evidence-dir archive-smoke --install-dir extracted/irang
+      - name: Promote immutable tags without rebuild
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64, hashlib, json, os, pathlib, urllib.request, urllib.error
+          raw = pathlib.Path("merged/index.json").read_bytes()
+          assert "sha256:"+hashlib.sha256(raw).hexdigest() == os.environ["DIGEST"]
+          credentials = base64.b64encode((os.environ["GITHUB_ACTOR"]+":"+os.environ["GH_TOKEN"]).encode()).decode()
+          req = urllib.request.Request("https://ghcr.io/token?service=ghcr.io&scope=repository:madrobotnet/irang:pull,push",
+            headers={"Authorization":"Basic "+credentials})
+          with urllib.request.urlopen(req, timeout=60) as r: token = json.load(r)["token"]
+          headers = {"Authorization":"Bearer "+token, "Accept":"application/vnd.oci.image.index.v1+json"}
+          tags = [os.environ["VERSION"], "sha-"+os.environ["REVISION"]]
+          absent = []
+          # Preflight BOTH tags: auth/network/other 404 errors are never absence.
+          for tag in tags:
+            url = "https://ghcr.io/v2/madrobotnet/irang/manifests/"+tag
+            try:
+              with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as r:
+                existing = r.read()
+              assert "sha256:"+hashlib.sha256(existing).hexdigest() == os.environ["DIGEST"], "immutable tag conflict"
+            except urllib.error.HTTPError as e:
+              body = json.loads(e.read())
+              if e.code != 404 or not body.get("errors") or any(x["code"] != "MANIFEST_UNKNOWN" for x in body["errors"]): raise
+              absent.append(url)
+          for url in absent:
+            req = urllib.request.Request(url, data=raw, method="PUT",
+              headers={**headers, "Content-Type":json.loads(raw)["mediaType"]})
+            with urllib.request.urlopen(req, timeout=60) as r:
+              assert r.headers["Docker-Content-Digest"] == os.environ["DIGEST"]
+          PY
+      - name: Assemble receipts and verify all asset checksums
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, shutil
+          root = pathlib.Path("assets")
+          metadata = json.loads(pathlib.Path("merged/metadata.json").read_text())
+          shutil.copyfile("merged/index.json", root/"image-manifest.json")
+          for arch in ("amd64", "arm64"):
+            shutil.copyfile("tested/tested-"+arch+"/smoke/smoke-receipt.json", root/("smoke-"+arch+".json"))
+            runnable = next(r["runnableDigest"] for r in metadata["receipts"] if r["platform"] == "linux/"+arch)
+            statements = [s for d in json.loads(metadata["indexRaw"])["manifests"]
+              if d.get("annotations", {}).get("vnd.docker.reference.digest") == runnable
+              for s in metadata["attestations"][d["digest"]]]
+            (root/("attestations-"+arch+".json")).write_text(json.dumps(statements, indent=2)+"\n")
+          shutil.copyfile("archive-smoke/smoke-receipt.json", root/"smoke-archive.json")
+          (root/"release-receipt.json").write_text(json.dumps(dict(version=os.environ["VERSION"],
+            revision=os.environ["REVISION"], indexDigest=os.environ["DIGEST"], receipts=metadata["receipts"]), indent=2)+"\n")
+          sums = "".join(hashlib.sha256(p.read_bytes()).hexdigest()+"  "+p.name+"\n"
+            for p in sorted(root.iterdir()) if p.name != "SHA256SUMS")
+          (root/"SHA256SUMS").write_text(sums)
+          PY
+          bun --no-env-file scripts/verify-release.mjs checksums --root assets
+      - name: Create private draft, verify uploaded bytes, then publish stable release
+        run: |
+          set -euo pipefail
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+          tag="v$VERSION"
+          # A rerun may resume its draft, but never overwrite a published release.
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" > releases.json
+          existing="$(jq -r --arg tag "$tag" '.[] | select(.tag_name == $tag) | .id' releases.json)"
+          if test -n "$existing"; then
+            test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$existing" --jq .draft)" = true
+          else
+            gh release create "$tag" --verify-tag --draft --title "Irang $VERSION" --notes "Private native Linux amd64/arm64 release."
+          fi
+          gh release upload "$tag" assets/* --clobber
+          mkdir downloaded
+          gh release download "$tag" --dir downloaded
+          bun --no-env-file scripts/verify-release.mjs checksums --root downloaded
+          diff -r assets downloaded
+          gh release edit "$tag" --draft=false --prerelease=false
+          gh release view "$tag" --json url --jq .url
+          jq '{revision,indexDigest,receipts: [.receipts[] | {platform,runnableDigest,buildDigest}]}' merged/metadata.json
+          printf '%s\n' 'Asset SHA-256:'
+          cat assets/SHA256SUMS
