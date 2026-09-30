@@ -1,11 +1,6 @@
 import { Suspense } from "react";
-import { NotesWorkspace } from "@/components/notes/NotesWorkspace";
-import { SkeletonBlock } from "@/components/ui/SkeletonBlock";
+import { NotesLoading, NotesWorkspace } from "@/features/notes";
 
 export default function NotesPage() {
-  return (
-    <Suspense fallback={<SkeletonBlock lines={6} />}>
-      <NotesWorkspace />
-    </Suspense>
-  );
+  return <Suspense fallback={<NotesLoading />}><NotesWorkspace /></Suspense>;
 }

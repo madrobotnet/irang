@@ -1,0 +1,8 @@
+export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.DATABASE_URL?.trim()) {
+    const { startNoteMaintenance } = await import("@/server/notes/trash");
+    // Replay durable work and run trash and revision retention now and on a schedule, without
+    // coupling server readiness to storage health.
+    startNoteMaintenance();
+  }
+}

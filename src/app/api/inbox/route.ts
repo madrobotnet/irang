@@ -1,11 +1,11 @@
-import { handleInboxCommand, handleListInbox } from "@/server/notes/http";
+import { z } from "zod";
+import { json, withApi } from "@/server/http";
+import { listInbox } from "@/server/inbox";
 
 export const runtime = "nodejs";
+const Query = z.object({ view: z.enum(["open", "later"]).default("open") });
 
-export async function GET(request: Request) {
-  return handleListInbox(request);
-}
-
-export async function POST(request: Request) {
-  return handleInboxCommand(request);
-}
+export const GET = withApi(async (request) => {
+  const { view } = Query.parse(Object.fromEntries(new URL(request.url).searchParams));
+  return json(await listInbox(view));
+});

@@ -1,10 +1,11 @@
-import { handleDiscardInbox } from "@/server/notes/http";
+import { json, withApi } from "@/server/http";
+import { discardInbox } from "@/server/inbox";
 
 export const runtime = "nodejs";
+type Context = { params: Promise<{ id: string }> };
 
-type Params = { params: Promise<{ id: string }> };
-
-export async function POST(_request: Request, { params }: Params) {
+export const POST = withApi<Context>(async (_request, { params }) => {
   const { id } = await params;
-  return handleDiscardInbox(id);
-}
+  await discardInbox(id);
+  return json({ ok: true });
+});

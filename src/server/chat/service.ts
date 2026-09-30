@@ -1,506 +1,266 @@
-import { aiLogExpiry, chatContextBudget } from "@/domain/chat/limits";
-import { CitationsRequiredError } from "@/domain/chat/errors";
-import { selectChatNotes } from "@/domain/chat/select";
-import type { StoredCitation } from "@/domain/chat/types";
-import { buildSnippet } from "@/domain/search/snippet";
-import type { SearchSourceDoc } from "@/domain/search/types";
-import {
-  chatContextExceeded,
-  type ChatJudgmentsDto,
-  type ChatTurnOk,
-  type NoteEditDecisionDto,
-  type NoteEditProposalDto,
-} from "@/lib/chat/dto";
-import type { NoteRecord } from "@/domain/notes/types";
-import { getNotesStore } from "../notes/runtime";
-import { notifySearchCorpusChanged } from "../search/hooks";
-import { retrieveSearchCandidates } from "../search/service";
-import { SearchIndexUnavailableError } from "../search/runtime";
-import { judgmentsForInboxSuggestion } from "../notes/capture-enrichment";
-import { getSystemOneInvoker } from "../typesafe/runtime";
-import { getCodexGenerator, maybeOrganize, type CodexTurnResult } from "./codex";
-import {
-  ChatNotFoundError,
-  ChatValidationError,
-  CodexFailedError,
-  ContextLimitFailure,
-  ProposalNotPendingError,
-} from "./errors";
-import { judgeChatTurn } from "./judgments";
-import type { ChatStore } from "./ports";
-import { getChatStore } from "./runtime";
-import {
-  toContractProposal,
-  toKaiProposal,
-  toMessageWire,
-  toThreadWire,
-  type WireAssistantMessage,
-  type WireContractProposal,
-  type WireMessage,
-  type WireThread,
-  type WireUserMessage,
-} from "./wire";
+import type { PoolClient } from "pg";
+import type { ChatMessage, ChatThread, Citation } from "@/lib/types";
+import type { Locale } from "@/lib/i18n/locale";
+import { excerpt } from "@/lib/wikilinks";
+import { db, query, queryOne } from "@/server/db";
+import { ApiError } from "@/server/http";
+import { chatCopy, EMPTY_ANSWER, NEW_THREAD_TITLE } from "@/server/i18n/copy";
+import { searchNotes } from "@/server/search/service";
+import type { CodexAuth } from "./auth";
+import { configuredChatProvider } from "./connection";
+import { ChatProviderError, createCodexProvider, type ChatProvider, type ProviderMessage } from "./provider";
 
-const MAX_CANDIDATES = 20;
-const RECENT_MESSAGE_LIMIT = 20;
-
-export type ChatTurnWire = ChatTurnOk & {
-  routing: ChatTurnOk["judgments"]["route"];
-  selectedNoteIds: string[];
-  userMessage: WireUserMessage;
-  assistantMessage: WireAssistantMessage | null;
+type ThreadRow = { id: string; title: string | null; created_at: Date | string; updated_at: Date | string };
+type MessageRow = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations: unknown;
+  created_at: Date | string;
 };
+type StreamOptions = { auth?: CodexAuth; provider?: ChatProvider; signal?: AbortSignal; locale?: Locale };
 
-const PROMPT_MARKER = "CODEX_PROMPT_SECRET";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function purgeExpiredLogs(store: ChatStore): Promise<void> {
-  await store.purgeAiLogs(aiLogExpiry(new Date()));
+function iso(value: Date | string): string {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-async function loadCandidateNotes(
-  query: string,
-  candidateNoteIds: string[] | undefined,
-): Promise<SearchSourceDoc[]> {
-  if (candidateNoteIds && candidateNoteIds.length > 0) {
-    if (candidateNoteIds.length > MAX_CANDIDATES) {
-      throw new ChatValidationError();
-    }
-    const notes = await getNotesStore();
-    const docs: SearchSourceDoc[] = [];
-    for (const id of candidateNoteIds) {
-      const note = await notes.getNoteById(id);
-      if (!note || note.deletedAt) {
-        throw new ChatValidationError();
-      }
-      docs.push({
-        id: note.id,
-        title: note.title,
-        body: note.body,
-        status: note.status,
-        createdAt: note.createdAt,
-        updatedAt: note.updatedAt,
-      });
-    }
-    return docs;
-  }
-  try {
-    return await retrieveSearchCandidates(query);
-  } catch (error) {
-    if (error instanceof SearchIndexUnavailableError) {
-      throw error;
-    }
-    throw error;
-  }
+function mapThread(row: ThreadRow, locale: Locale): ChatThread {
+  return { id: row.id, title: row.title || NEW_THREAD_TITLE[locale], createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) };
 }
 
-function citationsFor(
-  selectedIds: readonly { noteId: string; title: string; excerpt: string }[],
-  originals: readonly SearchSourceDoc[],
-  query: string,
-): StoredCitation[] {
-  return selectedIds.map((selected) => {
-    const source = originals.find((note) => note.id === selected.noteId);
-    const title = source?.title ?? selected.title;
-    const snippet = buildSnippet(title, source?.body ?? selected.excerpt, query);
-    return {
-      noteId: selected.noteId,
-      title,
-      ...(snippet ? { snippet } : {}),
-    };
+function citations(value: unknown): Citation[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, position): Citation[] => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    if (typeof row.noteId !== "string" || typeof row.title !== "string") return [];
+    if (typeof row.index === "number" && typeof row.excerpt === "string") {
+      return [{ index: row.index, noteId: row.noteId, title: row.title, excerpt: row.excerpt }];
+    }
+    return [{
+      index: position + 1,
+      noteId: row.noteId,
+      title: row.title,
+      excerpt: typeof row.snippet === "string" ? row.snippet : "",
+    }];
   });
 }
 
-function turnWire(input: {
-  threadId: string;
-  userMessage: WireUserMessage;
-  judgments: ChatJudgmentsDto;
-  contextLimit: ChatTurnOk["contextLimit"];
-  assistantMessage: WireAssistantMessage | null;
-  proposal: NoteEditProposalDto | null;
-}): ChatTurnWire {
-  return {
-    ok: true,
-    threadId: input.threadId,
-    userMessage: input.userMessage,
-    judgments: input.judgments,
-    contextLimit: input.contextLimit,
-    assistantMessage: input.assistantMessage,
-    proposal: input.proposal,
-    routing: input.judgments.route,
-    selectedNoteIds: input.judgments.context.selectedNoteIds,
-  };
+function mapMessage(row: MessageRow): ChatMessage {
+  return { id: row.id, role: row.role, content: row.content, citations: citations(row.citations), createdAt: iso(row.created_at) };
 }
 
-export async function createChatThread(title: string | null): Promise<WireThread> {
-  const store = await getChatStore();
-  return toThreadWire(await store.createThread({ title }));
+function validId(id: string): void {
+  if (!UUID.test(id)) throw new ApiError("not_found", chatCopy.threadNotFound);
 }
 
-export async function listChatThreads(query: {
-  limit: number;
-  cursor?: string;
-}): Promise<{ threads: WireThread[]; nextCursor: string | null }> {
-  const store = await getChatStore();
-  await purgeExpiredLogs(store);
-  const page = await store.listThreads({ ...query, includeArchived: false });
-  return { threads: page.threads.map(toThreadWire), nextCursor: page.nextCursor };
+export async function getChatStatus(): Promise<{ available: boolean }> {
+  return { available: (await configuredChatProvider()) !== null };
 }
 
-export async function getChatThread(id: string): Promise<{ thread: WireThread; messages: WireMessage[] } | null> {
-  const store = await getChatStore();
-  const thread = await store.getThread(id);
-  if (!thread) {
-    return null;
-  }
-  const messages = await store.listRecentMessages(id, RECENT_MESSAGE_LIMIT);
-  return { thread: toThreadWire(thread), messages: messages.map(toMessageWire) };
+export async function listChatThreads(locale: Locale = "ko"): Promise<ChatThread[]> {
+  return (await query<ThreadRow>(
+    "SELECT id::text, title, created_at, updated_at FROM chat_threads WHERE archived_at IS NULL ORDER BY updated_at DESC, id DESC",
+  )).map((row) => mapThread(row, locale));
 }
 
-export async function archiveChatThread(id: string): Promise<WireThread | null> {
-  const store = await getChatStore();
-  const thread = await store.archiveThread(id, new Date());
-  return thread ? toThreadWire(thread) : null;
-}
-
-export async function listChatMessages(
-  threadId: string,
-  query: { limit: number; cursor?: string },
-): Promise<{ threadId: string; messages: WireMessage[]; nextCursor: string | null } | null> {
-  const store = await getChatStore();
-  const thread = await store.getThread(threadId);
-  if (!thread) {
-    return null;
-  }
-  const page = await store.listMessages(threadId, query);
-  return { threadId, messages: page.messages.map(toMessageWire), nextCursor: page.nextCursor };
-}
-
-export async function postChatMessage(
-  threadId: string,
-  input: { content: string; candidateNoteIds?: string[] },
-): Promise<ChatTurnWire> {
-  const store = await getChatStore();
-  const thread = await store.getThread(threadId);
-  if (!thread || thread.archivedAt) {
-    throw new ChatNotFoundError();
-  }
-  const originals = await loadCandidateNotes(input.content, input.candidateNoteIds);
-  const user = await store.createMessage({
-    threadId,
-    role: "user",
-    content: input.content,
-    citations: [],
-    routing: null,
-  });
-  await store.touchThread(threadId, new Date());
-  await purgeExpiredLogs(store);
-
-  const judged = await judgeChatTurn(
-    input.content,
-    originals.map((note) => ({ id: note.id, title: note.title, body: note.body })),
+export async function createChatThread(title?: string, locale: Locale = "ko"): Promise<ChatThread> {
+  const row = await queryOne<ThreadRow>(
+    "INSERT INTO chat_threads (title) VALUES ($1) RETURNING id::text, title, created_at, updated_at",
+    [title?.trim() || NEW_THREAD_TITLE[locale]],
   );
-  const packed = selectChatNotes(judged.candidates, chatContextBudget());
-  if (chatContextExceeded(packed.contextLimit)) {
-    throw new ContextLimitFailure(packed.contextLimit);
+  return mapThread(row!, locale);
+}
+
+export async function getChatThread(id: string, locale: Locale = "ko"): Promise<{ thread: ChatThread; messages: ChatMessage[] }> {
+  validId(id);
+  const row = await queryOne<ThreadRow>(
+    "SELECT id::text, title, created_at, updated_at FROM chat_threads WHERE id = $1 AND archived_at IS NULL",
+    [id],
+  );
+  if (!row) throw new ApiError("not_found", chatCopy.threadNotFound);
+  const messages = await query<MessageRow>(
+    `SELECT id::text, role, content, citations, created_at FROM chat_messages
+      WHERE thread_id = $1 AND role IN ('user', 'assistant') ORDER BY created_at, id`,
+    [id],
+  );
+  return { thread: mapThread(row, locale), messages: messages.map(mapMessage) };
+}
+
+export async function updateChatThread(id: string, title: string, locale: Locale = "ko"): Promise<ChatThread> {
+  validId(id);
+  const row = await queryOne<ThreadRow>(
+    `UPDATE chat_threads SET title = $2, updated_at = now()
+      WHERE id = $1 AND archived_at IS NULL RETURNING id::text, title, created_at, updated_at`,
+    [id, title.trim()],
+  );
+  if (!row) throw new ApiError("not_found", chatCopy.threadNotFound);
+  return mapThread(row, locale);
+}
+
+export async function deleteChatThread(id: string): Promise<void> {
+  validId(id);
+  const row = await queryOne<{ id: string }>("DELETE FROM chat_threads WHERE id = $1 RETURNING id::text", [id]);
+  if (!row) throw new ApiError("not_found", chatCopy.threadNotFound);
+}
+
+function sse(event: string, data: unknown): Uint8Array {
+  return new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+async function rollback(client: PoolClient): Promise<void> {
+  await client.query("ROLLBACK").catch(() => undefined);
+  client.release();
+}
+
+export async function createChatMessageStream(
+  threadId: string,
+  content: string,
+  options: StreamOptions = {},
+): Promise<Response> {
+  const locale = options.locale ?? "ko";
+  validId(threadId);
+  let provider = options.provider;
+  if (!provider) {
+    if (options.auth) {
+      switch (options.auth.kind) {
+        case "chatgpt":
+          provider = createCodexProvider(options.auth);
+          break;
+        case "absent":
+        case "blocked":
+          break;
+        default: {
+          const exhaustive: never = options.auth;
+          return exhaustive;
+        }
+      }
+    } else {
+      provider = await configuredChatProvider() ?? undefined;
+    }
   }
-  const judgments: ChatJudgmentsDto = {
-    route: judged.route,
-    context: {
-      candidates: judged.candidates.map((candidate) => ({
-        noteId: candidate.noteId,
-        include: candidate.include,
-        relevance: candidate.relevance,
-      })),
-      selectedNoteIds: packed.selected.map((note) => note.noteId),
-    },
-  };
-  const userMessage = toMessageWire(user);
-  if (userMessage.role !== "user") {
-    throw new ChatValidationError();
+  if (!provider) {
+    throw new ApiError("unavailable", chatCopy.noProvider);
   }
 
-  if (packed.selected.length < 1) {
-    throw new CitationsRequiredError();
-  }
-
-  if (judged.route.choice === "none") {
-    await store.writeAiLog({
-      kind: "chat_turn",
-      threadId,
-      payload: {
-        route: judged.route.choice,
-        selectedNoteIds: judgments.context.selectedNoteIds,
-        codexPrompt: `${PROMPT_MARKER}\n${input.content}`,
-        response: "",
-      },
-    });
-    return turnWire({
-      threadId,
-      userMessage,
-      judgments,
-      contextLimit: packed.contextLimit,
-      assistantMessage: null,
-      proposal: null,
-    });
-  }
-
-  const codexNotes = packed.selected.map((note) => ({
-    noteId: note.noteId,
-    title: note.title,
-    excerpt: note.excerpt,
-  }));
-  const codexPrompt = `${PROMPT_MARKER}\n${input.content}\n${codexNotes.map((note) => note.excerpt).join("\n")}`;
-  let generated: CodexTurnResult;
+  const pool = await db();
+  const client = await pool.connect();
+  await client.query("BEGIN");
   try {
-    generated = await getCodexGenerator().generate({
-      route: judged.route.choice,
-      question: input.content,
-      notes: codexNotes,
-    });
+    const lock = await client.query<{ locked: boolean }>(
+      "SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS locked",
+      [threadId],
+    );
+    if (!lock.rows[0]?.locked) throw new ApiError("conflict", chatCopy.busy);
+    const thread = await client.query<{ id: string }>(
+      "SELECT id::text FROM chat_threads WHERE id = $1 AND archived_at IS NULL FOR UPDATE",
+      [threadId],
+    );
+    if (!thread.rows[0]) throw new ApiError("not_found", chatCopy.threadNotFound);
   } catch (error) {
-    if (error instanceof CodexFailedError) {
-      throw error;
-    }
-    throw new CodexFailedError();
-  }
-  const text = generated.text.trim();
-  if (!text) {
-    throw new CodexFailedError("codex_empty");
-  }
-  if (judged.route.choice === "propose_edit" && !generated.proposal) {
-    throw new CodexFailedError("codex_proposal");
-  }
-  const citations = citationsFor(packed.selected, originals, input.content);
-  if (citations.length < 1) {
-    throw new CitationsRequiredError();
-  }
-  const assistant = await store.createMessage({
-    threadId,
-    role: "assistant",
-    content: text,
-    citations,
-    routing: judged.route,
-  });
-  const assistantMessage = toMessageWire(assistant);
-  if (assistantMessage.role !== "assistant") {
-    throw new CitationsRequiredError();
-  }
-
-  let proposal: NoteEditProposalDto | null = null;
-  if (judged.route.choice === "propose_edit") {
-    const draft = generated.proposal;
-    const target = packed.selected[0];
-    if (!draft || !target) {
-      throw new CodexFailedError("codex_proposal");
-    }
-    const created = await store.createProposal({
-      messageId: assistant.id,
-      threadId,
-      noteId: target.noteId,
-      patch: { title: draft.title, body: draft.body },
-    });
-    proposal = toKaiProposal(created);
-  }
-
-  await store.writeAiLog({
-    kind: "chat_turn",
-    threadId,
-    payload: {
-      route: judged.route.choice,
-      selectedNoteIds: judgments.context.selectedNoteIds,
-      codexPrompt,
-      response: text,
-    },
-  });
-
-  return turnWire({
-    threadId,
-    userMessage,
-    judgments,
-    contextLimit: packed.contextLimit,
-    assistantMessage,
-    proposal,
-  });
-}
-
-export async function createExplicitProposal(input: {
-  threadId: string;
-  noteId: string;
-  messageId: string;
-  proposedTitle: string;
-  proposedBody: string;
-}): Promise<NoteEditProposalDto> {
-  const store = await getChatStore();
-  const thread = await store.getThread(input.threadId);
-  if (!thread) {
-    throw new ChatNotFoundError();
-  }
-  const message = await store.getMessage(input.messageId);
-  if (!message || message.threadId !== input.threadId) {
-    throw new ChatNotFoundError();
-  }
-  const notes = await getNotesStore();
-  const note = await notes.getNoteById(input.noteId);
-  if (!note || note.deletedAt) {
-    throw new ChatNotFoundError();
-  }
-  const proposal = await store.createProposal({
-    messageId: message.id,
-    threadId: thread.id,
-    noteId: note.id,
-    patch: { title: input.proposedTitle, body: input.proposedBody },
-  });
-  return toKaiProposal(proposal);
-}
-
-export async function listPendingProposals(status: "pending" | "approved" | "rejected" | "all"): Promise<WireContractProposal[]> {
-  const store = await getChatStore();
-  const rows = await store.listProposals({
-    status: status === "all" ? undefined : status,
-    limit: 100,
-  });
-  return rows.map(toContractProposal);
-}
-
-export async function approveChatProposal(id: string): Promise<{
-  decision: NoteEditDecisionDto;
-  proposal: WireContractProposal;
-  note: NoteRecord;
-}> {
-  const store = await getChatStore();
-  const existing = await store.getProposal(id);
-  if (!existing) {
-    throw new ChatNotFoundError();
-  }
-  if (existing.status !== "pending") {
-    throw new ProposalNotPendingError();
-  }
-  const notes = await getNotesStore();
-  const note = await notes.getNoteById(existing.noteId);
-  if (!note || note.deletedAt) {
-    throw new ChatNotFoundError();
-  }
-  const resolved = await store.resolveProposal(id, "approved", new Date());
-  if (!resolved) {
-    throw new ProposalNotPendingError();
-  }
-  try {
-    const updated = await notes.updateNote(existing.noteId, {
-      ...(existing.patch.title !== undefined ? { title: existing.patch.title } : {}),
-      ...(existing.patch.body !== undefined ? { body: existing.patch.body } : {}),
-    });
-    if (!updated) {
-      await store.reopenProposal(id);
-      throw new ChatNotFoundError();
-    }
-    await notifySearchCorpusChanged();
-    return {
-      decision: { proposalId: id, decision: "approve" },
-      proposal: toContractProposal(resolved),
-      note: updated,
-    };
-  } catch (error) {
-    if (!(error instanceof ChatNotFoundError)) {
-      await store.reopenProposal(id);
-    }
+    await rollback(client);
     throw error;
   }
-}
 
-export async function rejectChatProposal(id: string): Promise<{
-  decision: NoteEditDecisionDto;
-  proposal: WireContractProposal;
-}> {
-  const store = await getChatStore();
-  const existing = await store.getProposal(id);
-  if (!existing) {
-    throw new ChatNotFoundError();
-  }
-  const resolved = await store.resolveProposal(id, "rejected", new Date());
-  if (!resolved) {
-    throw new ProposalNotPendingError();
-  }
-  return {
-    decision: { proposalId: id, decision: "reject" },
-    proposal: toContractProposal(resolved),
-  };
-}
+  const abort = new AbortController();
+  const onAbort = (): void => abort.abort();
+  if (options.signal?.aborted) abort.abort();
+  else options.signal?.addEventListener("abort", onAbort, { once: true });
+  let settled = false;
 
-export async function suggestManage(input: {
-  noteId?: string;
-  inboxItemId?: string;
-}): Promise<{
-  ok: true;
-  tags: { tag: string; probability: number }[];
-  classification: {
-    choice: string;
-    probability: number;
-    confidence: number;
-    probabilities: Record<string, number>;
-  } | null;
-  proposal: NoteEditProposalDto | null;
-  organize: { title: string; body: string } | null;
-}> {
-  getSystemOneInvoker();
-  if (!input.noteId && !input.inboxItemId) {
-    throw new ChatValidationError();
-  }
-  const notes = await getNotesStore();
-  let title = "";
-  let body = "";
-  let noteId: string | null = null;
-  if (input.noteId) {
-    const note = await notes.getNoteById(input.noteId);
-    if (!note || note.deletedAt) {
-      throw new ChatNotFoundError();
-    }
-    title = note.title;
-    body = note.body;
-    noteId = note.id;
-  } else if (input.inboxItemId) {
-    const item = await notes.getInboxItemById(input.inboxItemId);
-    if (!item || item.discardedAt) {
-      throw new ChatNotFoundError();
-    }
-    title = item.title;
-    body = item.body;
-  }
-  const judged = await judgmentsForInboxSuggestion(title, body);
-  let organize: { title: string; body: string } | null;
-  try {
-    organize = await maybeOrganize({ title, body });
-  } catch (error) {
-    if (error instanceof CodexFailedError) {
-      throw error;
-    }
-    throw new CodexFailedError();
-  }
-  let proposal: NoteEditProposalDto | null = null;
-  if (organize && noteId) {
-    const store = await getChatStore();
-    const thread = await store.createThread({ title: "Manage suggestion" });
-    await store.archiveThread(thread.id, new Date());
-    const message = await store.createMessage({
-      threadId: thread.id,
-      role: "system",
-      content: "manage suggestion",
-      citations: [],
-      routing: null,
-    });
-    const created = await store.createProposal({
-      messageId: message.id,
-      threadId: thread.id,
-      noteId,
-      patch: { title: organize.title, body: organize.body },
-    });
-    proposal = toKaiProposal(created);
-  }
-  const classification = judged.suggestions.classification ?? null;
-  return {
-    ok: true,
-    tags: judged.suggestions.tags,
-    classification,
-    proposal,
-    organize,
-  };
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      void (async () => {
+        try {
+          const historyResult = await client.query<MessageRow>(
+            `SELECT id::text, role, content, citations, created_at FROM chat_messages
+              WHERE thread_id = $1 AND role IN ('user', 'assistant')
+              ORDER BY created_at DESC, id DESC LIMIT 12`,
+            [threadId],
+          );
+          const search = await searchNotes(content, { limit: 8 });
+          abort.signal.throwIfAborted();
+          const sourceCitations: Citation[] = search.hits.map((hit, index) => ({
+            index: index + 1,
+            noteId: hit.noteId,
+            title: hit.title,
+            excerpt: hit.snippet,
+          }));
+          if (sourceCitations.length === 0) {
+            const priorIds = [...new Set(historyResult.rows.flatMap((message) =>
+              citations(message.citations).map((citation) => citation.noteId).filter((id) => UUID.test(id)),
+            ))].slice(0, 8);
+            if (priorIds.length) {
+              const prior = await client.query<{ id: string; title: string; body: string }>(
+                `SELECT id::text, title, body FROM notes
+                  WHERE id = ANY($1::uuid[]) AND deleted_at IS NULL AND status <> 'archived'
+                  ORDER BY array_position($1::uuid[], id)`,
+                [priorIds],
+              );
+              sourceCitations.push(...prior.rows.map((note, index) => ({
+                index: index + 1, noteId: note.id, title: note.title, excerpt: excerpt(note.body, 220),
+              })));
+            }
+          }
+          controller.enqueue(sse("citations", sourceCitations));
+
+          let answer = EMPTY_ANSWER[locale];
+          if (sourceCitations.length > 0) {
+            const history: ProviderMessage[] = historyResult.rows.reverse().map((message) => ({
+              role: message.role,
+              content: message.content,
+            }));
+            answer = await provider.stream({ question: content, history, sources: sourceCitations, locale },
+              (text) => controller.enqueue(sse("delta", { text })), abort.signal);
+          } else {
+            controller.enqueue(sse("delta", { text: answer }));
+          }
+
+          abort.signal.throwIfAborted();
+          const user = await client.query<{ created_at: Date }>(
+            `INSERT INTO chat_messages (thread_id, role, content, citations)
+              VALUES ($1, 'user', $2, '[]'::jsonb) RETURNING created_at`,
+            [threadId, content],
+          );
+          const inserted = await client.query<MessageRow>(
+            `INSERT INTO chat_messages (thread_id, role, content, citations, created_at)
+              VALUES ($1, 'assistant', $2, $3::jsonb, greatest(clock_timestamp(), $4::timestamptz + interval '1 microsecond'))
+              RETURNING id::text, role, content, citations, created_at`,
+            [threadId, answer, JSON.stringify(sourceCitations), user.rows[0]!.created_at],
+          );
+          await client.query("UPDATE chat_threads SET updated_at = now() WHERE id = $1", [threadId]);
+          await client.query("COMMIT");
+          settled = true;
+          controller.enqueue(sse("done", { message: mapMessage(inserted.rows[0]!) }));
+          controller.close();
+        } catch (error) {
+          if (!settled) await client.query("ROLLBACK").catch(() => undefined);
+          settled = true;
+          if (!abort.signal.aborted) {
+            const code = error instanceof ChatProviderError ? "upstream_failed" : "internal";
+            const message = error instanceof ChatProviderError
+              ? chatCopy.upstream[locale]
+              : chatCopy.failed[locale];
+            controller.enqueue(sse("error", { code, message }));
+            controller.close();
+          }
+        } finally {
+          options.signal?.removeEventListener("abort", onAbort);
+          client.release();
+        }
+      })();
+    },
+    cancel() {
+      abort.abort();
+    },
+  });
+  return new Response(body, {
+    headers: {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+      connection: "keep-alive",
+    },
+  });
 }

@@ -1,7 +1,5 @@
-import { HomeScreen } from "@/components/home/HomeScreen";
+import { HomeDashboard } from "@/features/home";
 
-export const dynamic = "force-dynamic";
-
-export default async function HomePage() {
-  return <HomeScreen />;
+export default function HomePage() {
+  return <HomeDashboard />;
 }

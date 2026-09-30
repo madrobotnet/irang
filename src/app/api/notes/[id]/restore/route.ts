@@ -1,10 +1,8 @@
-import { handleRestoreNote } from "@/server/notes/http";
+import { json, withApi } from "@/server/http";
+import { restoreNote } from "@/server/notes/service";
 
-export const runtime = "nodejs";
-
-type Params = { params: Promise<{ id: string }> };
-
-export async function POST(_request: Request, { params }: Params) {
+type Context = { params: Promise<{ id: string }> };
+export const POST = withApi<Context>(async (_request, { params }) => {
   const { id } = await params;
-  return handleRestoreNote(id);
-}
+  return json({ note: await restoreNote(id) });
+});

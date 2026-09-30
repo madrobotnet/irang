@@ -1,29 +1,18 @@
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { ApiError } from "@/server/http";
+import { attachmentCopy } from "@/server/i18n/copy";
+
+// v1 appended a native basename; on Linux a literal backslash is part of it.
+// Reject actual path components and NUL without renaming those existing files.
+const STORAGE_KEY_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?:-[^/\0]+)?$/i;
 
 export function attachmentsDir(): string {
   return process.env.ATTACHMENTS_DIR?.trim() || path.join(process.cwd(), ".data", "attachments");
 }
 
-export async function storeAttachmentFile(
-  filename: string,
-  bytes: Uint8Array,
-): Promise<string> {
-  const dir = attachmentsDir();
-  await mkdir(dir, { recursive: true });
-  const key = `${randomUUID()}-${path.basename(filename)}`;
-  const full = path.join(dir, key);
-  await writeFile(full, bytes);
-  return key;
-}
-
-export async function readAttachmentFile(storageKey: string): Promise<Uint8Array> {
-  const full = path.join(attachmentsDir(), storageKey);
-  return readFile(full);
-}
-
-export async function deleteAttachmentFile(storageKey: string): Promise<void> {
-  const full = path.join(attachmentsDir(), storageKey);
-  await unlink(full).catch(() => undefined);
+export function storagePath(key: string): string {
+  if (!STORAGE_KEY_RE.test(key) || path.basename(key) !== key) {
+    throw new ApiError("not_found", attachmentCopy.notFound);
+  }
+  return path.join(attachmentsDir(), key);
 }

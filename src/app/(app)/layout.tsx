@@ -1,28 +1,13 @@
 import { redirect } from "next/navigation";
-import { BrainShell } from "@/components/shell/BrainShell";
-import { AppProviders } from "@/components/shell/AppProviders";
-import { OfflineBanner } from "@/components/home/OfflineBanner";
-import { resolveAppSessionGate } from "@/server/auth/app-session-guard";
+import { AppShell } from "@/components/shell/AppShell";
+import { getSession } from "@/server/auth/session";
 
-export default async function AuthenticatedShellLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const gate = await resolveAppSessionGate();
-  if (gate.kind === "missing" || gate.kind === "invalid") {
-    redirect("/login");
-  }
-  if (gate.kind === "misconfigured") {
-    redirect("/login?error=config");
-  }
-
-  return (
-    <AppProviders>
-      <BrainShell>
-        <OfflineBanner />
-        {children}
-      </BrainShell>
-    </AppProviders>
-  );
+/**
+ * Server gate for every app page: a DB-verified session or a redirect to /login.
+ * (src/proxy.ts already carries `?next=` for cookieless requests; a stale cookie lands on plain /login.)
+ */
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  return <AppShell>{children}</AppShell>;
 }

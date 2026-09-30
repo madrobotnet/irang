@@ -1,65 +1,418 @@
-@import "../styles/desk-a-tokens.css";
+@import "tailwindcss";
 
-:root,
-[data-theme="dark"],
-[data-theme="light"] {
+/* ---------------------------------------------------------------------------
+   Pretendard Variable, self-hosted (public/fonts). Korean UI face; "ss06" gives
+   the compact Latin figures that sit well beside Hangul.
+--------------------------------------------------------------------------- */
+@font-face {
+  font-family: "Pretendard Variable";
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/PretendardVariable.woff2") format("woff2-variations");
+}
+
+/* ---------------------------------------------------------------------------
+   Direction A "desk": warm parchment canvas, matte panels, charcoal rail,
+   terracotta accent. Light values on :root, dark values on .dark.
+--------------------------------------------------------------------------- */
+:root {
   color-scheme: light;
-  --bg: var(--canvas);
-  --elevated: var(--card);
-  --stroke: var(--line-strong);
-  --text: var(--ink);
-  --text-muted: var(--mute);
-  --danger: #b45309;
-  --success: #6b705c;
-  --space-1: 8px;
-  --space-2: 12px;
-  --space-3: 16px;
-  --space-4: 24px;
-  --radius-sm: var(--vn-radius-ctl);
-  --radius-md: var(--vn-radius-row);
-  --motion: 160ms ease;
-  --font-sans: var(--vn-font);
-  --line-height: 1.7;
-  --touch-min: var(--vn-touch);
-  --shell-tab-height: var(--vn-tool);
+  --canvas: #efe8dc;
+  --desk: #f7f2ea;
+  --card: #fffcf7;
+  --ink: #1c1917;
+  --mute: #68615b;
+  --line: #e4dccf;
+  --line-strong: #d3c9b8;
+  --accent: #a24518;
+  --accent-ink: #fffcf7;
+  --accent-soft: #f6e3d6;
+  --rail: #2a2622;
+  --rail-ink: #e9e2d6;
+  --rail-mute: #9c948a;
+  --rail-line: #3a352f;
+  --rail-hover: #37322c;
+  /* Active rail icon; the rail stays dark in both themes, so the light accent is too dim there. */
+  --rail-accent: #e07a45;
+  --ok: #356d42;
+  --ok-soft: #e1eee3;
+  --warn: #885a0f;
+  --warn-soft: #f7ebd2;
+  --danger: #b42318;
+  --danger-soft: #f8e0dd;
+  --scrim: rgb(28 25 23 / 0.45);
+  /* Focus indicator; the rail overrides it with rail-ink. `.dark` inherits it because --accent switches there. */
+  --focus: var(--accent);
+
+  /* Categorical graph palette, kept apart from the ok/warn/danger states. */
+  --graph-1: #b0502b;
+  --graph-2: #5d7a3a;
+  --graph-3: #4a6a8f;
+  --graph-4: #a8791c;
+  --graph-5: #8a4f7d;
+  --graph-6: #2f7a78;
+
+  --elev-card: 0 1px 2px rgb(28 25 23 / 0.06), 0 4px 16px rgb(28 25 23 / 0.05);
+  --elev-pop: 0 2px 6px rgb(28 25 23 / 0.1), 0 16px 48px rgb(28 25 23 / 0.16);
+
+  --rail-w: 64px;
+  --rail-w-open: 220px;
+  --topbar-h: calc(52px + env(safe-area-inset-top, 0px));
+  --bottomnav-h: 60px;
+  --text-read-size: 1rem;
+  --text-read-leading: 1.75rem;
+  --workspace-h: calc(100dvh - var(--topbar-h) - var(--bottomnav-h) - env(safe-area-inset-bottom, 0px));
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+.dark {
+  color-scheme: dark;
+  --canvas: #141210;
+  --desk: #1c1917;
+  --card: #231f1c;
+  --ink: #f3ede4;
+  --mute: #a8a29e;
+  --line: #35302b;
+  --line-strong: #47413a;
+  --accent: #e07a45;
+  --accent-ink: #1c1917;
+  --accent-soft: #3a2519;
+  --rail: #0f0d0c;
+  --rail-ink: #e9e2d6;
+  --rail-mute: #8a837a;
+  --rail-line: #26221f;
+  --rail-hover: #1d1a17;
+  --rail-accent: #e07a45;
+  --ok: #7fb98c;
+  --ok-soft: #1f2e22;
+  --warn: #d9a441;
+  --warn-soft: #33290f;
+  --danger: #e5695c;
+  --danger-soft: #3a1c19;
+  --scrim: rgb(0 0 0 / 0.6);
+
+  --graph-1: #e08a5c;
+  --graph-2: #9fbf78;
+  --graph-3: #8fb0d6;
+  --graph-4: #d9aa55;
+  --graph-5: #c48ab8;
+  --graph-6: #6fc0bc;
+
+  --elev-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+  --elev-pop: 0 2px 6px rgb(0 0 0 / 0.4), 0 16px 48px rgb(0 0 0 / 0.5);
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
-  font-family: var(--font-sans);
-  line-height: var(--line-height);
-  background: var(--canvas);
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
+@custom-variant dark (&:where(.dark, .dark *));
+/* <html data-rail="open"> = desktop rail expanded (persisted, applied pre-hydration). */
+@custom-variant rail-open (&:where([data-rail="open"] *));
+
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-canvas: var(--canvas);
+  --color-desk: var(--desk);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-mute: var(--rail-mute);
+  --color-rail-line: var(--rail-line);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-accent: var(--rail-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-scrim: var(--scrim);
+  --color-graph-1: var(--graph-1);
+  --color-graph-2: var(--graph-2);
+  --color-graph-3: var(--graph-3);
+  --color-graph-4: var(--graph-4);
+  --color-graph-5: var(--graph-5);
+  --color-graph-6: var(--graph-6);
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue",
+    "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Type scale: 12 meta / 13 small / 14 ui / 15 body / 16 read / 17 h3 / 20 h2 / 26 h1 */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.4rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.6rem;
+  --text-read: var(--text-read-size);
+  --text-read--line-height: var(--text-read-leading);
+  --text-lg: 1.0625rem;
+  --text-lg--line-height: 1.55rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.7rem;
+  --text-2xl: 1.625rem;
+  --text-2xl--line-height: 2.1rem;
+  --text-3xl: 2.125rem;
+  --text-3xl--line-height: 2.5rem;
+
+  --radius-ctl: 8px;
+  --radius-card: 10px;
+  --radius-pill: 999px;
+
+  --shadow-card: var(--elev-card);
+  --shadow-pop: var(--elev-pop);
+
+  --spacing-rail: var(--rail-w);
+  --spacing-rail-open: var(--rail-w-open);
+  --spacing-topbar: var(--topbar-h);
+  --spacing-bottomnav: var(--bottomnav-h);
+  --spacing-touch: 44px;
+
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    font-feature-settings: "ss06";
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    background: var(--canvas);
+    color: var(--ink);
+    /* Korean: wrap at word boundaries, but never overflow on long tokens/URLs. */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+    line-break: strict;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    min-height: 100dvh;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    background: var(--canvas);
+    color: var(--ink);
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--mute);
+    opacity: 1;
+  }
+
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+    font-feature-settings: normal;
+  }
+
+  hr {
+    border-color: var(--line);
+  }
+
+  dialog::backdrop {
+    background: var(--scrim);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-button,
-input {
-  font: inherit;
+/* ---------------------------------------------------------------------------
+   Utilities the primitives share
+--------------------------------------------------------------------------- */
+@utility surface-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--elev-card);
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+@utility surface-desk {
+  background: var(--desk);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+@utility focus-ring {
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--focus);
+  }
+}
+
+/* For accent-filled controls: a flush ring in the same color would read as the control growing. */
+@utility focus-ring-offset {
+  &:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility prose-ko {
+  font-size: var(--text-read-size);
+  line-height: var(--text-read-leading);
+  max-width: 68ch;
+}
+
+/* Paper grain on the canvas, restrained enough to disappear on cheap screens. */
+@utility bg-grain {
+  background-image: radial-gradient(color-mix(in oklab, var(--ink) 4%, transparent) 0.5px, transparent 0.6px);
+  background-size: 6px 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Brand mark defaults (BrandMark). Components layer, so size-* and text-*
+   utilities passed by callers win.
+--------------------------------------------------------------------------- */
+@layer components {
+  .brand-mark {
+    width: --spacing(5);
+    height: --spacing(5);
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Motion for dialogs and sheets
+--------------------------------------------------------------------------- */
+@keyframes sb-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sb-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sb-sheet-up {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sb-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+dialog[open] {
+  animation: sb-pop-in 160ms var(--ease-out-soft);
+}
+
+dialog[open]::backdrop {
+  animation: sb-fade-in 160ms ease-out;
+}
+
+dialog[open][data-sheet] {
+  animation: sb-sheet-up 200ms var(--ease-out-soft);
+}
+
+/* cmdk: hide the group heading when it has no visible items */
+[cmdk-group][hidden] {
+  display: none;
 }

@@ -1,0 +1,94 @@
+# CI for the Second Brain Docker/setup release.
+#
+# Contract: pull requests and pushes to main/feature branches; least privilege
+# (contents: read); Ubuntu runner; Bun 1.4.2 and Node 22 (the official-CLI
+# subprocess fixtures require a node runtime); frozen-lockfile install;
+# isolated development Postgres started from docker-compose.dev.yml;
+# production Docker build. No AI keys or accounts are used anywhere.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "feature/**"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Typecheck, lint, test, production Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Full history so the gitleaks scan below covers every commit, not just
+      # the tip.
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan (gitleaks 8.30.1, redacted)
+        run: |
+          cd /tmp
+          curl --fail --silent --show-error --location \
+            --output gitleaks_8.30.1_linux_x64.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --output gitleaks_8.30.1_checksums.txt \
+            "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt"
+          grep 'gitleaks_8.30.1_linux_x64.tar.gz$' gitleaks_8.30.1_checksums.txt | sha256sum --check -
+          tar --extract --gzip --file gitleaks_8.30.1_linux_x64.tar.gz gitleaks
+          # gitleaks exits 0 even when pointed at a directory without a git
+          # history, so guard the checkout and scan it by absolute path.
+          git -C "$GITHUB_WORKSPACE" rev-parse --verify HEAD
+          /tmp/gitleaks git --config "$GITHUB_WORKSPACE/.gitleaks.toml" --redact --verbose "$GITHUB_WORKSPACE"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Set up Bun 1.4.2
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      # Compose <5.1 eagerly evaluates required variables in unused defaults.
+      # Use the same supported interpolation behavior as the installation guide.
+      - name: Set up Docker Compose 5.5.1
+        uses: docker/setup-compose-action@v2
+        with:
+          version: v5.5.1
+
+      - name: Install dependencies (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      # Fresh checkouts typecheck without generated Next route types:
+      # next-env.d.ts (which imports .next/dev/types) is gitignored and no
+      # source file imports generated route types, so `next typegen` is not
+      # needed before `tsc --noEmit`.
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint (zero warnings)
+        run: bun run lint -- --max-warnings=0
+
+      - name: Start isolated test Postgres
+        run: docker compose -f docker-compose.dev.yml up -d --wait
+
+      - name: Run full test suite
+        env:
+          TEST_DATABASE_URL: postgres://second_brain:second_brain@127.0.0.1:55432/second_brain_test
+        run: bun test
+
+      - name: Production Docker build
+        run: docker build --tag second-brain:ci .
+
+      # Only tears down the Postgres stack started above on this runner.
+      - name: Tear down test Postgres
+        if: always()
+        run: docker compose -f docker-compose.dev.yml down -v

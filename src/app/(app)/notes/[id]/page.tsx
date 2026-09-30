@@ -1,8 +1,7 @@
-import { redirect } from "next/navigation";
+import { Suspense } from "react";
+import { NotesLoading, NotesWorkspace } from "@/features/notes";
 
-type Params = { params: Promise<{ id: string }> };
-
-export default async function NoteByIdPage({ params }: Params) {
+export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  redirect(`/notes?note=${encodeURIComponent(id)}`);
+  return <Suspense fallback={<NotesLoading />}><NotesWorkspace selectedId={id} /></Suspense>;
 }
