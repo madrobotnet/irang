@@ -41,6 +41,11 @@ export const notesCopy = {
   badCursor: t("커서가 올바르지 않아요.", "That isn't a valid cursor."), // :280
   patchEmpty: t("바꿀 내용을 입력하세요.", "Enter something to change."), // api/notes/[id]/route.ts:14 zod refine
   dailyBadDate: t("올바른 날짜를 입력하세요.", "Enter a valid date."), // api/daily/route.ts:12
+  revisionNotFound: t("이 버전을 찾을 수 없어요.", "Version not found."), // notes/revisions.ts
+  staleNote: t("그사이 노트가 바뀌었어요. 다시 불러온 뒤 시도하세요.", "The note changed in the meantime. Reload it and try again."), // notes/mentions.ts; inbox/triage.ts
+  mentionGone: t("연결할 언급을 찾지 못했어요.", "Couldn't find a mention to link."), // notes/mentions.ts
+  mentionSelf: t("노트를 자기 자신에게 연결할 수 없어요.", "A note can't link to itself."), // notes/mentions.ts
+  mentionTargetTrashed: t("휴지통에 있는 노트에는 연결할 수 없어요.", "You can't link to a note in the trash."), // notes/mentions.ts
 } as const;
 
 // default: notes/service.ts:132-143 uniqueUntitled. Collisions append " 2", " 3"...
@@ -70,6 +75,10 @@ export const inboxCopy = {
   promotedMissing: t("이 항목으로 만든 노트를 찾을 수 없어요.", "Couldn't find the note made from this item."), // :128
   alreadyPromoted: t("이미 노트로 만든 항목이에요.", "This item is already a note."), // :138
   badShare: t("공유 형식이 올바르지 않아요.", "That share format isn't supported."), // api/capture/share/route.ts:15
+  snoozePast: t("미룰 시간은 지금보다 뒤여야 해요.", "Pick a time in the future."), // inbox/triage.ts
+  snoozeTooFar: t("최대 1년 뒤까지만 미룰 수 있어요.", "You can snooze for up to a year."), // inbox/triage.ts
+  snoozeClosed: t("이미 처리한 항목은 미룰 수 없어요.", "You can't snooze an item that's already handled."), // inbox/triage.ts
+  mergeDiscarded: t("버린 항목은 노트에 합칠 수 없어요.", "You can't merge a discarded item into a note."), // inbox/triage.ts
 } as const;
 
 // default titles, inbox/service.ts:71-73 initialTitle. Hostname stays as is.

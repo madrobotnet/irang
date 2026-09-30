@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
-import type { LinkContext, Note, NoteLinks, NoteRef, NoteSummary, TagCount } from "@/lib/types";
+import type { LinkContext, Note, NoteLinks, NoteListItem, NoteRef, NoteTitleMatch, TagCount } from "@/lib/types";
 import type { Locale } from "@/lib/i18n/locale";
+import type { RevisionReason } from "@/lib/note-revisions";
+import { renderTemplate } from "@/lib/templates";
 import { embedText, vectorLiteral } from "@/lib/embed";
 import {
   excerpt,
@@ -15,8 +17,10 @@ import {
 import { db, tx } from "@/server/db";
 import { ApiError } from "@/server/http";
 import { notesCopy, UNTITLED, untitledCandidate } from "@/server/i18n/copy";
+import { defaultDailyTemplateBody } from "@/server/templates/service";
 import { storagePath } from "./attachment-storage";
 import { retryAttachmentCleanup } from "./attachment-cleanup";
+import { recordRevision } from "./revision-store";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 type Executor = Pick<PoolClient, "query">;
@@ -24,14 +28,19 @@ type NoteRow = QueryResultRow & {
   id: string; title: string; body: string; tags: string[]; aliases: string[];
   pinned: boolean; status: string; source_url: string | null;
   daily_date: string | Date | null; created_at: string | Date; updated_at: string | Date;
-  deleted_at: string | Date | null;
+  deleted_at: string | Date | null; purge_at: string | Date | null;
 };
+export type NoteDetail = Note;
+export type { NoteListItem, NoteTitleMatch };
 
 export type CreateNoteInput = { title?: string; body?: string; tags?: string[]; sourceUrl?: string | null };
 export type UpdateNoteInput = {
   title?: string; body?: string; tags?: string[]; aliases?: string[];
   pinned?: boolean; archived?: boolean;
 };
+/** `client` joins a caller's transaction; `reason` labels the revision snapshot (default "edit"). */
+export type UpdateNoteOptions = { reason?: RevisionReason; client?: PoolClient };
+export type PurgeScope = "trashed" | "expired";
 export type ListNotesInput = {
   q?: string; tag?: string; pinned?: boolean; archived?: boolean; trash?: boolean;
   limit?: number; cursor?: string;
@@ -45,19 +54,21 @@ function dateOnly(value: string | Date | null): string | null {
   if (value === null) return null;
   return typeof value === "string" ? value.slice(0, 10) : value.toISOString().slice(0, 10);
 }
-function mapNote(row: NoteRow): Note {
+function mapNote(row: NoteRow): NoteDetail {
   return {
     id: row.id, title: row.title, body: row.body, excerpt: excerpt(row.body), tags: row.tags,
     aliases: row.aliases, pinned: row.pinned, archived: row.status === "archived",
     sourceUrl: row.source_url, dailyDate: dateOnly(row.daily_date), createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at), deletedAt: row.deleted_at ? iso(row.deleted_at) : null,
+    purgeAt: row.purge_at ? iso(row.purge_at) : null,
   };
 }
-function mapSummary(row: NoteRow): NoteSummary {
+function mapSummary(row: NoteRow): NoteListItem {
   const note = mapNote(row);
   return {
     id: note.id, title: note.title, excerpt: note.excerpt, tags: note.tags, pinned: note.pinned,
     archived: note.archived, dailyDate: note.dailyDate, createdAt: note.createdAt, updatedAt: note.updatedAt,
+    purgeAt: note.purgeAt,
   };
 }
 async function executor(client?: PoolClient): Promise<Executor> { return client ?? (await db()); }
@@ -164,16 +175,17 @@ export async function createNote(input: CreateNoteInput, client?: PoolClient, lo
   return client ? createInTransaction(input, client, locale) : tx((transaction) => createInTransaction(input, transaction, locale));
 }
 
-export async function getNote(id: string): Promise<Note | null> {
+export async function getNote(id: string): Promise<NoteDetail | null> {
   assertNoteId(id);
   const q = await executor();
   const result = await q.query<NoteRow>("SELECT * FROM notes WHERE id=$1", [id]);
   return result.rows[0] ? mapNote(result.rows[0]) : null;
 }
 
-export async function updateNote(id: string, input: UpdateNoteInput): Promise<Note> {
+export async function updateNote(id: string, input: UpdateNoteInput, options: UpdateNoteOptions = {}): Promise<NoteDetail> {
   assertNoteId(id);
-  return tx(async (client) => {
+  const { client: caller, reason = "edit" } = options;
+  const run = async (client: PoolClient): Promise<NoteDetail> => {
     const currentResult = await client.query<NoteRow>("SELECT * FROM notes WHERE id=$1 FOR UPDATE", [id]);
     const current = currentResult.rows[0];
     if (!current) throw new ApiError("not_found", notesCopy.notFound);
@@ -186,6 +198,7 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
     if (normalizeTitle(title) !== normalizeTitle(current.title)) aliases = normalizeAliases([...aliases, current.title]);
     aliases = aliases.filter((alias) => normalizeTitle(alias) !== normalizeTitle(title));
     const status = input.archived === undefined ? current.status : input.archived ? "archived" : "draft";
+    await recordRevision(client, { noteId: id, previous: current, next: { title, body, tags, aliases } }, reason);
     const updated = await client.query<NoteRow>(
       `UPDATE notes SET title=$2,body=$3,tags=$4,aliases=$5,pinned=$6,status=$7,
          search_embedding=$8::vector,search_embedded_at=now(),search_source_hash=$9,updated_at=now()
@@ -196,17 +209,19 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
     await materializeLinks(client, id, body);
     await resolveTargets(client, id, [title, ...aliases]);
     return mapNote(updated.rows[0]!);
-  });
+  };
+  return caller ? run(caller) : tx(run);
 }
 
-export async function trashNote(id: string): Promise<Note> {
+export async function trashNote(id: string): Promise<NoteDetail> {
   assertNoteId(id);
   return tx(async (client) => {
     const sources = await client.query<{ id: string; body: string }>(
       "SELECT n.id,n.body FROM links l JOIN notes n ON n.id=l.from_note_id WHERE l.to_note_id=$1 AND n.deleted_at IS NULL", [id],
     );
     const result = await client.query<NoteRow>(
-      "UPDATE notes SET deleted_at=coalesce(deleted_at,now()),updated_at=now() WHERE id=$1 RETURNING *", [id],
+      `UPDATE notes SET deleted_at=coalesce(deleted_at,now()),
+         purge_at=coalesce(purge_at,now() + interval '30 days'),updated_at=now() WHERE id=$1 RETURNING *`, [id],
     );
     if (!result.rows[0]) throw new ApiError("not_found", notesCopy.notFound);
     for (const source of sources.rows) await materializeLinks(client, source.id, source.body);
@@ -214,7 +229,7 @@ export async function trashNote(id: string): Promise<Note> {
   });
 }
 
-export async function restoreNote(id: string): Promise<Note> {
+export async function restoreNote(id: string): Promise<NoteDetail> {
   assertNoteId(id);
   return tx(async (client) => {
     const trashed = await client.query<NoteRow>(
@@ -244,30 +259,40 @@ export async function restoreNote(id: string): Promise<Note> {
   });
 }
 
+/**
+ * Permanently delete one trashed note (only once its retention expired for "expired").
+ * Attachment keys go to the durable cleanup queue; the caller runs retryAttachmentCleanup after commit.
+ */
+export async function purgeInTransaction(client: PoolClient, id: string, scope: PurgeScope): Promise<boolean> {
+  // Block new attachment foreign-key inserts before collecting deleted rows.
+  const note = await client.query(
+    `SELECT id FROM notes WHERE id=$1 AND deleted_at IS NOT NULL
+       AND ($2::text='trashed' OR purge_at <= now()) FOR UPDATE`, [id, scope],
+  );
+  if (note.rowCount === 0) return false;
+  const sources = await client.query<{ id: string; body: string }>(
+    "SELECT n.id,n.body FROM links l JOIN notes n ON n.id=l.from_note_id WHERE l.to_note_id=$1 AND n.deleted_at IS NULL", [id],
+  );
+  const attachments = await client.query<{ storage_key: string }>(
+    "DELETE FROM attachments WHERE note_id=$1 RETURNING storage_key", [id],
+  );
+  const keys = attachments.rows.map((row) => {
+    storagePath(row.storage_key);
+    return row.storage_key;
+  });
+  await client.query(
+    "INSERT INTO attachment_cleanup (storage_key) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING",
+    [keys],
+  );
+  await client.query("DELETE FROM notes WHERE id=$1", [id]);
+  for (const source of sources.rows) await materializeLinks(client, source.id, source.body);
+  return true;
+}
+
 export async function purgeNote(id: string): Promise<void> {
   assertNoteId(id);
   await tx(async (client) => {
-    // Block new attachment foreign-key inserts before collecting deleted rows.
-    const note = await client.query(
-      "SELECT id FROM notes WHERE id=$1 AND deleted_at IS NOT NULL FOR UPDATE", [id],
-    );
-    if (note.rowCount === 0) throw new ApiError("conflict", notesCopy.purgeOnlyTrashed);
-    const sources = await client.query<{ id: string; body: string }>(
-      "SELECT n.id,n.body FROM links l JOIN notes n ON n.id=l.from_note_id WHERE l.to_note_id=$1 AND n.deleted_at IS NULL", [id],
-    );
-    const attachments = await client.query<{ storage_key: string }>(
-      "DELETE FROM attachments WHERE note_id=$1 RETURNING storage_key", [id],
-    );
-    const keys = attachments.rows.map((row) => {
-      storagePath(row.storage_key);
-      return row.storage_key;
-    });
-    await client.query(
-      "INSERT INTO attachment_cleanup (storage_key) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING",
-      [keys],
-    );
-    await client.query("DELETE FROM notes WHERE id=$1", [id]);
-    for (const source of sources.rows) await materializeLinks(client, source.id, source.body);
+    if (!(await purgeInTransaction(client, id, "trashed"))) throw new ApiError("conflict", notesCopy.purgeOnlyTrashed);
   });
   // Cleanup failures retain their keys but never turn a committed purge into 500.
   await retryAttachmentCleanup();
@@ -283,7 +308,7 @@ function parseCursor(cursor: string): Cursor {
   } catch { throw new ApiError("validation", notesCopy.badCursor); }
 }
 
-export async function listNotes(input: ListNotesInput): Promise<{ notes: NoteSummary[]; nextCursor: string | null }> {
+export async function listNotes(input: ListNotesInput): Promise<{ notes: NoteListItem[]; nextCursor: string | null }> {
   const limit = Math.min(Math.max(input.limit ?? 50, 1), 100);
   const values: unknown[] = [];
   const where = [input.trash ? "deleted_at IS NOT NULL" : "deleted_at IS NULL"];
@@ -310,15 +335,20 @@ export async function listNotes(input: ListNotesInput): Promise<{ notes: NoteSum
   return { notes: page.map(mapSummary), nextCursor };
 }
 
-export async function findNoteTitles(qText = "", limit = 10): Promise<NoteRef[]> {
+export async function findNoteTitles(qText = "", limit = 10): Promise<NoteTitleMatch[]> {
   const q = await executor();
-  const result = await q.query<NoteRef>(
-    `SELECT id,title FROM notes WHERE deleted_at IS NULL AND status<>'archived'
+  const result = await q.query<NoteRef & { matched_alias: string | null }>(
+    `SELECT id,title,CASE WHEN title ILIKE $1 THEN NULL ELSE (
+         SELECT alias FROM unnest(aliases) alias WHERE alias ILIKE $1
+          ORDER BY lower(alias)=lower($2) DESC,similarity(alias,$2) DESC LIMIT 1) END AS matched_alias
+       FROM notes WHERE deleted_at IS NULL AND status<>'archived'
        AND (title ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(aliases) alias WHERE alias ILIKE $1))
-     ORDER BY CASE WHEN lower(title)=lower($2) THEN 0 ELSE 1 END,similarity(title,$2) DESC,updated_at DESC LIMIT $3`,
+     ORDER BY CASE WHEN lower(title)=lower($2)
+       OR EXISTS (SELECT 1 FROM unnest(aliases) alias WHERE lower(alias)=lower($2)) THEN 0 ELSE 1 END,
+       similarity(title,$2) DESC,updated_at DESC LIMIT $3`,
     [`%${qText}%`, qText, Math.min(Math.max(limit, 1), 50)],
   );
-  return result.rows;
+  return result.rows.map((row) => ({ id: row.id, title: row.title, matchedAlias: row.matched_alias }));
 }
 
 export async function getOrCreateByTitle(titleInput: string): Promise<Note> {
@@ -343,12 +373,15 @@ export async function getOrCreateDaily(date: string): Promise<Note> {
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`daily:${date}`]);
     const existing = await client.query<NoteRow>("SELECT * FROM notes WHERE daily_date=$1 AND deleted_at IS NULL", [date]);
     if (existing.rows[0]) return mapNote(existing.rows[0]);
+    const template = await defaultDailyTemplateBody(client);
+    const body = template === null ? "" : renderTemplate(template, { date, title: date });
     const result = await client.query<NoteRow>(
-      `INSERT INTO notes (title,body,daily_date,search_embedding,search_embedded_at,search_source_hash)
-       VALUES ($1::text,'',$1::date,$2::vector,now(),$3) RETURNING *`,
-      [date, vectorLiteral(embedText(date)), sourceHash(date, "")],
+      `INSERT INTO notes (title,body,tags,daily_date,search_embedding,search_embedded_at,search_source_hash)
+       VALUES ($1::text,$2,$3,$1::date,$4::vector,now(),$5) RETURNING *`,
+      [date, body, mergeTags(parseInlineTags(body)), vectorLiteral(embedText(`${date}\n${body}`)), sourceHash(date, body)],
     );
     const row = result.rows[0]!;
+    await materializeLinks(client, row.id, body);
     await resolveTargets(client, row.id, [row.title]);
     return mapNote(row);
   });

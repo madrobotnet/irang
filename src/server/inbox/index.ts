@@ -7,8 +7,12 @@ export {
   promoteInbox,
   suggestInbox,
   type CaptureInboxInput,
+  type InboxItemDto,
+  type InboxList,
+  type InboxView,
   type PromoteInboxInput,
 } from "./service";
+export { mergeInbox, restoreInbox, snoozeInbox, unsnoozeInbox, type MergeInboxInput } from "./triage";
 export {
   fetchUrlText,
   isUnsafeAddress,

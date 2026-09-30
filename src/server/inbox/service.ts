@@ -12,16 +12,19 @@ import { fetchUrlText, type UrlIntakeDependencies } from "./url";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type InboxRow = QueryResultRow & {
+export type InboxRow = QueryResultRow & {
   id: string; title: string; body: string; source: string; url: string | null;
   promoted_note_id: string | null; discarded_at: string | Date | null;
-  suggestions: unknown; created_at: string | Date;
+  suggestions: unknown; created_at: string | Date; snoozed_until: string | Date | null;
 };
+export type InboxItemDto = InboxItem;
+export type InboxView = "open" | "later";
+export type InboxList = { items: InboxItemDto[]; count: number; snoozedCount: number };
 
 export type CaptureInboxInput = { text?: string; url?: string; title?: string; source?: InboxSource };
 export type PromoteInboxInput = { title?: string; body?: string; tags?: string[] };
 
-function assertId(id: string): void {
+export function assertInboxId(id: string): void {
   if (!UUID_RE.test(id)) throw new ApiError("validation", notesCopy.badUuid);
 }
 
@@ -51,7 +54,7 @@ function readSuggestions(value: unknown): InboxSuggestions | null {
   return { status, tags, kind, duplicateOf };
 }
 
-function mapItem(row: InboxRow): InboxItem {
+export function mapItem(row: InboxRow): InboxItemDto {
   return {
     id: row.id,
     title: row.title,
@@ -60,6 +63,7 @@ function mapItem(row: InboxRow): InboxItem {
     url: row.url,
     createdAt: new Date(row.created_at).toISOString(),
     suggestions: readSuggestions(row.suggestions),
+    snoozedUntil: row.snoozed_until ? new Date(row.snoozed_until).toISOString() : null,
   };
 }
 
@@ -74,7 +78,7 @@ function initialTitle(input: CaptureInboxInput, locale: Locale): string {
   return CAPTURE_TITLE.quick[locale];
 }
 
-export async function captureInbox(input: CaptureInboxInput, locale: Locale = "ko"): Promise<InboxItem> {
+export async function captureInbox(input: CaptureInboxInput, locale: Locale = "ko"): Promise<InboxItemDto> {
   const text = input.text?.trim() ?? "";
   const url = input.url?.trim() || null;
   if (!text && !url) throw new ApiError("validation", inboxCopy.textOrUrl);
@@ -87,28 +91,36 @@ export async function captureInbox(input: CaptureInboxInput, locale: Locale = "k
   return mapItem(result.rows[0]!);
 }
 
-export async function listInbox(): Promise<{ items: InboxItem[]; count: number }> {
+const OPEN = "discarded_at IS NULL AND promoted_note_id IS NULL";
+const VIEW_SQL: Record<InboxView, string> = {
+  open: `SELECT * FROM inbox_items WHERE ${OPEN} AND (snoozed_until IS NULL OR snoozed_until <= now())
+          ORDER BY created_at DESC,id DESC`,
+  later: `SELECT * FROM inbox_items WHERE ${OPEN} AND snoozed_until > now() ORDER BY snoozed_until,id`,
+};
+
+export async function listInbox(view: InboxView = "open"): Promise<InboxList> {
   const pool = await db();
-  const result = await pool.query<InboxRow>(
-    "SELECT * FROM inbox_items WHERE discarded_at IS NULL AND promoted_note_id IS NULL ORDER BY created_at DESC,id DESC",
-  );
-  return { items: result.rows.map(mapItem), count: result.rows.length };
+  const [result, snoozed] = await Promise.all([
+    pool.query<InboxRow>(VIEW_SQL[view]),
+    pool.query<{ count: number }>(`SELECT count(*)::int AS count FROM inbox_items WHERE ${OPEN} AND snoozed_until > now()`),
+  ]);
+  return { items: result.rows.map(mapItem), count: result.rows.length, snoozedCount: snoozed.rows[0]?.count ?? 0 };
 }
 
 async function rowById(id: string, client?: PoolClient): Promise<InboxRow | null> {
-  assertId(id);
+  assertInboxId(id);
   const executor = client ?? await db();
   const result = await executor.query<InboxRow>("SELECT * FROM inbox_items WHERE id=$1", [id]);
   return result.rows[0] ?? null;
 }
 
-export async function getInboxItem(id: string): Promise<InboxItem | null> {
+export async function getInboxItem(id: string): Promise<InboxItemDto | null> {
   const row = await rowById(id);
   return row ? mapItem(row) : null;
 }
 
 export async function promoteInbox(id: string, input: PromoteInboxInput = {}, locale: Locale = "ko"): Promise<Note> {
-  assertId(id);
+  assertInboxId(id);
   const noteId = await tx(async (client) => {
     const locked = await client.query<InboxRow>("SELECT * FROM inbox_items WHERE id=$1 FOR UPDATE", [id]);
     const item = locked.rows[0];
@@ -131,7 +143,7 @@ export async function promoteInbox(id: string, input: PromoteInboxInput = {}, lo
 }
 
 export async function discardInbox(id: string): Promise<void> {
-  assertId(id);
+  assertInboxId(id);
   await tx(async (client) => {
     const result = await client.query<InboxRow>("SELECT * FROM inbox_items WHERE id=$1 FOR UPDATE", [id]);
     const item = result.rows[0];
@@ -185,7 +197,7 @@ async function buildSuggestions(item: InboxRow, locale: Locale): Promise<InboxSu
   }
 }
 
-export async function suggestInbox(id: string, locale: Locale = "ko"): Promise<InboxItem> {
+export async function suggestInbox(id: string, locale: Locale = "ko"): Promise<InboxItemDto> {
   const item = await rowById(id);
   if (!item) throw new ApiError("not_found", inboxCopy.notFound);
   const suggestions = await buildSuggestions(item, locale);

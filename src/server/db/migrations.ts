@@ -243,4 +243,51 @@ ALTER TABLE ai_auth_attempts ADD CONSTRAINT ai_auth_attempts_provider_check
   CHECK (provider IN ('github-copilot', 'openrouter', 'xai', 'openai', 'google'));
 `,
   },
+  {
+    id: "0007_note_revisions",
+    sql: `
+-- reason names the change that replaced this snapshot (see src/lib/note-revisions.ts).
+CREATE TABLE note_revisions (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  note_id     uuid NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  title       text NOT NULL,
+  body        text NOT NULL,
+  tags        text[] NOT NULL DEFAULT '{}',
+  aliases     text[] NOT NULL DEFAULT '{}',
+  reason      text NOT NULL DEFAULT 'edit'
+    CHECK (reason IN ('edit', 'restore', 'merge', 'link-mention', 'task-toggle')),
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX note_revisions_note_created_idx ON note_revisions (note_id, created_at DESC);
+
+-- Trash retention: notes already in the trash start their 30-day clock at upgrade time.
+UPDATE notes SET purge_at = now() + interval '30 days'
+WHERE deleted_at IS NOT NULL AND purge_at IS NULL;
+CREATE INDEX notes_trash_purge_idx ON notes (purge_at) WHERE deleted_at IS NOT NULL;
+`,
+  },
+  {
+    id: "0008_inbox_snooze",
+    sql: `
+ALTER TABLE inbox_items ADD COLUMN snoozed_until timestamptz NULL;
+CREATE INDEX inbox_snoozed_idx ON inbox_items (snoozed_until)
+  WHERE discarded_at IS NULL AND promoted_note_id IS NULL AND snoozed_until IS NOT NULL;
+`,
+  },
+  {
+    id: "0009_note_templates",
+    sql: `
+CREATE TABLE note_templates (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name              text NOT NULL UNIQUE,
+  body              text NOT NULL,
+  is_daily_default  boolean NOT NULL DEFAULT false,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+-- At most one template can be the daily default.
+CREATE UNIQUE INDEX note_templates_daily_default_uidx ON note_templates (is_daily_default)
+  WHERE is_daily_default;
+`,
+  },
 ];

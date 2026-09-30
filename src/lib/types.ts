@@ -20,9 +20,17 @@ export type Note = NoteSummary & {
   aliases: string[];
   sourceUrl: string | null;
   deletedAt: string | null;
+  /** Automatic purge instant while the note is in the trash (deletedAt + 30 days); null otherwise. */
+  purgeAt: string | null;
 };
 
+/** `GET /api/notes` items; `purgeAt` as on `Note`. */
+export type NoteListItem = NoteSummary & { purgeAt: string | null };
+
 export type NoteRef = { id: string; title: string };
+
+/** `GET /api/notes/titles` items; `matchedAlias` is the alias that matched when the title did not. */
+export type NoteTitleMatch = NoteRef & { matchedAlias: string | null };
 
 export type LinkContext = NoteRef & {
   /** The line/paragraph around the reference, plain text, <= 240 chars. */
@@ -59,6 +67,8 @@ export type InboxItem = {
   url: string | null;
   createdAt: string;
   suggestions: InboxSuggestions | null;
+  /** Hidden from the open inbox until this instant passes; null when not snoozed. */
+  snoozedUntil: string | null;
 };
 
 export type SearchMatch = "keyword" | "fuzzy" | "semantic";
@@ -121,4 +131,12 @@ export type HomeData = {
   stats: { notes: number; links: number; tags: number };
 };
 
-export type ApiErrorBody = { error: { code: string; message: string; localized?: LocalizedText; retryAfterSeconds?: number } };
+export type ApiErrorBody = {
+  error: {
+    code: string; message: string; localized?: LocalizedText; retryAfterSeconds?: number;
+    /** Machine-readable 409 detail from note edits (see contract-s1). */
+    conflict?: "stale" | "mention_gone";
+    /** Machine-readable 409 detail from task toggles (see contract-s2). */
+    reason?: "mismatch" | "trashed" | "archived";
+  };
+};

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { json, parseJson, withApi } from "@/server/http";
 import { createNote, listNotes } from "@/server/notes/service";
+import { purgeExpired, TRASH_LIST_PURGE_BATCH } from "@/server/notes/trash";
 import { localeFromRequest } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
@@ -23,6 +24,7 @@ const ListQuery = z.object({
 export const GET = withApi(async (request) => {
   const url = new URL(request.url);
   const input = ListQuery.parse(Object.fromEntries(url.searchParams));
+  if (input.trash === "1" && !input.cursor) await purgeExpired(TRASH_LIST_PURGE_BATCH);
   return json(await listNotes({ ...input, pinned: input.pinned === "1", archived: input.archived === "1", trash: input.trash === "1" }));
 });
 
