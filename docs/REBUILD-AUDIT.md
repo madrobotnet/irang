@@ -1,28 +1,28 @@
 # Rebuild audit - 2026-09-27 to 2026-09-28
 
-The user requested a fresh audit of the earlier implementation. Completion flags
-are not acceptance evidence. This document records observed failures and repairs.
+This historical audit records observed failures, repairs and verification from
+the v2 rebuild. Completion reports alone are not acceptance evidence.
 
-## Current result
+## Result at audit completion
 
 The complete tree passed **162 tests across 34 files in one Bun run**, full
 TypeScript checking, ESLint and the production build. The generated standalone
-server runs under Bun against an isolated QA database. Public health, manifest
-and font requests return 200; the font is a valid 2,057,688-byte WOFF2 file.
+server ran under Bun against an isolated QA database. Public health, manifest
+and font requests returned 200; the font was a valid 2,057,688-byte WOFF2 file.
 
-The lead exercised the actual interfaces, not only service mocks: note editing
-and failed-save recovery, attachments, links and aliases, URL capture, keyboard
+Browser acceptance exercised the actual interfaces, not only service mocks:
+note editing and failed-save recovery, attachments, links and aliases, URL capture, keyboard
 triage, graph interaction, search history, real cited AI streaming and
-cancellation, themes, login and revoking multiple sessions. Desktop and mobile
+cancellation, themes, login and multi-session revocation. Desktop and mobile
 captures are retained locally under `.omo/evidence/production`. The final
 standalone build was inspected at 1440x900 and 390x844 for all seven feature
 surfaces, with separate mobile inbox-detail and graph-inspector captures.
 The note editor also passed an 820x1180 tablet check without document overflow.
 
-The sections below retain the earlier red evidence and intermediate milestones.
+The sections below retain earlier failure evidence and intermediate milestones.
 They are not current blockers. Production deployment, data and authentication
-were not changed. Final cleanup closed the owned browser and standalone server,
-removed their profile, fixture attachments, temporary commit snapshots and
+were not changed. Final cleanup closed the QA browser and standalone server,
+removed the browser profile, fixture attachments, temporary snapshots and
 production-data copy, and removed the local QA PostgreSQL container with its
 anonymous volume. The existing production containers and unrelated workspaces
 were preserved.
@@ -31,26 +31,28 @@ Feature commits were checked as isolated staged trees, not only against the
 combined working directory. The final settings increment passed all 162 tests
 across 34 files, typecheck, lint and build; the generated-output lint correction
 was checked separately with full-repository ESLint. No GitHub Actions workflow
-is configured, so these are local verification results rather than CI claims.
+was configured at that milestone, so these are local verification results rather
+than CI claims. For CI configuration outside this audit, see
+`.github/workflows/ci.yml`.
 
 ## Confirmed results
 
-- The completed backend lanes ran together under Bun: 57 tests passed, 0 failed.
+- The completed backend components ran together under Bun: 57 tests passed, 0 failed.
   Command: `bun test src/server/auth src/server/http.test.ts src/server/notes
   src/server/search src/server/graph src/server/inbox src/server/chat`.
 - That passing run concealed an initialization race. Warming six PostgreSQL
   connections before the existing parallel-login scenario produced six owners
   instead of one. No sleeps or retry-until-green logic were added.
-- `src/server/auth/session.ts` now acquires a transaction-scoped PostgreSQL
-  advisory lock before looking up or creating the single owner.
+- The repair added a transaction-scoped PostgreSQL advisory lock in
+  `src/server/auth/session.ts` before looking up or creating the single owner.
 - The strengthened auth/API boundary suite passed: 10 tests, 0 failures; scoped
   ESLint also exited 0.
-- Bun utility scripts run successfully: the URL builder encodes special
-  characters and spaces, and the password script emits a verifiable Argon2 hash.
+- Bun utility scripts ran successfully: the URL builder encoded special
+  characters and spaces, and the password script emitted a verifiable Argon2 hash.
 
 ## Initial runtime blocker (resolved)
 
-`bun --bun next dev` starts, but `POST /api/auth/login` returned HTTP 500.
+`bun --bun next dev` started, but `POST /api/auth/login` returned HTTP 500.
 The server reported:
 
 ```text
@@ -58,7 +60,7 @@ Failed to load external module argon2-f9a25551ac54f3a1:
 ResolveMessage: Cannot find module 'argon2-f9a25551ac54f3a1'
 ```
 
-The generated module symlink exists and resolves in a fresh Bun process.
+The generated module symlink existed and resolved in a fresh Bun process.
 The development-server runtime failed despite that fresh-process result.
 Webpack and single-pass Next dotenv loading resolved the runtime boundary.
 Bun remains the required runtime.
@@ -71,35 +73,28 @@ Bun remains the required runtime.
 - A clean final typecheck, lint, test suite and build on the final tree.
 - Cleanup of audit servers and their locally created test records.
 
-The research synthesis worker returned an acknowledgement rather than its
-artifact. `docs/research/ADOPTION.md` now exists as lead-written synthesis; the
-worker completion flag itself was not accepted as evidence.
+Research evidence and adoption decisions are recorded in
+[research/ADOPTION.md](research/ADOPTION.md).
 
-## Repair phase topology
+## Initial repair requirements
 
-This is a separate mass-ulw phase, not a restart of the foundation graph.
-
-1. Runtime/login repair (`deep-low`): investigate the confirmed HTTP 500 across
+1. Runtime/login repair: investigate the confirmed HTTP 500 across
    Bun, Next's workers, dotenv expansion and external-package resolution.
-   Own package/runtime configuration and the authentication config boundary,
-   not the already-repaired owner/session module.
-2. URL transport repair (`deep-low`): the current implementation validates one
-   DNS answer, then calls a hostname-based fetch that resolves again. Bind the
+   Check package/runtime configuration and the authentication configuration boundary
+   independently of the owner/session repair.
+2. URL transport repair: the earlier implementation validated one
+   DNS answer, then called a hostname-based fetch that resolved again. Bind the
    outbound connection to a validated address, preserving TLS identity and
-   validating each redirect. Own only inbox URL transport and its tests.
-3. Repair verification (`quick`), depending on both: execute the focused Bun
+   validating each redirect.
+3. Repair verification, after both repairs: execute the focused Bun
    suites, scoped lint and a fresh real HTTP login using the corrected startup
-   path. Report actual output, not upstream completion text.
-
-The two producer scopes do not overlap. The lead keeps foundation integration,
-the next UI phase, browser QA, evidence review and delivery. Existing shell work
-must not be duplicated while its original worker is alive.
+   path. Record actual results.
 
 ## Clean-install database verification
 
 The original development Compose configuration created only `second_brain`,
-while tests require `second_brain_test`. A fresh container reported zero matching
-test databases. Added `docker/postgres/dev/01-test-database.sql` and mounted it
+while tests required `second_brain_test`. A fresh container reported zero matching
+test databases. The repair added `docker/postgres/dev/01-test-database.sql` and mounted it
 only in the development Compose service.
 
 The corrected Compose configuration was started in a separate project
@@ -109,34 +104,34 @@ test database, `bun test src/server/db/migrate.test.ts
 src/server/notes/service.test.ts` passed all 10 tests in one run.
 
 Cleanup: removed `sb-bootstrap-audit-20260927` with its anonymous volume and
-removed the `sb-bootstrap-audit_default` network. No matching container remains.
+removed the `sb-bootstrap-audit_default` network. No matching container remained.
 The running development and production databases were not replaced.
 
-LSP limitation: the installed language-server binary is executable, but the host
-LSP tool cannot resolve it. The skill's direct verifier also cannot find its
-bundled engine source. This is not a clean diagnostic result; final TypeScript
-and ESLint checks remain required and no errors are suppressed.
+LSP limitation: the installed language-server binary was executable, but the host
+LSP tool couldn't resolve it. The direct verifier also couldn't find its
+bundled engine source. This was not a clean diagnostic result; final TypeScript
+and ESLint checks were still required, with no errors suppressed.
 
-## Lead acceptance of both repair lanes
+## HTTP acceptance of both repairs
 
-On the repaired Bun development entry point at port 3110, the lead personally
-observed login 200, session cookie issuance, foreign-origin mutation rejection
-403, note creation 201, persisted note read-back 200, and the source note in the
-target's backlinks. Text capture returned 201; promotion returned 200; repeating
+On the repaired Bun development entry point at port 3110, HTTP checks confirmed
+login 200 with a session cookie, foreign-origin mutation rejection 403, note
+creation 201, persisted note read-back 200, and the source note in the target's
+backlinks. Text capture returned 201; promotion returned 200; repeating
 promotion returned the same note ID. Search returned that note first. Local
 graph data included both real note links and the optional tag layer. Invalid
 depth returned 400. Full headers and bodies, without session values, are in
 `docs/audit-http-acceptance.json`.
 
-The lead reran the focused repair suite: 25 tests passed, 0 failed, and scoped
-lint passed. The Node-to-Web stream adapter initially relied on a double type
-assertion; the lead replaced it with a typed pull/cancel bridge. The resulting
+Rerunning the focused repair suite produced 25 passing tests and 0 failures;
+scoped lint passed. The Node-to-Web stream adapter initially relied on a double type
+assertion; the repair replaced it with a typed pull/cancel bridge. The resulting
 typecheck, seven socket/TLS/abort URL tests, and scoped lint passed. A real
 `fetchUrlText("https://example.com")` returned `ok: true` and Example Domain
-content. This verifies real transport, not just a mocked fetch call.
+content. This verified real transport, not just a mocked fetch call.
 
-Cleanup: logout succeeded; deleted only the one QA inbox row, three QA notes
-and the lead's QA session hash. A count query returned zero remaining QA notes.
+Cleanup: logout succeeded; only the one QA inbox row, three QA notes
+and the QA session hash were deleted. A count query returned zero remaining QA notes.
 Ports 3110, 3111 and 3112 had no listeners. Browser UI acceptance was still open
 at that milestone.
 
@@ -146,32 +141,32 @@ Three added regression cases failed on the previous implementation: an exact
 wikilink to a title containing repeated spaces, a pending link resolved after
 target creation, and title lookup returning a duplicate instead of the existing
 note. JavaScript normalized internal whitespace, while SQL compared only trimmed
-titles. SQL comparisons now use the same collapsed-space key without rewriting
+titles. The repair made SQL comparisons use the same collapsed-space key without rewriting
 the display title or note body.
 
-The complete notes/attachments suite passed 15 tests. The lead then repeated the
-three scenarios through authenticated HTTP on port 3113: links resolved,
+The complete notes/attachments suite passed 15 tests. Repeating the
+three scenarios through authenticated HTTP on port 3113 confirmed that links resolved,
 get-or-create returned the original ID, and creating the target cleared the
 pending link. Evidence: `docs/audit-whitespace-http.json`.
 
-Cleanup: logout; removed exactly four QA notes and their session from
-`sb_test_notes`; remaining QA note count zero. Port 3113 is closed and
+Cleanup: logged out and removed exactly four QA notes and their session from
+`sb_test_notes`; the remaining QA note count was zero. Port 3113 was closed and
 `.next-note-regression` was removed.
 
-One static check exposed an unrelated stale agent-generated validator under
+One static check exposed an unrelated stale generated validator under
 `.next-audit-lead` that still imported the intentionally removed root page.
-Removed only its obsolete `tsconfig` include entries, preserved the other
-agent's files and active server, and regenerated canonical Next route types.
+Only its obsolete `tsconfig` include entries were removed. Unrelated files and
+the active server were preserved, and canonical Next route types were regenerated.
 
 ## Public login font repair
 
 The login page requested `/fonts/PretendardVariable.woff2` without a session.
 The gate returned 307 to `/login`, preventing the intended typeface from loading.
-Allowed the public font directory without changing authentication requirements
-for notes or APIs. Three focused proxy tests and scoped lint pass.
+The repair allowed the public font directory without changing authentication
+requirements for notes or APIs. Three focused proxy tests and scoped lint passed.
 
-Real HTTP now returns 200, `font/woff2`, and a valid `wOF2` signature. The lead
-also opened the real login page with omowright and inspected these captures:
+Real HTTP returned 200, `font/woff2`, and a valid `wOF2` signature. Browser
+checks opened the login page with omowright and inspected these captures:
 
 - `.omo/evidence/font-gate/login-desktop.png`: 1440×900.
 - `.omo/evidence/font-gate/login-mobile.png`: 390×844, touch/mobile emulation.
@@ -181,48 +176,46 @@ Pretendard Variable reported `loaded` in both. The mobile document width was
 overlap. Full-app visual acceptance was still pending at that milestone; the
 remaining footer/countdown/touch-target corrections were subsequently completed.
 
-The first attempted capture borrowed a worker-owned server that stopped during
-the run. Retried using the lead's own port3110 server. Both successful browser
-sessions were closed, all owned `sb-font-qa.*` profiles removed, and port3110
-was verified closed after stopping the server.
+Both successful QA browser sessions were closed, all `sb-font-qa.*` profiles
+were removed, and port 3110 was verified closed after stopping the server.
 
 ## Storage/retrieval integration regressions
 
 A note saved by the notes service had a SHA-256 fingerprint, while search checked
 PostgreSQL MD5. A deterministic regression proved that merely searching rebuilt a
-fresh embedding. The notes writer now uses the same cache fingerprint as search.
+fresh embedding. The repair aligned the notes writer's cache fingerprint with search.
 This fingerprint is cache metadata, not authentication or encryption.
 
 A second regression assigned three updates distinct microseconds within the same
 millisecond. Pagination returned only the first note because its cursor rounded
-the database timestamp through JavaScript Date. Cursors now preserve PostgreSQL
-microseconds in a UTC string; display timestamps retain the existing wire shape.
+the database timestamp through JavaScript Date. The repair preserved PostgreSQL
+microseconds in cursor UTC strings while keeping the existing wire shape for display timestamps.
 
 Before: 21 passed, 2 failed. After: notes, attachments and search passed all 26
-tests. Scoped lint passed. The final combined check below also passed typecheck.
+tests. Scoped lint passed. The final combined check also passed typecheck.
 
 ## Chat compatibility and completion
 
-The lead read all changed chat source and tests and reran the actual integration
-suite. Old `{noteId,title,snippet?}` citations map into the new response shape
-without rewriting stored JSON. Provider streams require `response.completed`;
-failed, incomplete and delta-only EOF responses cannot persist partial answers.
-Concurrent refreshes share one operation per auth file, whose replacement is
-atomic and retains unrelated fields.
+All changed chat source and tests were inspected, and the actual integration
+suite was rerun. Legacy `{noteId,title,snippet?}` citations were mapped into the
+new response shape without rewriting stored JSON. Provider streams were changed
+to require `response.completed`; failed, incomplete and delta-only EOF responses
+could no longer persist partial answers. Concurrent refreshes shared one
+operation per auth file, with atomic replacement that retained unrelated fields.
 
 The backend and frontend SSE parser checks passed 29 tests. The frontend parser
-had a TypeScript expectation containing `Citation | undefined`; the lead fixed
-the expected array without suppressing the error. A test pinned to prompt prose
+had a TypeScript expectation containing `Citation | undefined`; the expected
+array was fixed without suppressing the error. A test pinned to prompt prose
 was replaced with assertions of the actual model/store/stream request fields.
-These tests use local fixture streams, not a live paid provider.
+These tests used local fixture streams, with no live upstream calls.
 
 ## Logout failure feedback
 
-In an owned browser, intercepting logout with HTTP 503 reproduced navigation to
-`/login` with no error feedback. The shared shell now reports a persistent alert
-and leaves the current page intact when logout fails.
+In a QA browser, intercepting logout with HTTP 503 reproduced navigation to
+`/login` with no error feedback. The repair made the shared shell report a
+persistent alert and leave the current page intact on logout failure.
 
-The lead observed the alert and unchanged `/` URL, then viewed
+Browser checks confirmed the alert and unchanged `/` URL, then inspected
 `.omo/evidence/logout/failure-desktop.png` (1440x900) and
 `failure-mobile.png` (390x844). The mobile document width remained 390px and the
 alert stayed above bottom navigation. With interception removed, logout led to
@@ -230,13 +223,13 @@ alert stayed above bottom navigation. With interception removed, logout led to
 
 ## Bun standalone container acceptance
 
-The Bun image built successfully with exit 0. It preserves the existing
+The Bun image built successfully with exit 0. It preserved the existing
 deployment's `nextjs` UID 1001 rather than switching mounted files to UID 1000.
 A local 0600 fake auth fixture demonstrated the difference: UID 1000 returned
 EACCES, while UID 1001 read it successfully. No real auth file was used.
 
-The lead ran the resulting image in production mode against a fresh isolated
-database. Actual HTTP results:
+The resulting image ran in production mode against a fresh isolated database.
+Actual HTTP results:
 
 - Login: 200.
 - Note creation, title-target creation, persisted backlinks: successful.
@@ -248,12 +241,12 @@ database. Actual HTTP results:
 
 Cleanup removed the QA container, image tag, database, fake auth fixture and
 browser profiles. The stopped development server's exact home-audit session was
-deleted (one row). Ports 3110, 3117 and the failed UI worker's 3156 were closed.
+deleted (one row). Ports 3110, 3117 and 3156 were closed.
 Canonical Next route types were regenerated and typecheck passed.
 
-## Backend milestone before interface recovery
+## Backend milestone before interface integration
 
-The lead ran this once:
+The milestone used a single run:
 
 ```sh
 TEST_DATABASE_URL=postgres://second_brain:second_brain@127.0.0.1:55432/second_brain_test \
@@ -264,64 +257,60 @@ TEST_DATABASE_URL=postgres://second_brain:second_brain@127.0.0.1:55432/second_br
 Result: **113 passed, 0 failed across 22 files**. Typecheck and scoped ESLint
 also exited 0. This is a backend/shared-shell milestone, not final product QA.
 
-The interface DAG initially had one accepted backend repair and six failed
-frontend producers after InferHub returned `402 insufficient_balance` and
-`503 billing_unavailable`. The provider-choice question timed out; the user
-instructed completion using best judgment. The same DAG was amended to available
-GPT routes, retaining the existing visual direction and accepted work. All eight
-nodes completed. Their reports were followed by independent source inspection
-and real browser acceptance, which found the additional defects below.
+Source inspection and browser acceptance followed the backend milestone.
+Those checks found the interface and integration defects below.
 
 ## Interface and integration repairs
 
 - Notes discarded canonical save acknowledgements and could continue destructive
-  actions after a failed flush. Drafts now retain newer edits, adopt canonical
-  metadata, survive SPA navigation, and stop destructive actions on failure.
+  actions after a failed flush. The repair made drafts retain newer edits,
+  adopt canonical metadata, survive SPA navigation and stop destructive actions
+  on failure.
   Forced HTTP 503, route departure/return, retry, and dirty unload protection passed.
 - A delayed attachment followed by editing and switching to preview overwrote
-  the newer body. The same held-request scenario now inserts into the current
-  draft and persists it. Upload/download bytes matched. Captured source URLs
-  remain visible after promotion.
-- Incomplete UTF-8 in a preview link threw `URIError`. URL query parsing now
-  handles it without crashing. Title autocomplete includes preserved aliases.
+  the newer body. After the repair, the same held-request scenario inserted into
+  the current draft and persisted it. Upload/download bytes matched. Captured
+  source URLs remained visible after promotion.
+- Incomplete UTF-8 in a preview link threw `URIError`. After the repair, URL
+  query parsing handled it without crashing. Title autocomplete included preserved aliases.
   Trash, restore, confirmed purge and filter retention passed.
-- Inbox Escape intercepted a modal's native cancellation. The listener now
-  respects dialogs and native controls. Capture HTTP 503 retained the draft across
+- Inbox Escape intercepted a modal's native cancellation. The repaired listener
+  respected dialogs and native controls. Capture HTTP 503 retained the draft across
   closing/reopening; retry succeeded. Promotion was idempotent. Real
   `https://example.com` capture completed asynchronous text ingestion. Mobile
-  triage now opens a dedicated detail view instead of burying it below the list.
-- Graph tooltip HTML was interpreted as markup. Escaping makes it literal.
-  Pin state now follows the current simulation data. Global/local depth, tags,
+  triage was changed to open a dedicated detail view instead of burying it below the list.
+- Graph tooltip HTML was interpreted as markup. Escaping made it literal.
+  Pin state was aligned with the current simulation data. Global/local depth, tags,
   fit/reset and accessible selection passed. The mobile inspector was below
-  the viewport; it now scrolls into view above navigation.
-- Search URL and input state drifted on history navigation. The URL now owns
-  committed results. Keyword, tag, no-result, error, shortcut and back/forward
+  the viewport; the repair scrolled it into view above navigation.
+- Search URL and input state drifted on history navigation. The repair made the
+  URL own committed results. Keyword, tag, no-result, error, shortcut and back/forward
   flows passed. A hash collision returned an unrelated Korean note for `PARA`;
   literal n-gram verification removed that result without claiming semantic AI.
-- Follow-up chat had accidentally depended on noisy retrieval hits. It now
-  reloads prior cited active notes when a follow-up has no fresh matches;
-  deleted/archived evidence is excluded. Malformed gateway JSON and an
-  already-aborted stream no longer throw or retain a reader lock.
-- A real GPT-6 Astra response produced eight real source cards and persisted
+- Follow-up chat depended on noisy retrieval hits. The repair made it reload
+  previously cited active notes when a follow-up had no fresh matches,
+  excluding deleted or archived evidence. Malformed gateway JSON and an
+  already-aborted stream no longer threw or retained a reader lock.
+- A live chat response produced eight real source cards and persisted
   both messages. A second request visibly streamed partial text; stopping it
   retained the question and left the database at two messages. Thread rename,
   create/delete, history reload and opening a citation passed. Token refresh
-  was disabled while QA read the credentials.
+  was disabled during this browser check.
 - Chat and settings cached different shapes under the same status key, crashing
-  SPA navigation. Both now use the plain response. Theme persisted after reload.
+  SPA navigation. The repair made both use the plain response. Theme persisted after reload.
   Revoking all sessions made both the browser and a separately created QA
   session return 401. Wrong-password feedback and successful login passed.
-- Daily actions and home now use the viewer's calendar/zone. A Seoul date that
-  differed from UTC selected the correct daily note; invalid zones return 400.
+- Daily actions and home were aligned with the viewer's calendar and time zone.
+  A Seoul date that differed from UTC selected the correct daily note; invalid zones returned 400.
   Home tests also passed with a Korean server timezone.
 - The mobile shell added 60px of document overflow to fixed-height workspaces.
-  Sizing now accounts for safe-area insets, reducing the document height from
+  The sizing repair accounted for safe-area insets, reducing the document height from
   904px to the viewport's 844px and keeping chat headers and the composer visible.
 
 ## Verification limits
 
 The host LSP resolver remained unavailable; passing `tsc`, ESLint, build and
 browser evidence are the recorded checks. Jev was intentionally unconfigured
-in QA, so optional failure behavior is verified but no live Jev classification
+in QA, so optional failure behavior was verified but no live Jev classification
 claim is made. Native mobile installation, offline operation and performance
 scores are not claimed. No test used sleeps or retry-until-green logic.

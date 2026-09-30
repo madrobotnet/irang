@@ -1,20 +1,20 @@
-# Second Brain v2 — Architecture
+# Irang architecture
 
-Single-owner, self-hosted second brain. **Next.js 16 App Router, React 19, TypeScript strict, Tailwind CSS 4, Postgres 18 + pgvector + pg_trgm, Bun** (package manager, script runner, test runner, and production runtime).
+Irang is a single-owner, self-hosted second brain built with **Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, PostgreSQL 18 + pgvector + pg_trgm, and Bun**. Bun is the package manager, script runner, test runner and production runtime.
 
-Flow: **capture → inbox triage → linked markdown notes → search / graph / AI chat over your notes.**
+Flow: **capture → inbox triage → linked Markdown notes → search, graph and AI chat over your notes.**
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `bun install` | install (lockfile `bun.lock`) |
-| `bun run db:up` / `bun run db:down` | local pgvector Postgres on `127.0.0.1:55432` (docker-compose.dev.yml) |
+| `bun install` | install dependencies (lockfile `bun.lock`) |
+| `bun run db:up` / `bun run db:down` | start / stop local PostgreSQL with pgvector on `127.0.0.1:55432` (docker-compose.dev.yml) |
 | `bun run dev` | Bun dev server (`--no-env-file`, Next `--webpack`) |
 | `bun run typecheck` | `tsc --noEmit` |
 | `bun run lint` | `eslint .` |
-| `bun test` | unit + Postgres integration tests (`bun:test`, needs `db:up`) |
-| `bun run build` / `bun run start` | production build / start |
+| `bun test` | unit and PostgreSQL integration tests (`bun:test`, requires `db:up`) |
+| `bun run build` / `bun run start` | build / start the production app |
 | `bun run seed` | seed demo notes into `DATABASE_URL` |
 
 ## Layout
@@ -27,7 +27,7 @@ src/
     login/                     login page
     (app)/layout.tsx           authenticated shell (server: getSession() else redirect)
     (app)/page.tsx             home dashboard
-    (app)/notes/, (app)/notes/[id]/, (app)/daily/, (app)/inbox/, (app)/search/,
+    (app)/notes/, (app)/notes/[id]/, (app)/daily/, (app)/inbox/, (app)/tasks/, (app)/search/,
     (app)/graph/, (app)/chat/, (app)/chat/[id]/, (app)/settings/
     api/**/route.ts            JSON APIs (all wrapped with withApi / withPublicApi)
   components/ui/               design-system primitives (Button, Input, Dialog, Sheet, Badge, Kbd, Skeleton, EmptyState, Toast)
@@ -37,26 +37,26 @@ src/
   server/                      server-only modules per area; db/, auth/, http.ts, jev/, setup/
 ```
 
-## Core contracts (already implemented — use, do not rewrite)
+## Core contracts (implemented; reuse rather than rewrite)
 
-- `src/server/db/index.ts`: `db()`, `query<T>(sql, params)`, `queryOne<T>()`, `tx(fn)`, `closeDb()`. Migrations in `src/server/db/migrations.ts` run automatically on first use. **Schema changes = append a new migration** (never edit `0001`).
+- `src/server/db/index.ts`: `db()`, `query<T>(sql, params)`, `queryOne<T>()`, `tx(fn)`, `closeDb()`. Migrations in `src/server/db/migrations.ts` run automatically on first use. **Append a new migration for schema changes** (never edit `0001`).
 - `src/server/http.ts`: `withApi(handler)` (session required), `withPublicApi`, `ApiError(code, message)`, `json()`, `parseJson(request, zodSchema)`. Error body: `{ error: { code, message } }`.
 - `src/server/auth/session.ts`: `getSession()`; cookie `sb_session`.
-- `src/server/jev/client.ts`: `await getJev()` returns a TypeSafe client or `null`. `aiSelection(purpose)` independently resolves chat and Jev to a saved profile, explicit off, or environment-managed configuration. No settings row preserves legacy behavior; adding an inactive profile never changes it. Off prevents ambient credentials from reactivating that purpose. Chat uses the same selection in `configuredChatProvider()`. **Optional AI failures must not block capture, notes, search, or graph operations. Chat reports its own unavailable/provider-error state.**
-- `src/server/setup/service.ts` + `src/server/setup/settings.ts`: protected first-run setup and active selections. `setupState()` is `complete` when an env password or existing users/protected data are present, `ready` only for an empty server with a valid installer token. Owner creation, initial profiles and ready-auth consumption share one transaction and the occupied-state advisory lock. The env password remains authoritative.
+- `src/server/jev/client.ts`: `await getJev()` returns a TypeSafe client or `null`. `aiSelection(purpose)` independently resolves chat and Jev to a saved profile, an explicit off state, or environment-managed configuration. When no settings row exists, legacy behavior is preserved; adding an inactive profile doesn't change it. Off prevents ambient credentials from reactivating that purpose. Chat uses the same selection in `configuredChatProvider()`. **Optional AI failures must not block capture, notes, search, or graph operations. Chat reports its own unavailable/provider-error state.**
+- `src/server/setup/service.ts` + `src/server/setup/settings.ts`: protected first-run setup and active selections. `setupState()` is `complete` when an environment password is set or users or protected data already exist. It is `ready` only for an empty server with a valid installer token. Owner creation, initial profiles and consumption of ready authorization attempts share one transaction and the occupied-state advisory lock. The environment password remains authoritative.
 - `src/server/setup/ai-profiles.ts`: owner-scoped profile creation, update and deletion. Off preserves profiles; deleting an active profile disables its purpose. Keys and headers are retained only for the same provider and normalized endpoint. `aiSettingsView()` returns safe metadata, never keys, header values or OAuth credentials. Changes apply without restart.
 - `src/server/ai-auth/`: stateless GitHub Copilot/xAI device and OpenRouter PKCE clients, DB-backed attempts, owner/installer and browser binding, one-time consumption, and serialized refresh. HTTP responses are bounded to 64 KiB and 15 seconds; credential-bearing redirects are refused. Native ChatGPT and Gemini CLI login remain separate.
 - `src/lib/types.ts`: every API response type. `src/lib/api-client.ts`: `api<T>(path, { method, json })`, `fetcher` for SWR, `ApiClientError`.
 - `src/server/test/db.ts`: `connectTestDatabase()`, `resetData()`, `closeDb()` for integration tests.
 
-## Data model (Postgres, compatible with v1 production tables)
+## Data model (PostgreSQL, compatible with v1 production tables)
 
 - `notes(id, title, body markdown, status, tags text[], aliases text[], pinned, source_url, daily_date, created_at, updated_at, deleted_at, search_embedding vector(128), search_source_hash, search_tsv generated)`. Archived = `status = 'archived'`. Trash = `deleted_at IS NOT NULL`.
-- `links(from_note_id, to_note_id, relation='link')` — materialized from `[[wikilinks]]` on every note write.
-- `unresolved_links(from_note_id, target_title)` — `[[targets]]` with no matching note; resolved when a note with that title/alias is created or renamed.
+- `links(from_note_id, to_note_id, relation='link')`: materialized from `[[wikilinks]]` on every note write.
+- `unresolved_links(from_note_id, target_title)`: `[[targets]]` with no matching note; resolved when a note with that title or alias is created or renamed.
 - `inbox_items(id, title, body, source web|url|share|api, url, promoted_note_id, discarded_at, suggestions jsonb, created_at)`.
 - `attachments(id, note_id?, filename, mime, size_bytes, storage_key)` stored under `ATTACHMENTS_DIR` (default `.data/attachments`).
-- `attachment_cleanup(storage_key)`: durable file-removal work inserted in the same transaction as permanent note deletion. Keys disappear only after successful removal. Failed work is retried after later purges and by the note maintenance the Node instrumentation hook runs at startup and every six hours, together with expired-trash purging and revision pruning; failures log only a count and error code, not filenames or paths.
+- `attachment_cleanup(storage_key)`: durable file-removal work inserted in the same transaction as permanent note deletion. Keys disappear only after successful removal. Failed work is retried after later purges and during note maintenance. The Node instrumentation hook runs this maintenance at startup and every six hours, alongside expired-trash purging and revision pruning. Failures log only a count and error code, not filenames or paths.
 - `chat_threads`, `chat_messages(role, content, citations jsonb)`.
 - `installation_settings(owner_id, setup_completed, ai jsonb)`: `ai` is `{version:2, chatId, jevId}`. IDs are a profile UUID, `null` (off), or `"environment"`.
 - `ai_connections(id, owner_id, purpose, name, connection jsonb, created_at, updated_at)`: separate chat/Jev profiles and server-only credentials. Migration `0003_ai_connections` converts prior inline settings without changing active choices.
@@ -64,8 +64,8 @@ src/
 
 ## Wikilink rules (src/lib/wikilinks.ts)
 
-- Syntax `[[Target]]`, `[[Target|label]]`, `[[Target#Heading]]`. Target matching is case-insensitive against note title or any alias, with repeated whitespace collapsed.
-- Tags: `#tag` in body (letters incl. Hangul, digits, `-`, `_`, `/`; not inside code) are merged with explicit `tags` (lower-cased, deduped).
+- Syntax: `[[Target]]`, `[[Target|label]]`, `[[Target#Heading]]`. Targets match note titles or aliases case-insensitively, with repeated whitespace collapsed.
+- Tags: body tags written as `#tag` (letters including Hangul, digits, `-`, `_`, `/`; not inside code) are merged with explicit `tags`, then lowercased and deduplicated.
 - Preview clicks resolve through `/api/notes/by-title` and navigate to the real note ID. Missing targets are created only by that explicit action. The graph distinguishes unresolved targets.
 
 ## HTTP API
@@ -83,8 +83,8 @@ src/
 | POST `/api/notes/:id/restore` | | `{note}` |
 | DELETE `/api/notes/:id?purge=1` | | permanent delete (only when in trash) |
 | GET `/api/notes/:id/links` | | `NoteLinks` |
-| GET `/api/notes/:id/related` | | `{notes: RelatedNote[]}` (character-similarity neighbours) |
-| GET `/api/notes/titles` | `?q=&limit=10` | `{notes: NoteRef[]}` — title/alias lookup for the switcher and autocomplete |
+| GET `/api/notes/:id/related` | | `{notes: RelatedNote[]}` (character-similarity neighbors) |
+| GET `/api/notes/titles` | `?q=&limit=10` | `{notes: NoteRef[]}`; title/alias lookup for the switcher and autocomplete |
 | POST `/api/notes/by-title` | `{title}` | `{note}` get-or-create (clicking an unresolved link) |
 | POST `/api/daily` | `{date?: YYYY-MM-DD}` | `{note}` get-or-create daily note |
 | GET `/api/tags` | | `{tags: TagCount[]}` |
@@ -112,40 +112,44 @@ src/
 | GET `/api/health` | public | `{ok}` |
 
 Selection inputs accept inline connections (initial setup), `{mode:"saved",id}`,
-`{mode:"environment"}`, or `null`. Optional `chatName`/`jevName` name the initial
-profiles. Browser Auth uses an input-only `authAttemptId`; stored credentials
-never appear in client input or settings output. Supported schemas live in
+`{mode:"environment"}`, or `null`. Optional `chatName` and `jevName` fields name
+the initial profiles. Browser Auth uses an input-only `authAttemptId`; stored
+credentials never appear in client input or settings output. Supported schemas live in
 `src/lib/ai-settings.ts`, `ai-connections.ts` and `ai-auth-flow.ts`.
 
-## Design system (Direction A — "desk")
+## Design system
 
-The retained design direction uses a warm parchment desk, matte cards, charcoal rail and terracotta accent. This is an implementation choice, not a new user-imposed restriction. Korean UI copy. Font: Pretendard Variable (self-hosted from the `pretendard` package), `font-feature-settings: "ss06"`; mono: system ui-monospace.
+The interface uses a warm parchment canvas, matte cards, charcoal rail and
+terracotta accent, with Korean and English copy. Pretendard Variable is
+self-hosted; code uses the system monospace stack.
 
-CSS variables in `globals.css` (light / `.dark`), exposed to Tailwind 4 via `@theme inline`:
+[DESIGN.md](../DESIGN.md) defines the design guidance and interface contract.
+[src/app/globals.css](../src/app/globals.css) is the executable source for
+light/dark color, typography, spacing and focus token values, exposed to Tailwind 4
+through `@theme inline`. Use semantic utilities such as `bg-card`, `text-ink`
+and `border-line` rather than copying color values into components. Focus uses
+`--focus` with `focus-ring` or `focus-ring-offset` as specified in the contract.
 
-| Token | Light | Dark |
-| --- | --- | --- |
-| `--canvas` | `#efe8dc` | `#141210` |
-| `--desk` (panels) | `#f7f2ea` | `#1c1917` |
-| `--card` | `#fffcf7` | `#231f1c` |
-| `--ink` | `#1c1917` | `#f3ede4` |
-| `--mute` | `#78716c` | `#a8a29e` |
-| `--line` | `#e4dccf` | `#35302b` |
-| `--accent` | `#c45c26` | `#e07a45` |
-| `--accent-soft` | `#f6e3d6` | `#3a2519` |
-| `--rail` | `#2a2622` | `#0f0d0c` |
-| `--rail-ink` | `#e9e2d6` | `#e9e2d6` |
-| `--ok` / `--warn` / `--danger` | `#3f7d4e` / `#b7791f` / `#b42318` | lighter variants |
+The desktop shell (≥ 1024px) has a 64px charcoal rail that expands to 220px.
+Without a stored choice, the rail starts expanded at 1280px and wider, and
+collapsed below that width. Mobile has a top bar and bottom navigation:
+Home · Inbox · [capture] · Notes · More. Search stays in the top bar;
+the remaining destinations appear in More.
 
-Tailwind names: `bg-canvas bg-desk bg-card text-ink text-mute border-line bg-accent text-accent bg-accent-soft bg-rail text-rail-ink`. Radius 10px cards / 8px controls, soft shadow `0 1px 2px rgb(28 25 23 / .06), 0 4px 16px rgb(28 25 23 / .05)`. Touch targets ≥ 44px on mobile. Focus ring `ring-2 ring-accent/40`.
+[src/components/shell/nav.ts](../src/components/shell/nav.ts) defines the shared
+route order: Home `/`, Inbox `/inbox`, Notes `/notes`, Tasks `/tasks`,
+Today `/daily`, Search `/search`, Graph `/graph`, Chat `/chat`, Settings
+`/settings`. Labels are localized, and Inbox shows the open-item count.
 
-Shell: desktop (≥ 1024px) = 64px charcoal icon rail (expands to 220px with labels) + content; mobile = top bar + bottom nav (홈 · 노트 · [캡처 FAB] · 검색 · 더보기). Nav: 홈 `/`, 인박스 `/inbox` (badge = open count), 노트 `/notes`, 오늘 `/daily`, 검색 `/search`, 그래프 `/graph`, 채팅 `/chat`, 설정 `/settings`.
-
-Keyboard: `Ctrl/⌘+K` command palette (notes by title + actions), `Ctrl/⌘+P` quick switcher (same palette in note mode), `c` or `Ctrl/⌘+Shift+Space`… capture dialog, `g h/i/n/t/s/g/c` go-to, `/` focus search. Shortcuts are ignored while typing in inputs/editors.
+Keyboard shortcuts: `Ctrl/⌘+K` opens the command palette, `Ctrl/⌘+P` opens its note
+switcher, `c` or `Ctrl/⌘+Shift+Space` opens capture, `g` followed by
+`h/i/n/t/s/g/c` navigates, and `/` focuses search. Single-key shortcuts are
+ignored while an input or editor is focused; explicit Ctrl/⌘ modifier chords
+remain supported there. Shortcut handling guards IME composition.
 
 ## State and retrieval boundaries
 
-- SWR keys retain one response shape. Chat and settings share the plain chat-status DTO.
+- Each SWR key retains a single response shape. Chat and settings share the plain chat-status DTO.
 - Note mutations invalidate individual list pages, SWR Infinite aggregates, title lookups, links, graph/search and time-zone-qualified home snapshots.
 - Draft writes are serialized. Failed flushes prevent destructive actions, and late attachment completion reads the current draft.
 - Hashed n-gram search candidates require literal query n-gram overlap; a hash collision alone is not a match.

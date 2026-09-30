@@ -5,7 +5,7 @@
 <h1 align="center">Irang · 이랑</h1>
 
 <p align="center">
-  A self-hosted notebook for one person's linked Markdown notes.<br>
+  A self-hosted notebook for linked Markdown notes, built for one owner.<br>
   <a href="README.ko.md">한국어</a> · <a href="docs/SETUP.md">Setup guide</a> · <a href="LICENSE">MIT</a>
 </p>
 
@@ -20,12 +20,12 @@ between notes build up over time. You won't need an AI account for any of this.
 ## What it does
 
 - **Capture and inbox.** Save a URL or a quick note first and sort it out later.
-  Inbox items become notes when you're ready. Triage them with single keys,
-  snooze one until later or merge it into a note you already have.
+  Turn inbox items into notes when you're ready. Use single-key shortcuts to
+  triage them, snooze an item until later or merge it into an existing note.
 - **Linked Markdown notes.** Link notes with `[[wiki links]]`, add tags and
-  aliases, and see backlinks and unlinked mentions on every note. Typing `[[`
-  suggests titles and aliases and can create a missing note, and an unlinked
-  mention becomes a link with one click.
+  aliases, and see backlinks and unlinked mentions on every note. Type `[[`
+  to get title and alias suggestions or create a missing note. Turn an
+  unlinked mention into a link with one click.
 - **Daily notes and templates.** Open today's note, or any other day's from a
   small calendar. Templates, including a default for new daily notes, fill in
   `{{date}}` and `{{title}}`.
@@ -37,19 +37,19 @@ between notes build up over time. You won't need an AI account for any of this.
 - **Graphs.** Browse how your notes connect, either across the whole notebook
   or around one note.
 - **Search.** PostgreSQL full-text, trigram and character n-gram matching find
-  exact words and forgive typos. Search compares text, not meaning: its
+  exact words and tolerate typos. Search compares text, not meaning: its
   embeddings are local hashed character n-grams rather than learned semantic
   vectors, and no external embedding API is involved.
 - **Attachments.** Files are stored on your server next to the notes that use
   them.
 - **Markdown export.** Download every note outside the trash, archived ones
   included, as one zip from Settings. Each note becomes a Markdown file with
-  YAML front matter, `[[wiki links]]` stay as written and attachments get their
-  own folder, so the files also open in tools like Obsidian.
+  YAML front matter. `[[wiki links]]` stay as written, and attachments get their
+  own folder. The exported files also open in tools like Obsidian.
 - **Optional cited chat.** Ask questions about your notes. Answers drawn from
   matching notes list those notes as sources. When nothing matches, an answer
   may come without note citations.
-- **Optional Jev.** A connection kept apart from chat. It suggests
+- **Optional Jev.** Connected separately from chat, it suggests
   classifications, tags and possible duplicates for inbox items. Suggestions
   stay with the item, and you pick which tags to apply when you turn it into a
   note.
@@ -81,6 +81,11 @@ INSECURE_COOKIES=1 docker compose up -d --build
 Then open `http://127.0.0.1:3000/setup`, enter the installation code, and
 choose your owner password (at least 12 characters).
 
+The command above sets `INSECURE_COOKIES=1` for that invocation only. To keep
+using loopback HTTP, change the existing `INSECURE_COOKIES=0` line in `.env` to
+`INSECURE_COOKIES=1` before recreating the app container or upgrading. For
+HTTPS, set that line back to `0` before recreating the container.
+
 Here's what each step does:
 
 1. `setup-env` runs in a throwaway Bun container. It creates a private `.env`
@@ -92,8 +97,8 @@ Here's what each step does:
 2. `docker compose up -d --build` builds the app image from this repository's
    `Dockerfile`. There's no prebuilt image to pull. The app starts after the
    database passes its health check.
-3. The app listens on `127.0.0.1` only. `INSECURE_COOKIES=1` is for this local
-   HTTP check only.
+3. The app listens on `127.0.0.1` only. Use `INSECURE_COOKIES=1` only for
+   loopback HTTP; HTTPS requires `INSECURE_COOKIES=0`.
 
 The installation code only works for first-time setup. It isn't the one-time
 code an AI provider shows you when you connect an account.
@@ -128,16 +133,18 @@ Put a TLS-terminating reverse proxy in front of the loopback port, keep
 > copy attachments out of the old container **before** recreating it. The old
 > Compose file didn't persist attachments.
 
-For 2.1 and later on the same Compose project, back up first, then run
-`git pull` and `docker compose up -d --build`. The backup and restore steps are
-in [Data, backup and upgrades](docs/SETUP.md#9-data-backup-and-upgrades).
+For installs on 2.1 or later using the same Compose project, back up first,
+then run `git pull` and `docker compose up -d --build`. Before recreating the
+app, check that `.env` keeps `INSECURE_COOKIES=1` for loopback HTTP or `0` for HTTPS.
+The backup and restore steps are in
+[Data, backup and upgrades](docs/SETUP.md#9-data-backup-and-upgrades).
 
 ## Your data and the network
 
-Notes, the inbox, chats and settings are stored in your own PostgreSQL. The
-search index lives in the same database, and attachments sit in the
-`app-data` volume. Protecting the server, the volumes, `.env` and your backups
-is up to you.
+Notes, inbox items, chats and settings are stored in your own PostgreSQL
+database. The search index lives in the same database, and attachments sit in
+the `app-data` volume. Protecting the server, the volumes, `.env` and your
+backups is up to you.
 
 Irang doesn't send your notes out on its own. Data leaves the server only
 through something you set up or do:
@@ -147,14 +154,17 @@ through something you set up or do:
   provider.
 - **Jev**, after you connect and consent, sends the capture's title, the first
   4,000 characters of its body, and recent note titles and IDs.
-- **Account login and credential refresh** send requests to the provider's sign-in service.
+- **Account login and credential refresh** send requests to the provider's
+  sign-in service.
 - **Capturing a URL** fetches that page from the server.
 - **Remote Markdown resources**, such as images, can load in your browser.
-- Your reverse proxy, package installation and container builds can also involve outside traffic.
+- Your reverse proxy, package installation and container builds can also
+  involve outside traffic.
 
 Both AI features are off by default. API keys and account credentials stay
 on the server and are never sent back to the browser. This isn't a
-zero-network or fully offline app. AI consent controls chat and Jev, not every network request.
+zero-network or fully offline app. AI consent controls chat and Jev, not every
+network request.
 
 ## AI providers (optional)
 
@@ -165,11 +175,11 @@ TypeSafe or OpenRouter. Models, login flows and endpoints are listed in
 [AI configuration](docs/SETUP.md#8-ai-configuration-optional-per-provider).
 
 **About Gemini account login.** Irang exchanges the Google authorization code
-itself, using the public OAuth client of the official Gemini CLI, and runs
+directly using the official Gemini CLI's public OAuth client, then runs
 inference through that CLI. Google hasn't reviewed or endorsed Irang. Google's
 [Gemini CLI terms and privacy notice](https://github.com/google-gemini/gemini-cli/blob/main/docs/resources/tos-privacy.md)
-restricts direct third-party access to the services behind the CLI. Read it and
-decide whether this mode fits your use. The API-key mode is always available
+restricts direct third-party access to the services the CLI uses. Read it and
+decide whether this mode fits your use. API-key mode is always available
 instead.
 
 ## Development
@@ -199,7 +209,7 @@ operations are in
 
 - [docs/SETUP.md](docs/SETUP.md): installation, HTTPS, upgrades, backup, recovery
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): structure and API contracts
-- [docs/REBUILD-AUDIT.md](docs/REBUILD-AUDIT.md): reproduced defects and verification results
+- [docs/REBUILD-AUDIT.md](docs/REBUILD-AUDIT.md): historical v2 rebuild defects and verification results
 
 ## License
 
