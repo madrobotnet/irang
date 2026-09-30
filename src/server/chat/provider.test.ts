@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { resolveCodexAuth, type CodexSession } from "./auth";
 import { consumeResponseStream, createCodexProvider } from "./provider";
+import { groundedQuestion, groundingInstructions } from "@/server/i18n/copy";
 
 const temporaryDirectories: string[] = [];
 afterEach(async () => {
@@ -44,6 +45,30 @@ describe("Codex authentication", () => {
 });
 
 describe("Codex provider", () => {
+  test("uses the requested language while preserving user and source text", async () => {
+    let requestBody = "";
+    const provider = createCodexProvider({
+      kind: "chatgpt", accessToken: "token", accountId: "account", refreshToken: null, authFilePath: "/unused",
+    }, {
+      fetchImpl: Object.assign(async (_url: RequestInfo | URL, init?: RequestInit) => {
+        requestBody = String(init?.body);
+        return new Response('data: {"type":"response.output_text.delta","delta":"ok"}\n\ndata: {"type":"response.completed","response":{}}\n\n');
+      }, { preconnect: fetch.preconnect }),
+    });
+    const input = {
+      locale: "en" as const,
+      question: "질문 그대로 <tag>",
+      history: [],
+      sources: [{ noteId: "id-1", title: "제목 그대로", excerpt: "본문 그대로" }],
+    };
+
+    await provider.stream(input, () => undefined, new AbortController().signal);
+
+    const body = JSON.parse(requestBody) as { instructions: string; input: Array<{ content: Array<{ text: string }> }> };
+    expect(body.instructions).toBe(groundingInstructions("en"));
+    expect(body.input.at(-1)?.content[0]?.text).toBe(groundedQuestion("en", input.question, input.sources));
+  });
+
   test("parses CRLF events split across arbitrary chunk boundaries", async () => {
     const deltas: string[] = [];
     const text = await consumeResponseStream(stream([

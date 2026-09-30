@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import ForceGraph2D, { type ForceGraphMethods } from "react-force-graph-2d";
+import { useLocale } from "@/components/i18n";
 import type { GraphNode } from "@/lib/types";
 import {
   cloneGraphData,
@@ -70,9 +71,11 @@ export const ForceGraphCanvas = forwardRef<GraphCanvasHandle, Props>(function Fo
 ) {
   const hostRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<ForceGraphMethods<MutableGraphNode, MutableGraphLink> | undefined>(undefined);
+  const framedRef = useRef<MutableGraphData | null>(null);
   const [width, setWidth] = useState(1);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const reducedMotion = useSyncExternalStore(subscribeMotion, motionSnapshot, () => false);
+  const { locale } = useLocale();
   const graph = useMemo(() => cloneGraphData(data), [data]);
   const activeId = hoveredId ?? selectedId;
   const active = useMemo(() => neighborIds(graph, activeId), [graph, activeId]);
@@ -86,6 +89,10 @@ export const ForceGraphCanvas = forwardRef<GraphCanvasHandle, Props>(function Fo
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (framedRef.current === graph) graphRef.current?.zoomToFit(reducedMotion ? 0 : 300, 32);
+  }, [graph, width, height, reducedMotion]);
+
   useImperativeHandle(handleRef, () => ({
     fit: () => graphRef.current?.zoomToFit(reducedMotion ? 0 : 300, 32),
     reset: () => {
@@ -93,11 +100,13 @@ export const ForceGraphCanvas = forwardRef<GraphCanvasHandle, Props>(function Fo
         node.fx = undefined;
         node.fy = undefined;
       }
+      framedRef.current = null;
       graphRef.current?.resumeAnimation();
       graphRef.current?.d3ReheatSimulation();
       graphRef.current?.zoomToFit(reducedMotion ? 0 : 300, 32);
     },
     zoomBy: (factor) => {
+      framedRef.current = graph;
       const instance = graphRef.current;
       if (instance) instance.zoom(instance.zoom() * factor, reducedMotion ? 0 : 180);
     },
@@ -124,9 +133,11 @@ export const ForceGraphCanvas = forwardRef<GraphCanvasHandle, Props>(function Fo
     const tag = primaryTag(node);
     return tag ? colors.tags[stablePaletteIndex(tag, colors.tags.length)]! : colors.mute;
   };
+  // Capture gestures before d3 consumes them, so first-settle fitting cannot undo user intent.
+  const keepUserView = () => { framedRef.current = graph; };
 
   return (
-    <div ref={hostRef} className="h-full w-full overflow-hidden rounded-card bg-card" style={{ height }}>
+    <div ref={hostRef} className="h-full w-full overflow-hidden rounded-card bg-card" style={{ height }} onPointerDownCapture={keepUserView} onWheelCapture={keepUserView}>
       <ForceGraph2D<MutableGraphNode, MutableGraphLink>
         ref={graphRef}
         graphData={graph as MutableGraphData}
@@ -135,7 +146,7 @@ export const ForceGraphCanvas = forwardRef<GraphCanvasHandle, Props>(function Fo
         backgroundColor={colors.card}
         nodeVal={(node) => Math.max(1, Math.sqrt(node.degree + 1))}
         nodeColor={nodeColor}
-        nodeLabel={graphTooltip}
+        nodeLabel={(node) => graphTooltip(node, locale)}
         linkColor={(link) => {
           if (!activeId) return colors.line;
           return endpointId(link.source) === activeId || endpointId(link.target) === activeId ? colors.ink : colors.line;
@@ -146,6 +157,12 @@ export const ForceGraphCanvas = forwardRef<GraphCanvasHandle, Props>(function Fo
         maxZoom={8}
         cooldownTicks={reducedMotion ? 1 : 120}
         autoPauseRedraw
+        onEngineStop={() => {
+          // Later stops after dragging or unpinning preserve the camera.
+          if (framedRef.current === graph) return;
+          framedRef.current = graph;
+          graphRef.current?.zoomToFit(reducedMotion ? 0 : 300, 32);
+        }}
         onNodeHover={(node) => setHoveredId(node?.id ?? null)}
         onNodeClick={(node) => onSelect(node)}
         onNodeDrag={() => graphRef.current?.resumeAnimation()}

@@ -1,3 +1,4 @@
+import { aiAuthCopy } from "@/server/i18n/ai-auth-copy";
 import type { AuthProtocolOptions } from "@/lib/ai-auth";
 import type { AuthAttemptView, AuthStartInput } from "@/lib/ai-auth-flow";
 import { query, tx } from "@/server/db";
@@ -14,7 +15,7 @@ export async function startAuthAttempt(
   scope: AiAuthScope,
   options: AuthProtocolOptions = {},
 ): Promise<AuthAttemptView> {
-  if (!scope.browserHash) throw new ApiError("forbidden", "로그인 브라우저를 확인할 수 없습니다.");
+  if (!scope.browserHash) throw new ApiError("forbidden", aiAuthCopy.browserUnknown);
   const now = (options.now ?? Date.now)();
   const id = crypto.randomUUID();
   const expiresAt = new Date(now + 15 * 60_000);
@@ -26,7 +27,7 @@ export async function startAuthAttempt(
        WHERE scope_key = $1 AND status IN ('starting', 'pending', 'ready')`,
       [scope.key],
     );
-    if ((count.rows[0]?.count ?? 0) >= 8) throw new ApiError("rate_limited", "진행 중인 로그인을 취소한 뒤 다시 시도해 주세요.");
+    if ((count.rows[0]?.count ?? 0) >= 8) throw new ApiError("rate_limited", aiAuthCopy.tooManyPending);
     await client.query(
       `INSERT INTO ai_auth_attempts (id, provider, scope_key, browser_hash, status, payload, expires_at)
        VALUES ($1, $2, $3, $4, 'starting', '{}'::jsonb, $5)`,
@@ -76,11 +77,11 @@ export async function startAuthAttempt(
       [id, JSON.stringify(payload), expiry, nextPollAt],
     );
     const attempt = rows[0];
-    if (!attempt) throw new ApiError("conflict", "로그인 요청이 취소되었습니다.");
+    if (!attempt) throw new ApiError("conflict", aiAuthCopy.startCanceled);
     return authAttemptView(attempt, now);
   } catch (error) {
     await query("DELETE FROM ai_auth_attempts WHERE id = $1", [id]);
     if (error instanceof ApiError) throw error;
-    throw new ApiError("upstream_failed", "제공자 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    throw new ApiError("upstream_failed", aiAuthCopy.startFailed);
   }
 }

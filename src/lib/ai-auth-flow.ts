@@ -1,3 +1,5 @@
+import { localizedIssue } from "@/lib/i18n/validation";
+import { authFlowIssueCopy } from "@/lib/i18n/ai-validation-copy";
 import { z } from "zod";
 import { WebAuthProviderSchema } from "./ai-auth";
 
@@ -11,7 +13,7 @@ export const AuthStartInputSchema = AuthScopeInputSchema.extend({
     .regex(/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/).optional(),
 }).strict().superRefine((value, context) => {
   if (value.enterpriseDomain && value.provider !== "github-copilot") {
-    context.addIssue({ code: "custom", path: ["enterpriseDomain"], message: "기업 도메인은 GitHub Copilot에서만 사용합니다." });
+    context.addIssue({ code: "custom", path: ["enterpriseDomain"], ...localizedIssue(authFlowIssueCopy.copilotDomainOnly) });
   }
 });
 export type AuthStartInput = z.infer<typeof AuthStartInputSchema>;

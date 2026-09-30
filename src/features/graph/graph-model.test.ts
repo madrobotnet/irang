@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { copyParityIssues } from "@/lib/i18n/copy";
+import { LOCALES } from "@/lib/i18n/locale";
 import type { GraphData } from "@/lib/types";
+import { GRAPH_COPY } from "./graph-copy";
 import { cloneGraphData, graphKey, graphTooltip, neighborIds, stablePaletteIndex, visibleLegendTags } from "./graph-model";
 
 const data: GraphData = {
@@ -42,8 +45,22 @@ describe("graph model", () => {
   });
 
   test("keeps title markup inert at the HTML tooltip boundary", () => {
-    const tooltip = graphTooltip({ label: '<b data-qa-tooltip>A & B</b>', degree: 0 });
-    expect(tooltip).toStartWith('&lt;b data-qa-tooltip&gt;A &amp; B&lt;/b&gt;');
-    expect(tooltip).not.toContain("<");
+    for (const locale of LOCALES) {
+      const tooltip = graphTooltip({ label: '<b data-qa-tooltip>A & B</b>', degree: 0 }, locale);
+      expect(tooltip).toStartWith('&lt;b data-qa-tooltip&gt;A &amp; B&lt;/b&gt;');
+      expect(tooltip).not.toContain("<");
+    }
+  });
+
+  test("keeps Korean and English graph copy in parity", () => {
+    expect(copyParityIssues(GRAPH_COPY)).toEqual([]);
+  });
+
+  test("renders the tooltip connection count from the requested locale", () => {
+    for (const locale of LOCALES) {
+      for (const degree of [0, 1, 2]) {
+        expect(graphTooltip({ label: "A", degree }, locale)).toEndWith(GRAPH_COPY[locale].canvas.tooltipLinks(degree));
+      }
+    }
   });
 });

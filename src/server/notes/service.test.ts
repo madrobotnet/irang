@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { UNTITLED } from "@/server/i18n/copy";
 import { query, tx } from "@/server/db";
 import { closeDb, connectTestDatabase, resetData } from "@/server/test/db";
 import {
@@ -42,6 +43,13 @@ describe("note service", () => {
     );
     expect(rows[0]?.embedded).toBe(true);
     expect(rows[0]?.fresh).toBe(true);
+  });
+
+  test("uses independent localized default-title collision sequences", async () => {
+    const first = await createNote({}, undefined, "en");
+    const second = await createNote({}, undefined, "en");
+    const korean = await createNote({});
+    expect([first.title, second.title, korean.title]).toEqual([UNTITLED.en, `${UNTITLED.en} 2`, UNTITLED.ko]);
   });
 
   test("resolves a wikilink, preserves it across rename, then hides and restores the backlink", async () => {

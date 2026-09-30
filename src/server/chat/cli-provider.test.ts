@@ -6,12 +6,13 @@ import path from "node:path";
 import { z } from "zod";
 import { createCliProvider, type CliProviderOptions } from "./cli-provider";
 import { ChatProviderError } from "./provider";
+import { cliInstructions } from "@/server/i18n/copy";
 
 const roots: string[] = [];
 const nodeRuntime = Bun.which("node");
 if (!nodeRuntime) throw new Error("Node is required for the official-CLI subprocess fixtures");
 const fixtureCommand = { runtime: nodeRuntime, script: path.join(import.meta.dir, "cli-provider-fixture.ts") };
-const request = { question: "question", history: [], sources: [] };
+const request = { question: "question", history: [], sources: [], locale: "ko" as const };
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -92,6 +93,7 @@ test("isolates config and environment while carrying untrusted text only through
   const marker = path.join(root, "should-not-exist");
   const dangerous = `$(touch ${marker}); \`touch ${marker}\` @/etc/passwd\n/quit`;
   const data = {
+    locale: "en" as const,
     question: dangerous,
     history: [{ role: "user" as const, content: dangerous }],
     sources: [{ noteId: "note-1", title: dangerous, excerpt: dangerous }],
@@ -100,7 +102,9 @@ test("isolates config and environment while carrying untrusted text only through
   const answer = await provider.stream(data, () => undefined, new AbortController().signal);
   const inspected = inspectionSchema.parse(JSON.parse(answer));
   // Then
-  expect(JSON.parse(inspected.stdin)).toMatchObject(data);
+  expect(JSON.parse(inspected.stdin)).toEqual({
+    instructions: cliInstructions("en"), question: data.question, history: data.history, sources: data.sources,
+  });
   expect(inspected.stdin).not.toContain("@");
   expect(inspected.argv.join(" ")).not.toContain(dangerous);
   expect(inspected.argv.slice(0, 6)).toEqual(["--output-format", "stream-json", "--approval-mode", "default", "--extensions", "none"]);

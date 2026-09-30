@@ -1,3 +1,4 @@
+import { aiAuthCopy } from "@/server/i18n/ai-auth-copy";
 import { ConnectionProfileSchema, type ConnectionProfile } from "@/lib/ai-settings";
 import type { AuthProtocolOptions } from "@/lib/ai-auth";
 import { tx } from "@/server/db";
@@ -38,7 +39,7 @@ export async function refreshedConnectionProfile(
       return updated;
     } catch (error) {
       if (!(error instanceof OAuthProtocolError)) throw error;
-      throw new ApiError("unavailable", "AI 계정 인증을 갱신하지 못했습니다. 설정에서 다시 연결해 주세요.");
+      throw new ApiError("unavailable", aiAuthCopy.refreshFailed);
     }
   });
 }

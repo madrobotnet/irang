@@ -1,3 +1,4 @@
+import { setupCopy } from "@/server/i18n/setup-copy";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { queryOne } from "@/server/db";
 import { ApiError } from "@/server/http";
@@ -21,16 +22,16 @@ export async function setupState(): Promise<SetupState> {
 
 /** Shared first-run authorization for owner creation and provider login. */
 export async function requireInstallerAccess(token: string): Promise<string> {
-  if (await setupState() === "complete") throw new ApiError("conflict", "최초 설정이 이미 완료되었습니다. 로그인해 주세요.");
+  if (await setupState() === "complete") throw new ApiError("conflict", setupCopy.alreadyComplete);
   const expected = process.env.SETUP_TOKEN?.trim();
   if (!expected || expected.length < 32 || expected.length > 256) {
-    throw new ApiError("unavailable", "서버에 32자 이상의 SETUP_TOKEN을 먼저 설정해 주세요.");
+    throw new ApiError("unavailable", setupCopy.tokenMissing);
   }
   const digest = (value: string) => createHash("sha256").update(value).digest();
   const supplied = digest(token);
   if (!timingSafeEqual(digest(expected), supplied)) {
-    throw new ApiError("forbidden", "설치 확인 코드가 맞지 않습니다.");
+    throw new ApiError("forbidden", setupCopy.wrongCode);
   }
-  if (process.env.AUTH_PASSWORD_HASH?.trim()) throw new ApiError("conflict", "이미 설정된 서버입니다.");
+  if (process.env.AUTH_PASSWORD_HASH?.trim()) throw new ApiError("conflict", setupCopy.alreadySetUp);
   return `setup:${supplied.toString("hex")}`;
 }

@@ -6,7 +6,8 @@ export type DraftSnapshot = EditableNote & {
   noteId: string;
   version: number;
   state: SaveState;
-  error: string | null;
+  /** The last save failure as thrown, kept whole so the UI renders it in the current language. */
+  error: unknown;
   updatedAt: string;
 };
 
@@ -97,7 +98,7 @@ export class NoteDraftController {
         this.snapshot = {
           ...this.snapshot,
           state: "failed",
-          error: error instanceof Error ? error.message : "저장하지 못했습니다.",
+          error,
         };
         this.emit();
         return false;

@@ -1,8 +1,10 @@
 import type { PoolClient } from "pg";
 import type { ChatMessage, ChatThread, Citation } from "@/lib/types";
+import type { Locale } from "@/lib/i18n/locale";
 import { excerpt } from "@/lib/wikilinks";
 import { db, query, queryOne } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { chatCopy, EMPTY_ANSWER, NEW_THREAD_TITLE } from "@/server/i18n/copy";
 import { searchNotes } from "@/server/search/service";
 import type { CodexAuth } from "./auth";
 import { configuredChatProvider } from "./connection";
@@ -16,17 +18,16 @@ type MessageRow = {
   citations: unknown;
   created_at: Date | string;
 };
-type StreamOptions = { auth?: CodexAuth; provider?: ChatProvider; signal?: AbortSignal };
+type StreamOptions = { auth?: CodexAuth; provider?: ChatProvider; signal?: AbortSignal; locale?: Locale };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const EMPTY_ANSWER = "관련 노트에서 답변의 근거를 찾지 못했습니다.";
 
 function iso(value: Date | string): string {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-function mapThread(row: ThreadRow): ChatThread {
-  return { id: row.id, title: row.title || "새 대화", createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) };
+function mapThread(row: ThreadRow, locale: Locale): ChatThread {
+  return { id: row.id, title: row.title || NEW_THREAD_TITLE[locale], createdAt: iso(row.created_at), updatedAt: iso(row.updated_at) };
 }
 
 function citations(value: unknown): Citation[] {
@@ -52,57 +53,57 @@ function mapMessage(row: MessageRow): ChatMessage {
 }
 
 function validId(id: string): void {
-  if (!UUID.test(id)) throw new ApiError("not_found", "대화를 찾을 수 없습니다.");
+  if (!UUID.test(id)) throw new ApiError("not_found", chatCopy.threadNotFound);
 }
 
 export async function getChatStatus(): Promise<{ available: boolean }> {
   return { available: (await configuredChatProvider()) !== null };
 }
 
-export async function listChatThreads(): Promise<ChatThread[]> {
+export async function listChatThreads(locale: Locale = "ko"): Promise<ChatThread[]> {
   return (await query<ThreadRow>(
     "SELECT id::text, title, created_at, updated_at FROM chat_threads WHERE archived_at IS NULL ORDER BY updated_at DESC, id DESC",
-  )).map(mapThread);
+  )).map((row) => mapThread(row, locale));
 }
 
-export async function createChatThread(title?: string): Promise<ChatThread> {
+export async function createChatThread(title?: string, locale: Locale = "ko"): Promise<ChatThread> {
   const row = await queryOne<ThreadRow>(
     "INSERT INTO chat_threads (title) VALUES ($1) RETURNING id::text, title, created_at, updated_at",
-    [title?.trim() || "새 대화"],
+    [title?.trim() || NEW_THREAD_TITLE[locale]],
   );
-  return mapThread(row!);
+  return mapThread(row!, locale);
 }
 
-export async function getChatThread(id: string): Promise<{ thread: ChatThread; messages: ChatMessage[] }> {
+export async function getChatThread(id: string, locale: Locale = "ko"): Promise<{ thread: ChatThread; messages: ChatMessage[] }> {
   validId(id);
   const row = await queryOne<ThreadRow>(
     "SELECT id::text, title, created_at, updated_at FROM chat_threads WHERE id = $1 AND archived_at IS NULL",
     [id],
   );
-  if (!row) throw new ApiError("not_found", "대화를 찾을 수 없습니다.");
+  if (!row) throw new ApiError("not_found", chatCopy.threadNotFound);
   const messages = await query<MessageRow>(
     `SELECT id::text, role, content, citations, created_at FROM chat_messages
       WHERE thread_id = $1 AND role IN ('user', 'assistant') ORDER BY created_at, id`,
     [id],
   );
-  return { thread: mapThread(row), messages: messages.map(mapMessage) };
+  return { thread: mapThread(row, locale), messages: messages.map(mapMessage) };
 }
 
-export async function updateChatThread(id: string, title: string): Promise<ChatThread> {
+export async function updateChatThread(id: string, title: string, locale: Locale = "ko"): Promise<ChatThread> {
   validId(id);
   const row = await queryOne<ThreadRow>(
     `UPDATE chat_threads SET title = $2, updated_at = now()
       WHERE id = $1 AND archived_at IS NULL RETURNING id::text, title, created_at, updated_at`,
     [id, title.trim()],
   );
-  if (!row) throw new ApiError("not_found", "대화를 찾을 수 없습니다.");
-  return mapThread(row);
+  if (!row) throw new ApiError("not_found", chatCopy.threadNotFound);
+  return mapThread(row, locale);
 }
 
 export async function deleteChatThread(id: string): Promise<void> {
   validId(id);
   const row = await queryOne<{ id: string }>("DELETE FROM chat_threads WHERE id = $1 RETURNING id::text", [id]);
-  if (!row) throw new ApiError("not_found", "대화를 찾을 수 없습니다.");
+  if (!row) throw new ApiError("not_found", chatCopy.threadNotFound);
 }
 
 function sse(event: string, data: unknown): Uint8Array {
@@ -119,6 +120,7 @@ export async function createChatMessageStream(
   content: string,
   options: StreamOptions = {},
 ): Promise<Response> {
+  const locale = options.locale ?? "ko";
   validId(threadId);
   let provider = options.provider;
   if (!provider) {
@@ -140,7 +142,7 @@ export async function createChatMessageStream(
     }
   }
   if (!provider) {
-    throw new ApiError("unavailable", "설정에서 사용할 AI 제공자와 연결 방식을 선택해 주세요.");
+    throw new ApiError("unavailable", chatCopy.noProvider);
   }
 
   const pool = await db();
@@ -151,12 +153,12 @@ export async function createChatMessageStream(
       "SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS locked",
       [threadId],
     );
-    if (!lock.rows[0]?.locked) throw new ApiError("conflict", "이 대화의 답변을 이미 생성하고 있습니다.");
+    if (!lock.rows[0]?.locked) throw new ApiError("conflict", chatCopy.busy);
     const thread = await client.query<{ id: string }>(
       "SELECT id::text FROM chat_threads WHERE id = $1 AND archived_at IS NULL FOR UPDATE",
       [threadId],
     );
-    if (!thread.rows[0]) throw new ApiError("not_found", "대화를 찾을 수 없습니다.");
+    if (!thread.rows[0]) throw new ApiError("not_found", chatCopy.threadNotFound);
   } catch (error) {
     await rollback(client);
     throw error;
@@ -204,13 +206,13 @@ export async function createChatMessageStream(
           }
           controller.enqueue(sse("citations", sourceCitations));
 
-          let answer = EMPTY_ANSWER;
+          let answer = EMPTY_ANSWER[locale];
           if (sourceCitations.length > 0) {
             const history: ProviderMessage[] = historyResult.rows.reverse().map((message) => ({
               role: message.role,
               content: message.content,
             }));
-            answer = await provider.stream({ question: content, history, sources: sourceCitations },
+            answer = await provider.stream({ question: content, history, sources: sourceCitations, locale },
               (text) => controller.enqueue(sse("delta", { text })), abort.signal);
           } else {
             controller.enqueue(sse("delta", { text: answer }));
@@ -239,8 +241,8 @@ export async function createChatMessageStream(
           if (!abort.signal.aborted) {
             const code = error instanceof ChatProviderError ? "upstream_failed" : "internal";
             const message = error instanceof ChatProviderError
-              ? "채팅 모델 응답을 받지 못했습니다."
-              : "답변을 생성하지 못했습니다.";
+              ? chatCopy.upstream[locale]
+              : chatCopy.failed[locale];
             controller.enqueue(sse("error", { code, message }));
             controller.close();
           }

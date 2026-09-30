@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import type { LinkContext, Note, NoteLinks, NoteRef, NoteSummary, TagCount } from "@/lib/types";
+import type { Locale } from "@/lib/i18n/locale";
 import { embedText, vectorLiteral } from "@/lib/embed";
 import {
   excerpt,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/wikilinks";
 import { db, tx } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { notesCopy, UNTITLED, untitledCandidate } from "@/server/i18n/copy";
 import { storagePath } from "./attachment-storage";
 import { retryAttachmentCleanup } from "./attachment-cleanup";
 
@@ -36,7 +38,7 @@ export type ListNotesInput = {
 };
 
 export function assertNoteId(id: string): void {
-  if (!UUID_RE.test(id)) throw new ApiError("validation", "올바른 UUID가 아닙니다.");
+  if (!UUID_RE.test(id)) throw new ApiError("validation", notesCopy.badUuid);
 }
 const iso = (value: string | Date): string => new Date(value).toISOString();
 function dateOnly(value: string | Date | null): string | null {
@@ -129,21 +131,22 @@ function normalizeAliases(values: readonly string[]): string[] {
   return [...aliases.values()];
 }
 
-async function uniqueUntitled(q: Executor): Promise<string> {
+async function uniqueUntitled(q: Executor, locale: Locale): Promise<string> {
+  const base = UNTITLED[locale];
   await q.query("SELECT pg_advisory_xact_lock(hashtextextended('notes:untitled',0))");
   const result = await q.query<{ title: string }>(
-    "SELECT title FROM notes WHERE deleted_at IS NULL AND (title='제목 없음' OR title ~ '^제목 없음 [0-9]+$')",
+    "SELECT title FROM notes WHERE deleted_at IS NULL AND (title=$1 OR title ~ ('^' || $1 || ' [0-9]+$'))", [base],
   );
   const used = new Set(result.rows.map((row) => row.title));
-  if (!used.has("제목 없음")) return "제목 없음";
+  if (!used.has(base)) return base;
   for (let suffix = 2; ; suffix += 1) {
-    const candidate = `제목 없음 ${suffix}`;
+    const candidate = untitledCandidate(locale, suffix);
     if (!used.has(candidate)) return candidate;
   }
 }
 
-async function createInTransaction(input: CreateNoteInput, client: PoolClient): Promise<Note> {
-  const title = input.title?.trim() || (await uniqueUntitled(client));
+async function createInTransaction(input: CreateNoteInput, client: PoolClient, locale: Locale): Promise<Note> {
+  const title = input.title?.trim() || (await uniqueUntitled(client, locale));
   const body = input.body ?? "";
   const tags = mergeTags(input.tags ?? [], parseInlineTags(body));
   const result = await client.query<NoteRow>(
@@ -157,8 +160,8 @@ async function createInTransaction(input: CreateNoteInput, client: PoolClient): 
   return mapNote(row);
 }
 
-export async function createNote(input: CreateNoteInput, client?: PoolClient): Promise<Note> {
-  return client ? createInTransaction(input, client) : tx((transaction) => createInTransaction(input, transaction));
+export async function createNote(input: CreateNoteInput, client?: PoolClient, locale: Locale = "ko"): Promise<Note> {
+  return client ? createInTransaction(input, client, locale) : tx((transaction) => createInTransaction(input, transaction, locale));
 }
 
 export async function getNote(id: string): Promise<Note | null> {
@@ -173,10 +176,10 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
   return tx(async (client) => {
     const currentResult = await client.query<NoteRow>("SELECT * FROM notes WHERE id=$1 FOR UPDATE", [id]);
     const current = currentResult.rows[0];
-    if (!current) throw new ApiError("not_found", "노트를 찾을 수 없습니다.");
-    if (current.deleted_at) throw new ApiError("conflict", "휴지통의 노트는 수정할 수 없습니다.");
+    if (!current) throw new ApiError("not_found", notesCopy.notFound);
+    if (current.deleted_at) throw new ApiError("conflict", notesCopy.trashedReadOnly);
     const title = input.title === undefined ? current.title : input.title.trim();
-    if (!title) throw new ApiError("validation", "제목을 입력해 주세요.");
+    if (!title) throw new ApiError("validation", notesCopy.titleRequired);
     const body = input.body ?? current.body;
     const tags = mergeTags(input.tags ?? current.tags, parseInlineTags(body));
     let aliases = input.aliases ? normalizeAliases(input.aliases) : current.aliases;
@@ -205,7 +208,7 @@ export async function trashNote(id: string): Promise<Note> {
     const result = await client.query<NoteRow>(
       "UPDATE notes SET deleted_at=coalesce(deleted_at,now()),updated_at=now() WHERE id=$1 RETURNING *", [id],
     );
-    if (!result.rows[0]) throw new ApiError("not_found", "노트를 찾을 수 없습니다.");
+    if (!result.rows[0]) throw new ApiError("not_found", notesCopy.notFound);
     for (const source of sources.rows) await materializeLinks(client, source.id, source.body);
     return mapNote(result.rows[0]);
   });
@@ -218,7 +221,7 @@ export async function restoreNote(id: string): Promise<Note> {
       "SELECT * FROM notes WHERE id=$1 AND deleted_at IS NOT NULL FOR UPDATE", [id],
     );
     const original = trashed.rows[0];
-    if (!original) throw new ApiError("not_found", "휴지통에서 노트를 찾을 수 없습니다.");
+    if (!original) throw new ApiError("not_found", notesCopy.notInTrash);
     const dailyDate = dateOnly(original.daily_date);
     if (dailyDate) {
       // Use the same lock as daily creation so the uniqueness check cannot race it.
@@ -227,14 +230,14 @@ export async function restoreNote(id: string): Promise<Note> {
         "SELECT id FROM notes WHERE daily_date=$1 AND deleted_at IS NULL", [dailyDate],
       );
       if (replacement.rowCount) {
-        throw new ApiError("conflict", "같은 날짜의 노트가 이미 있습니다. 기존 노트를 정리한 뒤 복원해 주세요.");
+        throw new ApiError("conflict", notesCopy.dailyConflict);
       }
     }
     const result = await client.query<NoteRow>(
       "UPDATE notes SET deleted_at=NULL,purge_at=NULL,updated_at=now() WHERE id=$1 AND deleted_at IS NOT NULL RETURNING *", [id],
     );
     const row = result.rows[0];
-    if (!row) throw new ApiError("not_found", "휴지통에서 노트를 찾을 수 없습니다.");
+    if (!row) throw new ApiError("not_found", notesCopy.notInTrash);
     await materializeLinks(client, id, row.body);
     await resolveTargets(client, id, [row.title, ...row.aliases]);
     return mapNote(row);
@@ -248,7 +251,7 @@ export async function purgeNote(id: string): Promise<void> {
     const note = await client.query(
       "SELECT id FROM notes WHERE id=$1 AND deleted_at IS NOT NULL FOR UPDATE", [id],
     );
-    if (note.rowCount === 0) throw new ApiError("conflict", "휴지통에 있는 노트만 영구 삭제할 수 있습니다.");
+    if (note.rowCount === 0) throw new ApiError("conflict", notesCopy.purgeOnlyTrashed);
     const sources = await client.query<{ id: string; body: string }>(
       "SELECT n.id,n.body FROM links l JOIN notes n ON n.id=l.from_note_id WHERE l.to_note_id=$1 AND n.deleted_at IS NULL", [id],
     );
@@ -277,7 +280,7 @@ function parseCursor(cursor: string): Cursor {
     if (typeof value.updatedAt !== "string" || typeof value.id !== "string" || !UUID_RE.test(value.id)) throw new Error();
     if (!Number.isFinite(Date.parse(value.updatedAt))) throw new Error();
     return { updatedAt: value.updatedAt, id: value.id };
-  } catch { throw new ApiError("validation", "올바르지 않은 커서입니다."); }
+  } catch { throw new ApiError("validation", notesCopy.badCursor); }
 }
 
 export async function listNotes(input: ListNotesInput): Promise<{ notes: NoteSummary[]; nextCursor: string | null }> {
@@ -320,7 +323,7 @@ export async function findNoteTitles(qText = "", limit = 10): Promise<NoteRef[]>
 
 export async function getOrCreateByTitle(titleInput: string): Promise<Note> {
   const title = titleInput.trim();
-  if (!title) throw new ApiError("validation", "제목을 입력해 주세요.");
+  if (!title) throw new ApiError("validation", notesCopy.titleRequired);
   return tx(async (client) => {
     const key = normalizeTitle(title);
     await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [`notes:title:${key}`]);
@@ -367,7 +370,7 @@ export async function getNoteLinks(id: string): Promise<NoteLinks> {
   const q = await executor();
   const noteResult = await q.query<NoteRow>("SELECT * FROM notes WHERE id=$1", [id]);
   const note = noteResult.rows[0];
-  if (!note) throw new ApiError("not_found", "노트를 찾을 수 없습니다.");
+  if (!note) throw new ApiError("not_found", notesCopy.notFound);
   const outgoing = await q.query<NoteRef>(
     "SELECT n.id,n.title FROM links l JOIN notes n ON n.id=l.to_note_id WHERE l.from_note_id=$1 AND n.deleted_at IS NULL ORDER BY n.title", [id],
   );

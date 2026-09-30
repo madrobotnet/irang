@@ -1,3 +1,4 @@
+import type { LocalizedText } from "@/lib/i18n/locale";
 import type { ChatMessage, Citation } from "@/lib/types";
 
 /** One dispatched server-sent event: `event:` name plus joined `data:` lines. */
@@ -14,7 +15,8 @@ export type ChatStreamEvent =
 
 export type StreamOutcome =
   | { kind: "done"; message: ChatMessage }
-  | { kind: "error"; code: string; message: string }
+  /** `message` is a server diagnostic and is never shown; `localized` is the user-facing text of an HTTP error body, when sent. */
+  | { kind: "error"; code: string; message: string; localized?: LocalizedText }
   /** The body ended (or broke) before a `done` or `error` event: never a successful answer. */
   | { kind: "incomplete"; reason: "eof" | "malformed" | "network" }
   | { kind: "aborted" };

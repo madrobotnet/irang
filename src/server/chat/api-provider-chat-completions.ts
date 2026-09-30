@@ -2,8 +2,8 @@ import { z } from "zod";
 import { consumeJsonSse } from "./api-provider-stream";
 import {
   type ApiAdapterConfig,
-  GROUNDING_INSTRUCTIONS,
   groundedQuestion,
+  groundingInstruction,
   postApiStream,
   requestSignal,
 } from "./api-provider-shared";
@@ -29,7 +29,7 @@ export function createChatCompletionsApiProvider(config: ApiAdapterConfig): Chat
         body: JSON.stringify({
           model: config.model,
           messages: [
-            { role: "system", content: GROUNDING_INSTRUCTIONS },
+            { role: "system", content: groundingInstruction(input) },
             ...input.history.map((message) => ({
               role: message.role,
               content: message.content,

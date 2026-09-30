@@ -15,6 +15,7 @@ import {
 import { isCustomProvider } from "@/lib/ai-providers";
 import { chatAuthModels, JEV_AUTH_MODELS } from "@/lib/ai-model-catalog";
 import { isSelectableAuthModel, savedModelFor } from "./model-choice";
+import type { ConnectionErrorKey } from "./ai-copy";
 import type {
   BuildConnectionResult,
   ChatFormState,
@@ -114,25 +115,44 @@ export function jevFormFromView(view: JevConnectionView, name = ""): JevFormStat
 function parseModel(model: string, errors: ConnectionErrors): string | null {
   const result = ModelSchema.safeParse(model);
   if (!result.success) {
-    errors.model = "영문, 숫자와 . _ : @ ~ / - 만 사용한 모델 ID를 입력해 주세요.";
+    errors.model = "modelFormat";
     return null;
   }
   return result.data;
 }
 
-const AUTH_MODEL_ERROR = "목록에서 사용할 모델을 선택해 주세요.";
+function isUrl(value: string): boolean {
+  try {
+    return new URL(value).href.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Reason for a rejected base URL, from the schema's issue code and the value (never its message text). */
+function baseUrlError(value: string, issueCode: string | undefined): ConnectionErrorKey {
+  if (!value.trim()) return "baseUrlRequired";
+  if (issueCode === "too_big") return "baseUrlTooLong";
+  return isUrl(value.trim()) ? "baseUrlUnsafe" : "baseUrlInvalid";
+}
 
 function parseHeaders(value: string, errors: ConnectionErrors): Record<string, string> | null {
   let parsed: unknown;
   try {
     parsed = JSON.parse(value);
   } catch {
-    errors.headers = "헤더를 JSON 객체로 입력해 주세요.";
+    errors.headers = "headersNotObject";
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    errors.headers = "headersNotObject";
     return null;
   }
   const result = ExtraHeadersSchema.safeParse(parsed);
   if (!result.success) {
-    errors.headers = result.error.issues[0]?.message ?? "헤더 이름과 값을 확인해 주세요.";
+    const issue = result.error.issues[0];
+    // Custom issues are the schema's own rules: the header count (whole object) or a reserved/duplicate name.
+    errors.headers = issue?.code !== "custom" ? "headersInvalid" : issue.path.length === 0 ? "headersTooMany" : "headersReserved";
     return null;
   }
   return result.data;
@@ -144,7 +164,7 @@ export function buildChatConnection(
 ): BuildConnectionResult<ChatInput> {
   const errors: ConnectionErrors = {};
   const model = parseModel(state.model, errors);
-  if (!state.consent) errors.consent = "질문과 관련 노트를 선택한 제공자에게 보내는 데 동의해 주세요.";
+  if (!state.consent) errors.consent = "chatConsent";
   if (state.mode === "auth") {
     const enterpriseDomain = state.enterpriseDomain.trim();
     const unchanged = saved?.mode === "auth"
@@ -153,13 +173,13 @@ export function buildChatConnection(
     // Existing OpenAI/Google profiles may use the server's CLI login file; the server keeps it.
     const legacyFileAuth = state.provider === "openai" || state.provider === "google";
     const keepsSavedLogin = unchanged && (Boolean(saved?.hasCredential) || legacyFileAuth);
-    if (!isAuthProvider(state.provider)) errors.provider = "이 제공자는 API 키 연결만 지원해요.";
+    if (!isAuthProvider(state.provider)) errors.provider = "apiKeyOnly";
     const catalog = chatAuthModels(state.provider);
     if (model && catalog && !isSelectableAuthModel(catalog, model, savedModelFor(saved, state.provider, "auth"))) {
-      errors.model = AUTH_MODEL_ERROR;
+      errors.model = "authModelRequired";
     }
     if (isAuthProvider(state.provider) && !state.authAttemptId && !keepsSavedLogin) {
-      errors.auth = "브라우저 로그인을 완료해 주세요.";
+      errors.auth = "browserLoginRequired";
     }
     if (Object.keys(errors).length > 0 || !model || !isAuthProvider(state.provider)) return { ok: false, errors };
     return {
@@ -178,7 +198,7 @@ export function buildChatConnection(
   const custom = isCustomProvider(state.provider);
   const baseResult = custom ? BaseUrlSchema.safeParse(state.baseUrl) : null;
   if (custom && !baseResult?.success) {
-    errors.baseUrl = baseResult?.error.issues[0]?.message ?? "API 기본 URL을 입력해 주세요.";
+    errors.baseUrl = baseUrlError(state.baseUrl, baseResult?.error.issues[0]?.code);
   }
   const baseUrl = baseResult?.success ? baseResult.data : undefined;
   const unchanged = saved?.mode === "api"
@@ -186,9 +206,7 @@ export function buildChatConnection(
     && (saved.baseUrl ?? "") === (baseUrl ?? "");
   const apiKey = state.apiKey.trim();
   if (!apiKey && !state.keyless && !(unchanged && saved?.hasApiKey)) {
-    errors.apiKey = custom
-      ? "API 키를 입력하거나 키 없이 연결을 선택해 주세요."
-      : "선택한 제공자의 API 키를 입력해 주세요.";
+    errors.apiKey = custom ? "apiKeyOrKeyless" : "apiKeyRequired";
   }
   let headers: Record<string, string> | undefined;
   if (custom && state.headerAction === "clear") headers = {};
@@ -199,7 +217,7 @@ export function buildChatConnection(
   const maxText = state.maxOutputTokens.trim();
   const maxOutputTokens = maxText ? Number(maxText) : undefined;
   if (maxOutputTokens !== undefined && (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1 || maxOutputTokens > 128_000)) {
-    errors.maxOutputTokens = "1부터 128000 사이의 정수를 입력해 주세요.";
+    errors.maxOutputTokens = "maxOutputTokensRange";
   }
   if (Object.keys(errors).length > 0 || !model) return { ok: false, errors };
   return {
@@ -223,14 +241,14 @@ export function buildJevConnection(
 ): BuildConnectionResult<JevInput> {
   const errors: ConnectionErrors = {};
   const model = parseModel(state.model, errors);
-  if (!state.consent) errors.consent = "캡처 내용과 최근 노트 정보를 선택한 Jev 제공자에게 보내는 데 동의해 주세요.";
+  if (!state.consent) errors.consent = "jevConsent";
   if (state.mode === "auth") {
     const unchanged = saved?.mode === "auth" && saved.provider === "openrouter";
-    if (state.provider !== "openrouter") errors.provider = "TypeSafe는 API 키 연결만 지원해요.";
+    if (state.provider !== "openrouter") errors.provider = "typesafeApiKeyOnly";
     if (model && !isSelectableAuthModel(JEV_AUTH_MODELS.openrouter, model, savedModelFor(saved, "openrouter", "auth"))) {
-      errors.model = AUTH_MODEL_ERROR;
+      errors.model = "authModelRequired";
     }
-    if (!state.authAttemptId && !(unchanged && saved?.hasCredential)) errors.auth = "OpenRouter 로그인을 완료해 주세요.";
+    if (!state.authAttemptId && !(unchanged && saved?.hasCredential)) errors.auth = "openRouterLoginRequired";
     if (Object.keys(errors).length > 0 || !model) return { ok: false, errors };
     return {
       ok: true,
@@ -244,7 +262,7 @@ export function buildJevConnection(
   }
   const apiKey = state.apiKey.trim();
   const retained = saved?.provider === state.provider && (saved.mode ?? "api") === "api" && saved.hasApiKey;
-  if (!apiKey && !retained) errors.apiKey = "선택한 Jev 제공자의 API 키를 입력해 주세요.";
+  if (!apiKey && !retained) errors.apiKey = "jevApiKeyRequired";
   if (Object.keys(errors).length > 0 || !model) return { ok: false, errors };
   return {
     ok: true,

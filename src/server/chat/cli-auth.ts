@@ -3,6 +3,8 @@ import { access, lstat, readFile, realpath, stat, writeFile } from "node:fs/prom
 import path from "node:path";
 import { z } from "zod";
 import { GoogleCredentialSchema, type GoogleCredential } from "@/lib/ai-auth";
+import type { Locale } from "@/lib/i18n/locale";
+import { readinessCopy } from "@/server/i18n/copy";
 
 export type CliAuthProvider = "google";
 export type CliStoredSession = {
@@ -93,18 +95,19 @@ export async function cliCredentialFile(
  */
 export async function getCliAuthReadiness(
   provider: CliAuthProvider,
-  options: { readonly env?: CliEnvironment } = {},
+  options: { readonly env?: CliEnvironment; readonly locale?: Locale } = {},
 ): Promise<CliAuthReadiness> {
   const env = options.env ?? process.env;
+  const locale = options.locale ?? "ko";
   const instructions = "docker compose exec -e NO_BROWSER=true app gemini";
   const result = (available: boolean, detail: string): CliAuthReadiness =>
     ({ provider, available, instructions, detail });
-  if (process.platform !== "linux") return result(false, "This adapter supports Linux file-based CLI credentials only.");
+  if (process.platform !== "linux") return result(false, readinessCopy.linuxOnly[locale]);
   if (!await findCliBinary(env)) {
-    return result(false, "Gemini CLI가 설치되어 있지 않습니다.");
+    return result(false, readinessCopy.geminiMissing[locale]);
   }
   if (!await cliCredentialFile(env)) {
-    return result(false, "지정한 서버 인증 저장소에 Google 로그인 정보가 없습니다.");
+    return result(false, readinessCopy.googleNoLogin[locale]);
   }
-  return result(true, "CLI와 로그인 파일을 확인했습니다. 계정 유효성과 모델 사용 권한은 실제 요청 시 확인됩니다.");
+  return result(true, readinessCopy.cliReady[locale]);
 }

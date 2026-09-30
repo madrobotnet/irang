@@ -3,14 +3,16 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
+import { useCopy, useLocale } from "@/components/i18n";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { api, fetcher } from "@/lib/api-client";
 import type { AiSettingsView, ConnectionProfileView } from "@/lib/ai-settings";
+import { localizedApiError } from "@/lib/i18n/api-error";
 import {
-  aiSaveFailureMessage,
+  aiSaveFailureText,
   type AiSettingsResponse,
 } from "@/features/setup/ai-form";
 import { Section } from "./SettingsSection";
@@ -23,19 +25,21 @@ import {
   type SelectionState,
   type SelectionValue,
 } from "./profile-form";
+import { SETTINGS_COPY } from "./settings-copy";
 import type { ChatStatus } from "./settings-model";
 
 const AI_SETTINGS_KEY = "/api/settings/ai";
 const CHAT_STATUS_KEY = "/api/chat/status";
 
 function ChatStatusBadge() {
+  const copy = useCopy(SETTINGS_COPY).ai;
   const { data, error, isLoading } = useSWR<ChatStatus>(CHAT_STATUS_KEY, fetcher, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   });
   if (isLoading && !data) return <Skeleton className="h-5 w-16 rounded-pill" />;
-  if (error && !data) return <Badge tone="danger">확인 실패</Badge>;
-  return data?.available ? <Badge tone="ok">연결 설정됨</Badge> : <Badge>설정되지 않음</Badge>;
+  if (error && !data) return <Badge tone="danger">{copy.statusFailed}</Badge>;
+  return data?.available ? <Badge tone="ok">{copy.statusReady}</Badge> : <Badge>{copy.statusOff}</Badge>;
 }
 
 type EditorState = {
@@ -43,21 +47,27 @@ type EditorState = {
   readonly profile: ConnectionProfileView | null;
 };
 
+/** A failed request kept as-is; its text is chosen at render time in the current language. */
+type RetainedFailure = { readonly cause: unknown } | null;
+
 export function AiConnections() {
   const { data, error, isLoading, mutate } = useSWR<AiSettingsResponse>(AI_SETTINGS_KEY, fetcher, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   });
   const { mutate: mutateGlobal } = useSWRConfig();
+  const { locale } = useLocale();
+  const copy = useCopy(SETTINGS_COPY).ai;
   const [selectionEdits, setSelectionEdits] = useState<SelectionState | null>(null);
-  const [selectionErrors, setSelectionErrors] = useState<{ readonly chat?: string; readonly jev?: string }>({});
+  // Which purposes still need consent; the message is looked up when rendered.
+  const [selectionErrors, setSelectionErrors] = useState<{ readonly chat?: boolean; readonly jev?: boolean }>({});
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<RetainedFailure>(null);
   const [savedNotice, setSavedNotice] = useState(false);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [deleting, setDeleting] = useState<ConnectionProfileView | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<RetainedFailure>(null);
 
   const selection = selectionEdits ?? (data ? selectionFromView(data.settings) : null);
 
@@ -75,8 +85,8 @@ export function AiConnections() {
   const saveSelection = async () => {
     if (!data || !selection || saving) return;
     const errors = {
-      ...(selection.chat !== "off" && !selection.chatConsent ? { chat: "채팅 데이터 전송에 동의해 주세요." } : {}),
-      ...(selection.jev !== "off" && !selection.jevConsent ? { jev: "Jev 데이터 전송에 동의해 주세요." } : {}),
+      ...(selection.chat !== "off" && !selection.chatConsent ? { chat: true } : {}),
+      ...(selection.jev !== "off" && !selection.jevConsent ? { jev: true } : {}),
     };
     setSelectionErrors(errors);
     if (Object.keys(errors).length > 0) return;
@@ -93,7 +103,7 @@ export function AiConnections() {
       setSavedNotice(true);
       void mutateGlobal(CHAT_STATUS_KEY);
     } catch (cause) {
-      setSaveError(aiSaveFailureMessage(cause));
+      setSaveError({ cause });
     } finally {
       setSaving(false);
     }
@@ -123,7 +133,7 @@ export function AiConnections() {
       setDeleting(null);
       void mutateGlobal(CHAT_STATUS_KEY);
     } catch (cause) {
-      setDeleteError(aiSaveFailureMessage(cause));
+      setDeleteError({ cause });
     } finally {
       setDeleteBusy(false);
     }
@@ -132,38 +142,38 @@ export function AiConnections() {
   return (
     <Section
       id="settings-ai"
-      title="AI 기능 (선택)"
-      description="채팅과 인박스 정리는 서로 다른 연결을 사용할 수 있어요. 연결을 저장하는 것과 실제 사용 여부는 별도로 관리돼요."
+      title={copy.title}
+      description={copy.description}
     >
       <div className="surface-card px-4 py-4 sm:px-5 sm:py-5">
         {isLoading && !data ? (
-          <div aria-label="AI 설정을 불러오는 중" className="flex flex-col gap-2">
+          <div aria-label={copy.loading} className="flex flex-col gap-2">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />
           </div>
         ) : error && !data ? (
           <div role="alert" className="flex flex-col items-start gap-2">
-            <p className="text-md font-medium text-danger">AI 설정을 불러오지 못했습니다.</p>
-            <p className="text-sm text-mute">{error instanceof Error && error.message ? error.message : "네트워크 상태를 확인해 주세요."}</p>
+            <p className="text-md font-medium text-danger">{copy.loadFailed}</p>
+            <p className="text-sm text-mute">{localizedApiError(error, locale, copy.loadHint)}</p>
             <Button size="lg" leading={<RefreshCw aria-hidden className="size-4" />} onClick={() => void mutate()}>
-              다시 불러오기
+              {copy.reload}
             </Button>
           </div>
         ) : data && selection ? (
           <div className="flex flex-col gap-6">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-md font-medium">노트 채팅 상태</h3>
+              <h3 className="text-md font-medium">{copy.chatStatus}</h3>
               <ChatStatusBadge />
             </div>
             <AiPurposeSection
               purpose="chat"
-              title="노트 채팅"
+              title={copy.chatTitle}
               value={selection.chat}
               activeId={data.settings.chatId}
               consent={selection.chatConsent}
               profiles={data.settings.profiles.filter((profile) => profile.purpose === "chat")}
-              error={selectionErrors.chat}
+              error={selectionErrors.chat ? copy.chatConsentRequired : undefined}
               disabled={saving}
               onValueChangeAction={(value) => setChoice("chat", value)}
               onConsentChangeAction={(chatConsent) => {
@@ -176,12 +186,12 @@ export function AiConnections() {
             />
             <AiPurposeSection
               purpose="jev"
-              title="인박스 정리 (Jev)"
+              title={copy.jevTitle}
               value={selection.jev}
               activeId={data.settings.jevId}
               consent={selection.jevConsent}
               profiles={data.settings.profiles.filter((profile) => profile.purpose === "jev")}
-              error={selectionErrors.jev}
+              error={selectionErrors.jev ? copy.jevConsentRequired : undefined}
               disabled={saving}
               onValueChangeAction={(value) => setChoice("jev", value)}
               onConsentChangeAction={(jevConsent) => {
@@ -195,11 +205,11 @@ export function AiConnections() {
             <div className="flex flex-col gap-3 border-t border-line pt-4">
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="primary" size="lg" loading={saving} onClick={() => void saveSelection()}>
-                  {saving ? "저장 중…" : "사용 설정 저장"}
+                  {saving ? copy.saving : copy.save}
                 </Button>
-                {savedNotice ? <p role="status" className="text-sm text-ok">저장했어요. 새 선택이 바로 적용돼요.</p> : null}
+                {savedNotice ? <p role="status" className="text-sm text-ok">{copy.saved}</p> : null}
               </div>
-              {saveError ? <p role="alert" className="rounded-ctl bg-danger-soft px-3 py-2 text-sm text-danger">{saveError}</p> : null}
+              {saveError ? <p role="alert" className="rounded-ctl bg-danger-soft px-3 py-2 text-sm text-danger">{aiSaveFailureText(saveError.cause, locale)}</p> : null}
             </div>
           </div>
         ) : null}
@@ -231,16 +241,16 @@ export function AiConnections() {
           }
         }}
         size="sm"
-        title="저장된 연결을 삭제할까요?"
-        description="삭제한 키와 로그인 정보는 복구할 수 없어요. 이 연결을 사용 중이면 해당 AI 기능도 꺼져요."
+        title={copy.deleteTitle}
+        description={copy.deleteDescription}
         footer={
           <>
-            <Button size="lg" disabled={deleteBusy} onClick={() => setDeleting(null)}>취소</Button>
-            <Button variant="danger" size="lg" loading={deleteBusy} onClick={() => void removeProfile()}>연결 삭제</Button>
+            <Button size="lg" disabled={deleteBusy} onClick={() => setDeleting(null)}>{copy.cancel}</Button>
+            <Button variant="danger" size="lg" loading={deleteBusy} onClick={() => void removeProfile()}>{copy.delete}</Button>
           </>
         }
       >
-        {deleteError ? <p role="alert" className="rounded-ctl bg-danger-soft px-3 py-2 text-sm text-danger">{deleteError}</p> : null}
+        {deleteError ? <p role="alert" className="rounded-ctl bg-danger-soft px-3 py-2 text-sm text-danger">{aiSaveFailureText(deleteError.cause, locale)}</p> : null}
       </Dialog>
     </Section>
   );

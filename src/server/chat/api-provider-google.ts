@@ -2,8 +2,8 @@ import { z } from "zod";
 import { consumeJsonSse } from "./api-provider-stream";
 import {
   type ApiAdapterConfig,
-  GROUNDING_INSTRUCTIONS,
   groundedQuestion,
+  groundingInstruction,
   postApiStream,
   requestSignal,
 } from "./api-provider-shared";
@@ -30,7 +30,7 @@ export function createGoogleApiProvider(config: ApiAdapterConfig): ChatProvider 
         url: config.url,
         headers: config.headers,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: GROUNDING_INSTRUCTIONS }] },
+          systemInstruction: { parts: [{ text: groundingInstruction(input) }] },
           contents: [
             ...input.history.map((message) => ({
               role: message.role === "assistant" ? "model" : "user",

@@ -84,7 +84,7 @@ describe("profile form", () => {
     const form = { ...restored, chat: { ...restored.chat, keyless: false } };
     const missing = buildProfileInput("chat", form, profile);
     expect(missing.ok).toBe(false);
-    if (!missing.ok) expect(missing.errors["chat.apiKey"]).toBeString();
+    if (!missing.ok) expect(missing.errors["chat.apiKey"]).toBe("apiKeyOrKeyless");
     expect(buildProfileInput("chat", {
       ...form, chat: { ...form.chat, apiKey: "new-fixture-key" },
     }, profile)).toMatchObject({
@@ -182,7 +182,7 @@ describe("OpenAI and Google Auth profiles", () => {
       };
       const missing = buildProfileInput("chat", state, null);
       expect(missing.ok).toBe(false);
-      if (!missing.ok) expect(missing.errors["chat.auth"]).toBeString();
+      if (!missing.ok) expect(missing.errors["chat.auth"]).toBe("browserLoginRequired");
       expect(buildProfileInput("chat", { ...state, chat: { ...state.chat, authAttemptId: JEV_ID } }, null))
         .toMatchObject({ ok: true, input: { connection: { provider, authAttemptId: JEV_ID } } });
     }
@@ -191,7 +191,15 @@ describe("OpenAI and Google Auth profiles", () => {
       ...legacyForm, chat: { ...legacyForm.chat, provider: "google", model: "gemini-3.5-flash" },
     }, legacy);
     expect(retargeted.ok).toBe(false);
-    if (!retargeted.ok) expect(retargeted.errors["chat.auth"]).toBeString();
+    if (!retargeted.ok) expect(retargeted.errors["chat.auth"]).toBe("browserLoginRequired");
+  });
+
+  test("a blank name is a stable reason for either purpose", () => {
+    for (const purpose of ["chat", "jev"] as const) {
+      const result = buildProfileInput(purpose, newProfileForm(purpose), null);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.errors[`${purpose}.name`]).toBe("nameRequired");
+    }
   });
 });
 

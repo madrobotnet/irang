@@ -121,21 +121,24 @@ describe("NoteDraftController", () => {
 
   test("does not hydrate over a dirty draft and retries the retained value", async () => {
     let fail = true;
+    const offline = new Error("offline");
     const writes: string[] = [];
     const controller = new NoteDraftController(note(), async (_id, value) => {
       writes.push(value.body);
-      if (fail) throw new Error("offline");
+      if (fail) throw offline;
       return { ...note(value.body), updatedAt: "2026-01-04T00:00:00.000Z" };
     });
     controller.update({ body: "local" });
     controller.hydrate({ ...note("stale"), updatedAt: "2026-01-02T00:00:00.000Z" });
     await controller.flush();
-    expect(controller.getSnapshot()).toMatchObject({ body: "local", state: "failed", error: "offline" });
+    expect(controller.getSnapshot()).toMatchObject({ body: "local", state: "failed" });
+    // The thrown failure is kept as-is so its message can re-render after a language switch.
+    expect(controller.getSnapshot().error).toBe(offline);
 
     fail = false;
     await controller.retry();
     expect(writes).toEqual(["local", "local"]);
-    expect(controller.getSnapshot()).toMatchObject({ body: "local", state: "saved" });
+    expect(controller.getSnapshot()).toMatchObject({ body: "local", state: "saved", error: null });
 
     controller.hydrate({ ...note("older server body"), updatedAt: "2026-01-03T00:00:00.000Z" });
     expect(controller.getSnapshot().body).toBe("local");

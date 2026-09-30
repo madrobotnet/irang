@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { createApiProvider } from "./api-provider";
 import { fragmentedResponse, TEST_INPUT } from "./api-provider-test-helpers";
+import { groundedQuestion, groundingInstructions } from "@/server/i18n/copy";
 
 describe("OpenAI API provider", () => {
   test("streams fragmented Responses events and preserves request semantics", async () => {
@@ -60,6 +61,19 @@ describe("OpenAI API provider", () => {
 
     await expect(provider.stream(TEST_INPUT, () => undefined, new AbortController().signal))
       .rejects.toMatchObject({ name: "ChatProviderError" });
+  });
+
+  test("propagates English grounding without changing user data", async () => {
+    let body: Record<string, unknown> = {};
+    const fetchImpl: typeof fetch = Object.assign(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body));
+      return fragmentedResponse(['data: {"type":"response.output_text.delta","delta":"ok"}\n\n', 'data: {"type":"response.completed","response":{}}\n\n']);
+    }, { preconnect: fetch.preconnect });
+    const provider = createApiProvider({ provider: "openai", apiKey: "key", model: "model" }, { fetchImpl });
+    const input = { ...TEST_INPUT, locale: "en" as const, question: "사용자 <원문>" };
+    await provider.stream(input, () => undefined, new AbortController().signal);
+    expect(body.instructions).toBe(groundingInstructions("en"));
+    expect((body.input as Array<{ content: string }>).at(-1)?.content).toBe(groundedQuestion("en", input.question, input.sources));
   });
 
   test("rejects a stream truncated after deltas", async () => {

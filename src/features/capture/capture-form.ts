@@ -6,12 +6,10 @@ export const EMPTY_DRAFT: CaptureDraft = { text: "", url: "", title: "" };
 
 export type CapturePayload = { text?: string; url?: string; title?: string };
 
-export type CaptureBuildResult = { ok: true; payload: CapturePayload } | { ok: false; field: "text" | "url"; message: string };
+/** Why a draft cannot be sent; a locale-neutral key the dialog renders through CAPTURE_COPY. */
+export type CaptureInvalidReason = "empty" | "badUrl";
 
-export const CAPTURE_COPY = {
-  empty: "텍스트나 URL 중 하나는 있어야 합니다.",
-  badUrl: "http:// 또는 https://로 시작하는 주소만 저장할 수 있습니다.",
-} as const;
+export type CaptureBuildResult = { ok: true; payload: CapturePayload } | { ok: false; field: "text" | "url"; reason: CaptureInvalidReason };
 
 const TEXT_LIMIT = 2_000_000;
 const URL_LIMIT = 2_000;
@@ -38,9 +36,9 @@ export function buildCapturePayload(draft: CaptureDraft): CaptureBuildResult {
   const url = draft.url.trim().slice(0, URL_LIMIT);
   const title = draft.title.trim().slice(0, TITLE_LIMIT);
 
-  if (url && !isHttpUrl(url)) return { ok: false, field: "url", message: CAPTURE_COPY.badUrl };
+  if (url && !isHttpUrl(url)) return { ok: false, field: "url", reason: "badUrl" };
 
-  if (!text && !url) return { ok: false, field: "text", message: CAPTURE_COPY.empty };
+  if (!text && !url) return { ok: false, field: "text", reason: "empty" };
 
   const payload: CapturePayload = {};
   if (!url && isHttpUrl(text)) {

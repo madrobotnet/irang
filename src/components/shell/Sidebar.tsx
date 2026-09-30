@@ -3,26 +3,32 @@
 import { LogOut, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Plus, Search, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCopy, useLocale } from "@/components/i18n/LocaleProvider";
 import { Badge } from "@/components/ui/Badge";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { cn } from "@/components/ui/cn";
 import { Kbd } from "@/components/ui/Kbd";
+import { brandName } from "@/lib/brand";
+import { SHELL_COPY } from "./copy";
 import { isNavActive, NAV_ITEMS, type NavItem } from "./nav";
 import { useShell } from "./ShellProvider";
 import { modKey } from "./shortcuts";
 
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
-const THEME_LABEL = { light: "밝은 테마", dark: "어두운 테마", system: "시스템 테마" } as const;
 
 /** Desktop rail (>= lg). 64px icons; expands to 220px with labels, persisted via data-rail on <html>. */
 export function Sidebar() {
   const pathname = usePathname();
   const shell = useShell();
+  const { locale } = useLocale();
+  const copy = useCopy(SHELL_COPY);
   const expanded = shell.railExpanded;
   const ThemeIcon = THEME_ICON[shell.theme];
+  const brand = brandName(locale);
 
   return (
     <nav
-      aria-label="주 메뉴"
+      aria-label={copy.rail.navLabel}
       data-expanded={expanded || undefined}
       className={cn(
         "hidden lg:flex fixed inset-y-0 left-0 z-30 flex-col border-r border-rail-line bg-rail text-rail-ink",
@@ -34,8 +40,8 @@ export function Sidebar() {
           href="/"
           className={cn("flex h-9 items-center gap-2.5 rounded-ctl px-1.5 text-rail-ink focus-ring", expanded ? "min-w-0 flex-1" : "justify-center")}
         >
-          <Mark />
-          {expanded ? <span className="truncate text-md font-semibold tracking-tight">세컨드 브레인</span> : null}
+          <BrandMark />
+          {expanded ? <span className="truncate text-md font-semibold tracking-tight">{brand}</span> : <span className="sr-only">{brand}</span>}
         </Link>
       </div>
 
@@ -43,7 +49,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => shell.openCapture()}
-          title={expanded ? undefined : "빠르게 캡처 (c)"}
+          title={expanded ? undefined : `${copy.actions.capture} (c)`}
           className={cn(
             "flex h-10 w-full items-center gap-2.5 rounded-ctl bg-accent text-accent-ink transition-[filter] hover:brightness-95 focus-ring",
             expanded ? "px-3" : "justify-center",
@@ -52,11 +58,11 @@ export function Sidebar() {
           <Plus aria-hidden className="size-5" />
           {expanded ? (
             <>
-              <span className="flex-1 text-left text-base font-medium">빠르게 캡처</span>
+              <span className="flex-1 text-left text-base font-medium">{copy.actions.capture}</span>
               <Kbd className="border-transparent bg-accent-ink/20 text-accent-ink">c</Kbd>
             </>
           ) : (
-            <span className="sr-only">빠르게 캡처</span>
+            <span className="sr-only">{copy.actions.capture}</span>
           )}
         </button>
       </div>
@@ -72,16 +78,16 @@ export function Sidebar() {
       <div className="flex flex-col gap-0.5 border-t border-rail-line px-2.5 py-2">
         <RailButton
           expanded={expanded}
-          label="명령 팔레트"
+          label={copy.actions.palette}
           hint={[modKey(), "K"]}
           icon={<Search aria-hidden className="size-5" />}
           onClick={() => shell.openPalette("all")}
         />
-        <RailButton expanded={expanded} label={THEME_LABEL[shell.theme]} icon={<ThemeIcon aria-hidden className="size-5" />} onClick={shell.cycleTheme} />
-        <RailButton expanded={expanded} label="로그아웃" icon={<LogOut aria-hidden className="size-5" />} onClick={() => void shell.logout()} />
+        <RailButton expanded={expanded} label={copy.theme.rail[shell.theme]} icon={<ThemeIcon aria-hidden className="size-5" />} onClick={shell.cycleTheme} />
+        <RailButton expanded={expanded} label={copy.actions.logout} icon={<LogOut aria-hidden className="size-5" />} onClick={() => void shell.logout()} />
         <RailButton
           expanded={expanded}
-          label={expanded ? "메뉴 접기" : "메뉴 펼치기"}
+          label={expanded ? copy.rail.collapse : copy.rail.expand}
           icon={expanded ? <PanelLeftClose aria-hidden className="size-5" /> : <PanelLeftOpen aria-hidden className="size-5" />}
           onClick={() => shell.setRailExpanded(!expanded)}
           aria-expanded={expanded}
@@ -92,12 +98,14 @@ export function Sidebar() {
 }
 
 function RailLink({ item, active, expanded, badge }: { item: NavItem; active: boolean; expanded: boolean; badge: number | null }) {
+  const copy = useCopy(SHELL_COPY);
+  const label = copy.nav[item.id];
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      title={expanded ? undefined : item.label}
+      title={expanded ? undefined : label}
       className={cn(
         "relative flex h-10 items-center gap-2.5 rounded-ctl text-rail-mute transition-colors hover:bg-rail-hover hover:text-rail-ink focus-ring",
         expanded ? "px-3" : "justify-center",
@@ -106,9 +114,9 @@ function RailLink({ item, active, expanded, badge }: { item: NavItem; active: bo
     >
       {active ? <span aria-hidden className="absolute inset-y-2 -left-2.5 w-0.5 rounded-r bg-accent" /> : null}
       <Icon aria-hidden className="size-5 shrink-0" />
-      {expanded ? <span className="flex-1 truncate text-base">{item.label}</span> : <span className="sr-only">{item.label}</span>}
+      {expanded ? <span className="flex-1 truncate text-base">{label}</span> : <span className="sr-only">{label}</span>}
       {badge ? (
-        <Badge tone="rail" count={badge} className={cn(!expanded && "absolute right-1.5 top-1.5")} aria-label={`${badge}개 대기 중`} />
+        <Badge tone="rail" count={badge} className={cn(!expanded && "absolute right-1.5 top-1.5")} aria-label={copy.rail.pending(badge)} />
       ) : null}
     </Link>
   );
@@ -155,12 +163,5 @@ function RailButton({
   );
 }
 
-/** Wordmark: two linked squares on the terracotta accent. */
-export function Mark({ className }: { className?: string }) {
-  return (
-    <svg aria-hidden viewBox="0 0 24 24" className={cn("size-6 shrink-0", className)} fill="none">
-      <rect x="3" y="3" width="10" height="10" rx="2.5" className="fill-accent" />
-      <rect x="11" y="11" width="10" height="10" rx="2.5" className="fill-accent" opacity="0.55" />
-    </svg>
-  );
-}
+/** @deprecated Use `BrandMark` from `@/components/ui`; kept so the shell index export stays stable. */
+export const Mark = BrandMark;

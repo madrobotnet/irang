@@ -1,10 +1,12 @@
 "use client";
 
+import { useCopy } from "@/components/i18n";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
 import { ApiFormatSchema } from "@/lib/ai-provider-options";
 import { chatAuthModels } from "@/lib/ai-model-catalog";
-import { FieldError, SecretInput } from "./AiFieldControls";
+import { AI_COPY, type ConnectionErrorKey } from "./ai-copy";
+import { FieldError, SecretInput, useFieldErrorText } from "./AiFieldControls";
 import { AuthModelSelect } from "./AuthModelSelect";
 import type { AiFormErrors } from "./ai-form";
 import type { ChatFormState, HeaderAction } from "./connection-form";
@@ -19,21 +21,23 @@ export function ChatModelField({ idPrefix, chat, savedAuthModel, setChatAction, 
   readonly chat: ChatFormState;
   readonly savedAuthModel: string | null;
   readonly setChatAction: (patch: Partial<ChatFormState>) => void;
-  readonly error?: string;
+  readonly error?: ConnectionErrorKey;
 }) {
+  const copy = useCopy(AI_COPY).chat;
+  const errorText = useFieldErrorText();
   const id = `${idPrefix}-chat-model`;
   const describedBy = error ? `${id}-error` : `${id}-hint`;
   const catalog = chat.mode === "auth" ? chatAuthModels(chat.provider) : null;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium">사용할 모델</label>
+      <label htmlFor={id} className="text-sm font-medium">{copy.model}</label>
       {catalog ? (
         <AuthModelSelect
           id={id}
           value={chat.model}
           catalog={catalog}
           savedModel={savedAuthModel}
-          error={error}
+          invalid={Boolean(error)}
           describedBy={describedBy}
           onChangeAction={(model) => setChatAction({ model })}
         />
@@ -49,12 +53,10 @@ export function ChatModelField({ idPrefix, chat, savedAuthModel, setChatAction, 
           className={inputClassName}
         />
       )}
-      <FieldError id={`${id}-error`} message={error} />
+      <FieldError id={`${id}-error`} message={errorText(error)} />
       {!error ? (
         <p id={`${id}-hint`} className="text-pretty text-sm text-mute">
-          {catalog
-            ? "최신 모델부터 보여요. 계정이나 요금제에 따라 쓸 수 없는 모델도 있어요."
-            : "모델 ID를 직접 입력하세요. 구독 Auth와 유료 API의 모델 권한은 서로 달라요."}
+          {catalog ? copy.modelHintAuth : copy.modelHintApi}
         </p>
       ) : null}
     </div>
@@ -66,9 +68,10 @@ export function ChatApiFormatField({ idPrefix, chat, setChatAction }: {
   readonly chat: ChatFormState;
   readonly setChatAction: (patch: Partial<ChatFormState>) => void;
 }) {
+  const copy = useCopy(AI_COPY).chat;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={`${idPrefix}-chat-format`} className="text-sm font-medium">API 형식</label>
+      <label htmlFor={`${idPrefix}-chat-format`} className="text-sm font-medium">{copy.apiFormat}</label>
       <select
         id={`${idPrefix}-chat-format`}
         value={chat.apiFormat}
@@ -96,12 +99,14 @@ export function ChatApiFields({ idPrefix, chat, setChatAction, retained, custom,
   readonly errors: AiFormErrors;
   readonly disabled: boolean;
 }) {
+  const copy = useCopy(AI_COPY).chat;
+  const errorText = useFieldErrorText();
   return (
     <>
       {custom ? (
         <>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-chat-base-url`} className="text-sm font-medium">API 기본 URL</label>
+            <label htmlFor={`${idPrefix}-chat-base-url`} className="text-sm font-medium">{copy.baseUrl}</label>
             <input
               id={`${idPrefix}-chat-base-url`}
               type="url"
@@ -116,9 +121,9 @@ export function ChatApiFields({ idPrefix, chat, setChatAction, retained, custom,
               }
               className={inputClassName}
             />
-            <FieldError id={`${idPrefix}-chat-base-url-error`} message={errors["chat.baseUrl"]} />
+            <FieldError id={`${idPrefix}-chat-base-url-error`} message={errorText(errors["chat.baseUrl"])} />
             <p id={`${idPrefix}-chat-base-url-hint`} className="text-sm text-mute">
-              API 접두 주소 또는 선택한 API 형식에 맞는 전체 요청 주소를 입력하세요. Docker의 localhost는 컨테이너 자신이며, 호스트 서비스는 host.docker.internal 또는 접근 가능한 내부망 주소를 사용해요.
+              {copy.baseUrlHint}
             </p>
           </div>
           <label className="flex min-h-touch cursor-pointer items-center gap-2 text-sm">
@@ -128,24 +133,24 @@ export function ChatApiFields({ idPrefix, chat, setChatAction, retained, custom,
               onChange={(event) => setChatAction({ keyless: event.target.checked, apiKey: "" })}
               className="size-4 accent-accent"
             />
-            키 없이 동작하는 로컬 엔드포인트
+            {copy.keyless}
           </label>
         </>
       ) : null}
       {!chat.keyless ? (
         <SecretInput
           id={`${idPrefix}-chat-key`}
-          label="API 키"
+          label={copy.apiKey}
           value={chat.apiKey}
           disabled={disabled}
           onChangeAction={(apiKey) => setChatAction({ apiKey })}
-          error={errors["chat.apiKey"]}
+          error={errorText(errors["chat.apiKey"])}
           hint={
             retained
-              ? "저장된 키가 있어요. 제공자와 기본 주소를 바꾸지 않았다면 비워 두세요."
+              ? copy.apiKeyRetained
               : chat.provider === "github-copilot"
-                ? "일반 GitHub PAT가 아니라 Copilot API용 토큰을 입력하세요. 구독 Auth와는 별개이며 저장 뒤에는 다시 표시되지 않아요."
-                : "유료 API 키는 구독 Auth와 별개예요. 저장 뒤에는 다시 표시되지 않아요."
+                ? copy.apiKeyCopilot
+                : copy.apiKeyHint
           }
         />
       ) : null}
@@ -153,7 +158,7 @@ export function ChatApiFields({ idPrefix, chat, setChatAction, retained, custom,
         <div className="grid gap-4 sm:grid-cols-2">
           <ChatApiFormatField idPrefix={idPrefix} chat={chat} setChatAction={setChatAction} />
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-chat-max-tokens`} className="text-sm font-medium">최대 출력 토큰 (선택)</label>
+            <label htmlFor={`${idPrefix}-chat-max-tokens`} className="text-sm font-medium">{copy.maxOutputTokens}</label>
             <input
               id={`${idPrefix}-chat-max-tokens`}
               type="number"
@@ -166,22 +171,22 @@ export function ChatApiFields({ idPrefix, chat, setChatAction, retained, custom,
               aria-describedby={errors["chat.maxOutputTokens"] ? `${idPrefix}-chat-max-tokens-error` : undefined}
               className={inputClassName}
             />
-            <FieldError id={`${idPrefix}-chat-max-tokens-error`} message={errors["chat.maxOutputTokens"]} />
+            <FieldError id={`${idPrefix}-chat-max-tokens-error`} message={errorText(errors["chat.maxOutputTokens"])} />
           </div>
         </div>
       ) : null}
       {custom ? (
         <div className="flex flex-col gap-2">
-          <label htmlFor={`${idPrefix}-chat-headers`} className="text-sm font-medium">추가 헤더 JSON (선택)</label>
+          <label htmlFor={`${idPrefix}-chat-headers`} className="text-sm font-medium">{copy.headers}</label>
           <select
-            aria-label="추가 헤더 처리"
+            aria-label={copy.headerAction}
             value={chat.headerAction}
             onChange={(event) => setChatAction({ headerAction: headerAction(event.target.value), headersJson: "" })}
             className={cn(inputClassName, "pr-8")}
           >
-            <option value="retain">기존 헤더 유지</option>
-            <option value="replace">새 헤더로 교체</option>
-            <option value="clear">기존 헤더 삭제</option>
+            <option value="retain">{copy.headerRetain}</option>
+            <option value="replace">{copy.headerReplace}</option>
+            <option value="clear">{copy.headerClear}</option>
           </select>
           {chat.headerAction === "replace" ? (
             <textarea
@@ -195,8 +200,8 @@ export function ChatApiFields({ idPrefix, chat, setChatAction, retained, custom,
               className={cn(inputClassName, "h-auto py-2 font-mono text-sm")}
             />
           ) : null}
-          <FieldError id={`${idPrefix}-chat-headers-error`} message={errors["chat.headers"]} />
-          <p className="text-sm text-mute">저장된 헤더 값은 다시 표시되지 않아요. 목적지를 바꾸면 이전 헤더는 자동으로 버려져요.</p>
+          <FieldError id={`${idPrefix}-chat-headers-error`} message={errorText(errors["chat.headers"])} />
+          <p className="text-sm text-mute">{copy.headersNote}</p>
         </div>
       ) : null}
     </>

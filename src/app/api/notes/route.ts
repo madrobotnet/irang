@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { json, parseJson, withApi } from "@/server/http";
 import { createNote, listNotes } from "@/server/notes/service";
+import { localeFromRequest } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 
@@ -26,6 +27,7 @@ export const GET = withApi(async (request) => {
 });
 
 export const POST = withApi(async (request) => {
+  const locale = localeFromRequest(request);
   const input = await parseJson(request, CreateBody);
-  return json({ note: await createNote(input) }, { status: 201 });
+  return json({ note: await createNote(input, undefined, locale) }, { status: 201 });
 });

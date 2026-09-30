@@ -1,12 +1,16 @@
 import type { MetadataRoute } from "next";
+import { BRAND_DESCRIPTION, INSTALL_NAME } from "@/lib/brand";
 
-/** Served at /manifest.webmanifest (public in src/proxy.ts). Share target posts into the inbox. */
+/**
+ * Served at /manifest.webmanifest (public in src/proxy.ts). Share target posts into the inbox.
+ * Static and English: an installed app keeps the one name it was installed with (lib/brand.ts).
+ */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "세컨드 브레인",
-    short_name: "세컨드 브레인",
-    description: "캡처하고, 정리하고, 연결하는 개인 노트 작업대",
-    lang: "ko",
+    name: INSTALL_NAME,
+    short_name: INSTALL_NAME,
+    description: BRAND_DESCRIPTION.en,
+    lang: "en",
     id: "/",
     start_url: "/",
     scope: "/",
@@ -17,6 +21,9 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      // The mark sits inside the 80% safe zone of a full-bleed tile, so the same files serve maskable.
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     share_target: {
       action: "/api/capture/share",

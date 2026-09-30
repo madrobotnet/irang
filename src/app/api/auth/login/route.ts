@@ -6,12 +6,13 @@ import { verifyLogin } from "@/server/auth/lockout";
 import { createSession } from "@/server/auth/session";
 import { ApiError, json, parseJson, withPublicApi } from "@/server/http";
 import { loginPasswordHash } from "@/server/setup/service";
+import { loginCopy } from "@/server/i18n/copy";
 
 const Body = z.object({ password: z.string().min(1).max(512) });
 
 export const POST = withPublicApi(async (request) => {
   const hash = await loginPasswordHash();
-  if (!hash) throw new ApiError("unavailable", "AUTH_PASSWORD_HASH is not configured");
+  if (!hash) throw new ApiError("unavailable", loginCopy.notConfigured);
   const { password } = await parseJson(request, Body);
   const ip = clientIp(request.headers);
   const clientKey = ip ?? "unknown";
@@ -19,9 +20,9 @@ export const POST = withPublicApi(async (request) => {
   const result = await verifyLogin({ clientKey, password, hash });
   switch (result.kind) {
     case "locked":
-      throw new ApiError("rate_limited", "Too many attempts", { retryAfterSeconds: result.retryAfterSeconds });
+      throw new ApiError("rate_limited", loginCopy.tooMany, { retryAfterSeconds: result.retryAfterSeconds });
     case "wrong_password":
-      throw new ApiError("unauthorized", "Wrong password");
+      throw new ApiError("unauthorized", loginCopy.wrongPassword);
     case "accepted":
       break;
   }

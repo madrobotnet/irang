@@ -4,10 +4,15 @@ import { Inbox, RefreshCw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
+import { useCopy, useLocale } from "@/components/i18n";
+import { DocumentTitle } from "@/components/i18n/DocumentTitle";
 import { isEditableTarget } from "@/components/shell/shortcuts";
 import { Badge, Button, Dialog, EmptyState, Skeleton, SkeletonLines, useToast } from "@/components/ui";
 import { api, fetcher } from "@/lib/api-client";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import { textInEveryLocale } from "@/lib/i18n/copy";
 import type { InboxItem, Note } from "@/lib/types";
+import { INBOX_COPY } from "./inbox-copy";
 import {
   excerpt,
   formatCreated,
@@ -16,7 +21,6 @@ import {
   neighbourAfterRemoval,
   replaceItem,
   resolveTriageKey,
-  SOURCE_LABEL,
   type InboxListData,
   urlStatus,
   withoutItem,
@@ -27,6 +31,8 @@ import { refreshNoteViews } from "@/features/notes/note-cache";
 export function InboxView() {
   const router = useRouter();
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const copy = useCopy(INBOX_COPY);
   const { mutate: mutateGlobal, cache } = useSWRConfig();
   const { data, error, isLoading, mutate } = useSWR<InboxListData>(INBOX_KEY, fetcher, {
     revalidateOnFocus: true,
@@ -54,10 +60,10 @@ export function InboxView() {
       await mutate((current) => withoutItem(current, item.id), { revalidate: false });
       setSelectedId(next);
       refreshAffected();
-      toast("노트로 만들었습니다.", { tone: "ok" });
+      toast(textInEveryLocale((locale) => INBOX_COPY[locale].toast.promoted), { tone: "ok" });
       router.push(`/notes/${note.id}`);
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : "노트로 만들지 못했습니다.", { tone: "danger", durationMs: 0 });
+      toast(textInEveryLocale((locale) => localizedApiError(cause, locale, INBOX_COPY[locale].toast.promoteFailed)), { tone: "danger", durationMs: 0 });
     } finally {
       setBusy(null);
     }
@@ -73,9 +79,9 @@ export function InboxView() {
       setSelectedId(next);
       setDetailOpen(false);
       refreshAffected();
-      toast("인박스에서 버렸습니다.");
+      toast(textInEveryLocale((locale) => INBOX_COPY[locale].toast.discarded));
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : "항목을 버리지 못했습니다.", { tone: "danger", durationMs: 0 });
+      toast(textInEveryLocale((locale) => localizedApiError(cause, locale, INBOX_COPY[locale].toast.discardFailed)), { tone: "danger", durationMs: 0 });
     } finally {
       setBusy(null);
     }
@@ -87,7 +93,7 @@ export function InboxView() {
       const { item: updated } = await api<{ item: InboxItem }>(`/api/inbox/${item.id}/suggest`, { method: "POST" });
       await mutate((current) => replaceItem(current, updated), { revalidate: false });
     } catch (cause) {
-      toast(cause instanceof Error ? cause.message : "제안을 확인하지 못했습니다.", { tone: "danger" });
+      toast(textInEveryLocale((locale) => localizedApiError(cause, locale, INBOX_COPY[locale].toast.suggestFailed)), { tone: "danger" });
     } finally {
       setBusy(null);
     }
@@ -125,21 +131,22 @@ export function InboxView() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 pb-12 pt-5 sm:px-6 lg:px-10 lg:pt-10">
+      <DocumentTitle title={copy.title} />
       <header className="flex flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-accent">정리할 곳</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">인박스</h1>
-          <p className="mt-1 text-sm text-mute">캡처를 검토해 노트로 만들거나 버리세요.</p>
+          <p className="text-sm font-medium text-accent">{copy.eyebrow}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight lg:text-3xl">{copy.title}</h1>
+          <p className="mt-1 text-sm text-mute">{copy.intro}</p>
         </div>
-        {data ? <Badge className="self-start sm:self-auto" tone={data.count ? "accent" : "neutral"}>{data.count}개 남음</Badge> : null}
+        {data ? <Badge className="self-start sm:self-auto" tone={data.count ? "accent" : "neutral"}>{copy.remaining(data.count)}</Badge> : null}
       </header>
 
       {error && !data ? (
         <div role="alert" className="mt-6 rounded-card border border-danger/30 bg-danger-soft p-5">
-          <p className="font-medium text-danger">인박스를 불러오지 못했습니다.</p>
-          <p className="mt-1 text-sm text-mute">{error instanceof Error ? error.message : "네트워크 상태를 확인해 주세요."}</p>
+          <p className="font-medium text-danger">{copy.loadError.title}</p>
+          <p className="mt-1 text-sm text-mute">{localizedApiError(error, locale, copy.loadError.help)}</p>
           <Button className="mt-3" size="lg" leading={<RefreshCw aria-hidden className="size-4" />} onClick={() => void mutate()}>
-            다시 불러오기
+            {copy.loadError.retry}
           </Button>
         </div>
       ) : null}
@@ -150,14 +157,14 @@ export function InboxView() {
         <EmptyState
           className="mt-6"
           icon={Inbox}
-          title="인박스가 비어 있습니다."
-          description="새 생각이나 링크를 캡처하면 여기에 모입니다."
+          title={copy.emptyTitle}
+          description={copy.emptyDescription}
         />
       ) : null}
 
       {items.length ? (
         <div className="mt-6 grid min-w-0 gap-5 lg:grid-cols-[minmax(17rem,0.8fr)_minmax(0,1.6fr)]">
-          <ol aria-label="인박스 항목" className={`surface-card max-h-[calc(100dvh-13rem)] divide-y divide-line overflow-y-auto scrollbar-thin ${detailOpen ? "hidden lg:block" : ""}`}>
+          <ol aria-label={copy.listLabel} className={`surface-card max-h-[calc(100dvh-13rem)] divide-y divide-line overflow-y-auto scrollbar-thin ${detailOpen ? "hidden lg:block" : ""}`}>
             {items.map((item) => {
               const active = item.id === selected?.id;
               const status = urlStatus(item.body);
@@ -176,14 +183,14 @@ export function InboxView() {
                   >
                     <span className="flex items-start justify-between gap-3">
                       <span className="min-w-0 flex-1 truncate font-medium">{item.title}</span>
-                      <span className="shrink-0 text-xs text-mute">{formatCreated(item.createdAt)}</span>
+                      <span className="shrink-0 text-xs text-mute">{formatCreated(item.createdAt, locale)}</span>
                     </span>
-                    <span className="mt-1 line-clamp-2 text-sm leading-relaxed text-mute">{excerpt(item.body) || item.url || "내용 없음"}</span>
+                    <span className="mt-1 line-clamp-2 text-sm leading-relaxed text-mute">{excerpt(item.body) || item.url || copy.noContent}</span>
                     <span className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <Badge>{SOURCE_LABEL[item.source]}</Badge>
-                      {status === "pending" ? <Badge tone="warn">URL 불러오는 중</Badge> : null}
-                      {status === "failed" ? <Badge tone="danger">URL 불러오기 실패</Badge> : null}
-                      {item.suggestions?.status === "ready" ? <Badge tone="ok">제안 준비됨</Badge> : null}
+                      <Badge>{copy.source[item.source]}</Badge>
+                      {status === "pending" ? <Badge tone="warn">{copy.badge.urlPending}</Badge> : null}
+                      {status === "failed" ? <Badge tone="danger">{copy.badge.urlFailed}</Badge> : null}
+                      {item.suggestions?.status === "ready" ? <Badge tone="ok">{copy.badge.suggestionsReady}</Badge> : null}
                     </span>
                   </button>
                 </li>
@@ -191,7 +198,7 @@ export function InboxView() {
             })}
           </ol>
           <div className={`min-w-0 ${detailOpen ? "" : "hidden lg:block"}`}>
-            <Button className="mb-3 lg:hidden" variant="ghost" onClick={() => setDetailOpen(false)}>← 인박스 목록</Button>
+            <Button className="mb-3 lg:hidden" variant="ghost" onClick={() => setDetailOpen(false)}>{copy.backToList}</Button>
             {selected ? (
             <TriageEditor
               key={selected.id}
@@ -203,7 +210,7 @@ export function InboxView() {
               onSuggest={suggest}
             />
           ) : (
-            <EmptyState variant="plain" title="검토할 항목을 선택하세요." description="목록에서 항목을 선택하면 내용을 수정해 노트로 만들 수 있습니다." />
+            <EmptyState variant="plain" title={copy.noSelectionTitle} description={copy.noSelectionDescription} />
             )}
           </div>
         </div>
@@ -212,12 +219,12 @@ export function InboxView() {
       <Dialog
         open={discardId !== null}
         onOpenChange={(open) => !open && !busy && setDiscardId(null)}
-        title="이 캡처를 버릴까요?"
-        description="인박스에서 사라지며 이 작업은 되돌릴 수 없습니다."
+        title={copy.discardDialog.title}
+        description={copy.discardDialog.description}
         size="sm"
         footer={
           <>
-            <Button disabled={busy !== null} onClick={() => setDiscardId(null)}>취소</Button>
+            <Button disabled={busy !== null} onClick={() => setDiscardId(null)}>{copy.discardDialog.cancel}</Button>
             <Button
               variant="danger"
               loading={busy?.action === "discard"}
@@ -227,7 +234,7 @@ export function InboxView() {
                 if (item) void discard(item);
               }}
             >
-              버리기
+              {copy.discardDialog.confirm}
             </Button>
           </>
         }
@@ -237,8 +244,9 @@ export function InboxView() {
 }
 
 function InboxSkeleton() {
+  const copy = useCopy(INBOX_COPY);
   return (
-    <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(17rem,0.8fr)_minmax(0,1.6fr)]" aria-label="인박스를 불러오는 중" aria-busy="true">
+    <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(17rem,0.8fr)_minmax(0,1.6fr)]" aria-label={copy.loading} aria-busy="true">
       <div className="surface-card flex flex-col gap-5 p-4"><SkeletonLines lines={3} /><SkeletonLines lines={3} /><SkeletonLines lines={3} /></div>
       <div className="surface-card flex flex-col gap-4 p-5"><Skeleton className="h-10 w-full" /><Skeleton className="h-56 w-full" /><SkeletonLines lines={3} /></div>
     </div>

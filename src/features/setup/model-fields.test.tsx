@@ -1,14 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { isValidElement, type ChangeEvent, type ReactElement, type ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import type { AiSettingsView } from "@/lib/ai-settings";
 import { chatAuthModels, jevAuthModels } from "@/lib/ai-model-catalog";
+import { LOCALES } from "@/lib/i18n/locale";
+import { AI_COPY } from "./ai-copy";
 import { AiAuthPanel } from "./AiAuthPanel";
 import { AuthModelSelect } from "./AuthModelSelect";
 import { ChatAiFields } from "./ChatAiFields";
 import { ChatModelField } from "./ChatApiFields";
 import { JevAiFields } from "./JevAiFields";
 import { emptyAiForm, type ChatFormState, type JevFormState } from "./ai-form";
+import { captureTree, hangulIn, html, renderInLocale } from "./test-locale";
+
+const renderToStaticMarkup = (node: ReactNode) => renderInLocale(node, "en");
 
 type AnyElement = ReactElement<Record<string, unknown>>;
 
@@ -45,7 +49,7 @@ function view(input: Pick<AiSettingsView, "chat" | "jev">): AiSettingsView {
 
 function chatTree(chat: ChatFormState, saved: AiSettingsView | null = null) {
   const changes: ChatFormState[] = [];
-  const tree = ChatAiFields({
+  const tree = captureTree(ChatAiFields, {
     value: chat, onChangeAction: (next) => changes.push(next), disabled: false, saved,
     errors: {}, idPrefix: "qa",
   });
@@ -54,7 +58,7 @@ function chatTree(chat: ChatFormState, saved: AiSettingsView | null = null) {
 
 function jevTree(jev: JevFormState, saved: AiSettingsView | null = null) {
   const changes: JevFormState[] = [];
-  const tree = JevAiFields({
+  const tree = captureTree(JevAiFields, {
     value: jev, onChangeAction: (next) => changes.push(next), disabled: false, saved,
     errors: {}, idPrefix: "qa",
   });
@@ -95,13 +99,35 @@ describe("model field controls", () => {
   });
 
   test("errors replace the hint and mark the Auth select invalid", () => {
-    const html = renderToStaticMarkup(
+    const markup = renderToStaticMarkup(
       <ChatModelField idPrefix="qa" chat={{ ...base.chat, enabled: true, mode: "auth", provider: "xai", model: "grok-4.7" }}
-        savedAuthModel={null} setChatAction={() => undefined} error="목록에서 사용할 모델을 선택해 주세요." />,
+        savedAuthModel={null} setChatAction={() => undefined} error="authModelRequired" />,
     );
-    expect(html).toContain('aria-invalid="true" aria-describedby="qa-chat-model-error"');
-    expect(html).toContain('id="qa-chat-model-error" role="alert"');
-    expect(html).not.toContain('id="qa-chat-model-hint"');
+    expect(markup).toContain('aria-invalid="true" aria-describedby="qa-chat-model-error"');
+    expect(markup).toContain('id="qa-chat-model-error" role="alert"');
+    expect(markup).not.toContain('id="qa-chat-model-hint"');
+  });
+
+  test("a stored error reason is shown in whichever locale is current", () => {
+    for (const locale of LOCALES) {
+      const markup = renderInLocale(
+        <ChatModelField idPrefix="qa" chat={{ ...base.chat, enabled: true, mode: "auth", provider: "xai", model: "grok-4.7" }}
+          savedAuthModel={null} setChatAction={() => undefined} error="authModelRequired" />,
+        locale,
+      );
+      expect(markup).toContain(html(AI_COPY[locale].errors.authModelRequired));
+    }
+  });
+});
+
+describe("English connection fields", () => {
+  test.each(["api", "auth"] as const)("chat and Jev %s fields render no Korean copy", (mode) => {
+    const chat = renderToStaticMarkup(chatTree({ ...base.chat, enabled: true, mode, provider: "openai", model: chatAuthModels("openai")?.defaultId ?? "" }).tree);
+    const jev = renderToStaticMarkup(jevTree({ ...base.jev, enabled: true, mode, provider: "openrouter", model: jevAuthDefault ?? "" }).tree);
+    expect(hangulIn(chat)).toEqual([]);
+    expect(hangulIn(jev)).toEqual([]);
+    expect(chat).toContain(html(AI_COPY.en.chat.legend));
+    expect(jev).toContain(html(AI_COPY.en.jev.legend));
   });
 });
 
@@ -140,7 +166,7 @@ describe("chat model switching", () => {
     const chat = { ...base.chat, enabled: true, mode: "auth" as const, provider: "xai" as const, model: "grok-4.7", authAttemptId: attempt, consent: true };
     const before = chatTree(chat);
     const field = findOne(before.tree, (element) => element.type === ChatModelField);
-    const fieldTree = ChatModelField(field.props as Parameters<typeof ChatModelField>[0]);
+    const fieldTree = captureTree(ChatModelField, field.props as Parameters<typeof ChatModelField>[0]);
     const select = findOne(fieldTree, (element) => element.type === AuthModelSelect);
     (select.props.onChangeAction as (model: string) => void)("grok-4.5");
     const next = before.changes.at(-1);
@@ -175,9 +201,9 @@ describe("Jev model switching", () => {
 
   test("a saved retired Jev Auth model stays selected", () => {
     const saved = view({ chat: null, jev: { provider: "openrouter", mode: "auth", model: "~typesafe/jev-1.0", hasApiKey: false, hasCredential: true } });
-    const html = renderToStaticMarkup(jevTree({
+    const markup = renderToStaticMarkup(jevTree({
       ...base.jev, enabled: true, mode: "auth", provider: "openrouter", model: "~typesafe/jev-1.0", consent: true,
     }, saved).tree);
-    expect(html).toContain('<option value="~typesafe/jev-1.0" selected="">');
+    expect(markup).toContain('<option value="~typesafe/jev-1.0" selected="">');
   });
 });

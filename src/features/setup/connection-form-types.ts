@@ -1,5 +1,6 @@
 import type { AiProvider, JevProvider } from "@/lib/ai-settings";
 import type { ApiFormat } from "@/lib/ai-provider-options";
+import type { ConnectionErrorKey } from "./ai-copy";
 
 export type HeaderAction = "retain" | "replace" | "clear";
 
@@ -48,7 +49,8 @@ export type ConnectionFieldKey =
   | "auth"
   | "consent";
 
-export type ConnectionErrors = Partial<Record<ConnectionFieldKey, string>>;
+/** Validation reasons, not rendered text, so a visible error follows a language switch. */
+export type ConnectionErrors = Partial<Record<ConnectionFieldKey, ConnectionErrorKey>>;
 export type BuildConnectionResult<T> =
   | { readonly ok: true; readonly connection: T }
   | { readonly ok: false; readonly errors: ConnectionErrors };

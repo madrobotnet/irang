@@ -1,3 +1,5 @@
+import type { LocalizedText } from "./i18n/locale";
+
 /** Shared wire types (API responses). Server modules map DB rows into these. */
 
 export type NoteSummary = {
@@ -119,4 +121,4 @@ export type HomeData = {
   stats: { notes: number; links: number; tags: number };
 };
 
-export type ApiErrorBody = { error: { code: string; message: string; retryAfterSeconds?: number } };
+export type ApiErrorBody = { error: { code: string; message: string; localized?: LocalizedText; retryAfterSeconds?: number } };

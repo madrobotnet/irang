@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+/**
+ * `name` is a language-neutral product name. The server also stores it as the default
+ * connection name, so it is never translated; localized option labels live in feature copy.
+ */
 export const AI_PROVIDERS = [
   { id: "openai", name: "ChatGPT / OpenAI", model: "gpt-6-sol", supportsAuth: true },
   { id: "anthropic", name: "Claude", model: "claude-sonnet-5-5", supportsAuth: false },
@@ -12,7 +16,7 @@ export const AI_PROVIDERS = [
 ] as const;
 
 export const JEV_PROVIDERS = [
-  { id: "typesafe", name: "TypeSafe 공식", model: "jev-latest", supportsAuth: false },
+  { id: "typesafe", name: "TypeSafe", model: "jev-latest", supportsAuth: false },
   { id: "openrouter", name: "OpenRouter", model: "~typesafe/jev-latest", supportsAuth: true },
 ] as const;
 

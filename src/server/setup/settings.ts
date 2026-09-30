@@ -1,3 +1,4 @@
+import { setupCopy } from "@/server/i18n/setup-copy";
 import type { AiSettingsInput, AiSettingsView, StoredAiSettings } from "@/lib/ai-settings";
 import { tx } from "@/server/db";
 import { ApiError } from "@/server/http";
@@ -15,7 +16,7 @@ export async function storedAiSettings(): Promise<StoredAiSettings | null> {
   const saved = await settingsDocument();
   if (!saved) return null;
   const ownerId = await settingsOwner();
-  if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+  if (!ownerId) throw new ApiError("conflict", setupCopy.setupFirst);
   const profiles = await connectionProfiles(ownerId);
   const chat = profiles.find((profile) => profile.id === saved.chatId && profile.purpose === "chat");
   const jev = profiles.find((profile) => profile.id === saved.jevId && profile.purpose === "jev");
@@ -59,7 +60,7 @@ export async function saveAiSettings(
   await tx(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [AI_SETTINGS_LOCK]);
     const ownerId = await settingsOwner(client);
-    if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+    if (!ownerId) throw new ApiError("conflict", setupCopy.setupFirst);
     const ai = await resolveAiSettings(client, input, {
       ownerId,
       previous: await settingsDocument(client),

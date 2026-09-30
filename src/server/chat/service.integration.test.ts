@@ -4,6 +4,8 @@ import { ApiError } from "@/server/http";
 import { closeDb, connectTestDatabase, resetData } from "@/server/test/db";
 import { type CodexSession } from "./auth";
 import { ChatProviderError, createCodexProvider, type ChatProvider, type ProviderInput } from "./provider";
+import { DEFAULT_THREAD_TITLES } from "@/features/chat/chat-model";
+import { EMPTY_ANSWER, NEW_THREAD_TITLE } from "@/server/i18n/copy";
 import {
   createChatMessageStream,
   createChatThread,
@@ -58,6 +60,11 @@ async function insertNote(title: string, body: string): Promise<string> {
 }
 
 describe("chat threads", () => {
+  test("keeps server and client default titles identical and stores the request-language title", async () => {
+    expect(NEW_THREAD_TITLE).toEqual(DEFAULT_THREAD_TITLES);
+    expect((await createChatThread(undefined, "en")).title).toBe(DEFAULT_THREAD_TITLES.en);
+  });
+
   test("creates, lists, renames, reads, and deletes a persistent thread", async () => {
     const created = await createChatThread("첫 대화");
     expect(await listChatThreads()).toEqual([created]);
@@ -246,6 +253,21 @@ describe("streamed chat", () => {
     expect(streamed[0]).toEqual({ event: "citations", data: [] });
     expect((streamed.at(-1)!.data as { message: { content: string } }).message.content)
       .toBe("관련 노트에서 답변의 근거를 찾지 못했습니다.");
+  });
+
+  test("uses request locale for empty-source replies and provider input", async () => {
+    const emptyThread = await createChatThread(undefined, "en");
+    const emptyResponse = await createChatMessageStream(emptyThread.id, "no matching evidence", {
+      provider: { async stream() { throw new Error("must not run"); } }, auth: AUTH, locale: "en",
+    });
+    expect((events(await emptyResponse.text()).at(-1)!.data as { message: { content: string } }).message.content)
+      .toBe(EMPTY_ANSWER.en);
+    await insertNote("locale evidence", "locale propagation evidence");
+    const groundedThread = await createChatThread(undefined, "en");
+    let seen: ProviderInput | undefined;
+    const provider: ChatProvider = { async stream(input) { seen = input; return "answer"; } };
+    await (await createChatMessageStream(groundedThread.id, "locale propagation evidence", { provider, auth: AUTH, locale: "en" })).text();
+    expect(seen?.locale).toBe("en");
   });
 
   test("rejects a concurrent send to the same thread", async () => {

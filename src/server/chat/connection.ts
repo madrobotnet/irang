@@ -1,4 +1,6 @@
 import type { AiProvider } from "@/lib/ai-settings";
+import type { Locale } from "@/lib/i18n/locale";
+import { readinessCopy } from "@/server/i18n/copy";
 import { aiSelection } from "@/server/setup/ai-profile-store";
 import { refreshedConnectionProfile } from "@/server/ai-auth/refresh";
 import { createGoogleProfileProvider } from "@/server/ai-auth/google-profile";
@@ -15,22 +17,22 @@ export type AuthConnectionStatus = {
   readonly detail: string;
 };
 
-export async function authConnections(): Promise<readonly AuthConnectionStatus[]> {
-  const [codex, google] = await Promise.all([loadCodexAuth(), getCliAuthReadiness("google")]);
+export async function authConnections(locale: Locale = "ko"): Promise<readonly AuthConnectionStatus[]> {
+  const [codex, google] = await Promise.all([loadCodexAuth(), getCliAuthReadiness("google", { locale })]);
   return [
     {
       provider: "openai",
       available: codex.kind === "chatgpt",
       instructions: "docker compose exec app codex login --device-auth",
       detail: codex.kind === "chatgpt"
-        ? "ChatGPT 로그인 파일을 확인했습니다. 계정 유효성과 모델 사용 권한은 실제 요청 시 확인됩니다."
-        : "서버에서 공식 Codex CLI의 ChatGPT 로그인을 완료해 주세요.",
+        ? readinessCopy.codexReady[locale]
+        : readinessCopy.codexMissing[locale],
     },
     {
       provider: "anthropic",
       available: false,
       instructions: "",
-      detail: "Claude는 API 키 연결만 지원합니다.",
+      detail: readinessCopy.claudeKeyOnly[locale],
     },
     google,
   ];

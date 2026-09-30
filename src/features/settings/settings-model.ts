@@ -1,3 +1,5 @@
+import { INTL_LOCALE, type Locale } from "@/lib/i18n/locale";
+
 /** Whole days until `expiresAt` (rounded up, never negative); null for a missing or invalid timestamp. */
 export function daysUntil(expiresAt: string | null, now: number): number | null {
   if (!expiresAt) return null;
@@ -6,9 +8,9 @@ export function daysUntil(expiresAt: string | null, now: number): number | null 
   return Math.max(0, Math.ceil((at - now) / 86_400_000));
 }
 
-/** "2026년 10월 27일 (화) 오후 9:00" in the viewer's zone. */
-export function formatExpiry(expiresAt: string): string {
-  return new Intl.DateTimeFormat("ko-KR", {
+/** "2026년 10월 27일 (화) 오후 9:00" / "Tue, October 27, 2026 at 9:00 PM" in the viewer's zone. */
+export function formatExpiry(expiresAt: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(INTL_LOCALE[locale], {
     year: "numeric",
     month: "long",
     day: "numeric",

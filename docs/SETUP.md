@@ -1,6 +1,6 @@
-# Second Brain 2.2.0 — Installation & Configuration
+# Irang — Installation & Configuration
 
-Deployment guide for a single-owner, self-hosted Second Brain instance. Everything
+Deployment guide for a single-owner, self-hosted Irang instance. Everything
 ships as two Docker Compose services (the Next.js app and a Postgres database) plus
 two named data volumes. Host Bun is **not** required: the few one-shot scripts run
 through the same `oven/bun:1.4.2-slim` image the app is built from.
@@ -28,7 +28,8 @@ default, e.g. `second-brain_app-data`):
 
 - Docker Engine + Docker Compose **5.1.0 or newer**. CI pins Compose 5.5.1;
   this guide was verified with Docker 29 / Compose 5.5.1 on Linux arm64.
-- Linux or macOS. For anything reachable beyond `127.0.0.1`, a TLS-terminating
+- The POSIX shell commands were verified on Linux. macOS and Windows are
+  untested. For anything reachable beyond `127.0.0.1`, a TLS-terminating
   reverse proxy you control (section 6).
 - No host Node or Bun: one-shot scripts run via `docker run` with the mounted
   repository (section 3). You only need them once, before the first
@@ -49,7 +50,7 @@ fresh random secrets, mode `0600`, and prints the installation code once:
 
 ```sh
 docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \
-  oven/bun:1.4.2-slim bun run setup-env
+  oven/bun:1.4.2-slim bun --no-env-file scripts/setup-env.mjs
 ```
 
 Output:
@@ -91,7 +92,7 @@ database passwords during an upgrade.
 **Windows note (untested):** the equivalent in PowerShell is
 
 ```powershell
-docker run --rm -v "${PWD}:/repo" -w /repo oven/bun:1.4.2-slim bun run setup-env
+docker run --rm -v "${PWD}:/repo" -w /repo oven/bun:1.4.2-slim bun --no-env-file scripts/setup-env.mjs
 ```
 
 Docker Desktop's file sharing maps bind-mount file ownership to your Windows user,
@@ -323,13 +324,13 @@ and they remain under the provider's control (account state, plan, billing).
 For ChatGPT, Gemini, Copilot, OpenRouter or xAI, select Auth and start the connection in the form.
 On first setup, enter the installation code first. Open the provider's login
 page; enter the displayed device code when requested. Return to the original
-Second Brain tab and save once it reports the authorization is ready.
+Irang tab and save once it reports the authorization is ready.
 
 - ChatGPT displays a one-time code and a link to OpenAI's device verification
-  page. Enter that code on the OpenAI page, not in Second Brain. Device code
+  page. Enter that code on the OpenAI page, not in Irang. Device code
   login must be enabled in ChatGPT security settings or workspace permissions.
 - Gemini opens Google sign-in. Copy the authorization code Google gives you
-  back into the original Second Brain form and submit it there. No server
+  back into the original Irang form and submit it there. No server
   terminal is needed. The Auth default `gemini-3.5-flash` follows Gemini CLI's
   base tier and can map to 3.8 Flash when the account has access; selecting a
   newer model does not grant that access.
@@ -616,6 +617,35 @@ For local development the same recovery uses `.env.local` and the escaped
 owner password is unknown *and* you prefer to keep the env hash permanently, step 4
 is simply skipped.
 
-## 12. License
+## 12. Development commands and test databases
 
-Second Brain is released under the MIT License — see [LICENSE](../LICENSE).
+Use Bun 1.4.2 and Docker. The development database is a separate
+`second-brain-dev` Compose project on `127.0.0.1:55432`.
+Copy `.env.example` to `.env.local`, then use the output of
+`bun run hash-password` for `AUTH_PASSWORD_HASH`, keeping the backslashes.
+
+| Command | Purpose |
+| --- | --- |
+| `bun run db:up` | Start the development database |
+| `bun run db:down` | Delete the development database container and volume; unrelated to production |
+| `bun run seed` | Add linked Korean demo notes and captures, preserving existing data |
+| `bun run hash-password` | Print a dotenv-ready `AUTH_PASSWORD_HASH=...` line interactively |
+| `bun scripts/hash-password.mjs` | Print a raw PHC hash for Docker `--env-file` |
+| `bun run setup-env` / `bun run setup-token` | Create the installation `.env` / print a fresh `SETUP_TOKEN` |
+| `bun run database-url` | Percent-encode a database password into a connection URL |
+| `bun run typecheck` / `bun run lint` / `bun test` / `bun run build` | Check types, lint, test and build |
+
+The development initializer creates a separate `second_brain_test` database.
+Tests delete data only there, not in your development notebook.
+`TEST_DATABASE_URL` may select a loopback database named `second_brain_test`
+or `sb_test_<lane>`; connection-override query parameters are rejected.
+The test helper checks initialization, the cached connection and the actual
+database name before clearing data. Never point tests at production.
+
+`bun run db:down` destroys local development data. To stop a production
+Compose project while preserving its named volumes, use `docker compose down`
+without `-v`.
+
+## 13. License
+
+Irang is released under the MIT License — see [LICENSE](../LICENSE).

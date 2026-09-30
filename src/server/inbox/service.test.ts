@@ -4,6 +4,8 @@ import { query, queryOne } from "@/server/db";
 import { setJevForTests } from "@/server/jev/client";
 import { closeDb, connectTestDatabase, resetData } from "@/server/test/db";
 import { captureInbox, enrichInboxItem, listInbox, promoteInbox, suggestInbox } from "./service";
+import { URL_FAILED_MARKER, URL_PENDING_MARKER } from "@/lib/inbox-url-status";
+import { CAPTURE_TITLE } from "@/server/i18n/copy";
 
 connectTestDatabase();
 
@@ -32,8 +34,24 @@ describe("capture and enrichment", () => {
 
     const stored = (await listInbox()).items[0]!;
     expect(stored.body).toContain("내 메모");
-    expect(stored.body).toContain("URL 내용을 가져오지 못했습니다");
+    expect(stored.body).toContain(URL_FAILED_MARKER);
     expect(stored.suggestions?.status).toBe("unavailable");
+  });
+
+  test("uses neutral markers and localized fallback titles while enriching legacy rows", async () => {
+    setJevForTests(null);
+    const captured = await captureInbox({ url: "not a url" }, "en");
+    expect(captured.title).toBe(CAPTURE_TITLE.link.en);
+    expect(captured.body).toBe(URL_PENDING_MARKER);
+    const legacy = await queryOne<{ id: string }>(`INSERT INTO inbox_items (title,body,source,url)
+      VALUES ('legacy','original\n\n> URL 내용을 가져오는 중입니다.','url','https://example.com/legacy') RETURNING id`);
+    await enrichInboxItem(legacy!.id, {
+      resolve: async () => ["93.184.216.34"],
+      fetch: async () => new Response("fetched", { headers: { "content-type": "text/plain" } }),
+    }, "en");
+    const stored = (await listInbox()).items.find((item) => item.id === legacy!.id)!;
+    expect(stored.body).toBe("original\n\nfetched");
+    expect(stored.url).toBe("https://example.com/legacy");
   });
 
   test("keeps capture usable when Jev throws", async () => {
@@ -95,5 +113,15 @@ describe("atomic inbox promotion", () => {
     const note = await promoteInbox(item.id);
     expect(note.tags).toEqual([]);
     expect(note.body).toBe("내용");
+  });
+
+  test("never promotes new or legacy URL status markers", async () => {
+    const current = await captureInbox({ title: "current", text: "keep", url: "https://example.com" }, "en");
+    expect((await promoteInbox(current.id, {}, "en")).body).toBe("keep");
+    const legacy = await queryOne<{ id: string }>(`INSERT INTO inbox_items (title,body,source,url)
+      VALUES ('legacy','keep legacy\n\n> URL 내용을 가져오지 못했습니다. 원문 링크는 보존되었습니다.','url','https://example.com/legacy') RETURNING id`);
+    const note = await promoteInbox(legacy!.id, {}, "en");
+    expect(note.body).toBe("keep legacy");
+    expect(note.sourceUrl).toBe("https://example.com/legacy");
   });
 });

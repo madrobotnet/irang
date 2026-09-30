@@ -1,6 +1,7 @@
 import type { ProviderInput } from "./provider";
 
 export const TEST_INPUT = {
+  locale: "ko",
   question: "회의는 언제야?",
   history: [
     { role: "user", content: "지난 답을 기억해줘." },

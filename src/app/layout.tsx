@@ -1,17 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { DefaultDocumentTitle } from "@/components/i18n/DocumentTitle";
+import { LocaleProvider } from "@/components/i18n/LocaleProvider";
 import { RAIL_INIT_SCRIPT } from "@/components/shell/rail";
 import { THEME_INIT_SCRIPT } from "@/components/shell/theme";
+import { rootMetadata } from "@/lib/brand";
+import { getRequestLocale } from "@/lib/i18n/server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: { default: "세컨드 브레인", template: "%s · 세컨드 브레인" },
-  description: "캡처하고, 정리하고, 연결하는 개인 노트 작업대",
-  applicationName: "세컨드 브레인",
-  manifest: "/manifest.webmanifest",
-  icons: { icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-48.png", sizes: "48x48" }], apple: "/icons/icon-192.png" },
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "세컨드 브레인" },
-  robots: { index: false, follow: false },
-};
+/** Brand title template, description, install name and icons, in this request's locale. */
+export async function generateMetadata(): Promise<Metadata> {
+  return rootMetadata(await getRequestLocale());
+}
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -28,13 +27,20 @@ export const viewport: Viewport = {
  * the persisted theme class and rail width; suppressHydrationWarning covers
  * exactly the <html> attributes they touch.
  */
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getRequestLocale();
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT + RAIL_INIT_SCRIPT }} />
       </head>
-      <body className="bg-canvas text-ink antialiased">{children}</body>
+      <body className="bg-canvas text-ink antialiased">
+        <LocaleProvider initialLocale={locale}>
+          {/* After a client-side language switch, the root default title (the brand) follows it. */}
+          <DefaultDocumentTitle />
+          {children}
+        </LocaleProvider>
+      </body>
     </html>
   );
 }

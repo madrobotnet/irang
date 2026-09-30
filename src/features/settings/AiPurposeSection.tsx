@@ -1,11 +1,14 @@
 "use client";
 
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useCopy } from "@/components/i18n";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { inputClassName } from "@/components/ui/Input";
 import type { ConnectionProfileView } from "@/lib/ai-settings";
+import { AI_COPY } from "@/features/setup/ai-copy";
 import type { ProfilePurpose, SelectionValue } from "./profile-form";
+import { SETTINGS_COPY } from "./settings-copy";
 
 export function AiPurposeSection({
   purpose,
@@ -36,17 +39,17 @@ export function AiPurposeSection({
   readonly onEditAction: (profile: ConnectionProfileView) => void;
   readonly onDeleteAction: (profile: ConnectionProfileView) => void;
 }) {
-  const consentText = purpose === "chat"
-    ? "질문, 최근 대화 기록, 관련 노트 일부를 선택한 제공자에게 보내는 데 동의합니다."
-    : "캡처 내용과 최근 노트 정보를 선택한 Jev 제공자에게 보내는 데 동의합니다.";
+  const copy = useCopy(SETTINGS_COPY).purpose;
+  // Same consent wording as the connection form for this purpose.
+  const consentText = useCopy(AI_COPY)[purpose].consent;
   return (
     <section aria-labelledby={`${purpose}-connections-title`} className="rounded-card border border-line p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id={`${purpose}-connections-title`} className="text-md font-semibold">{title}</h3>
-        <Button size="lg" disabled={disabled} leading={<Plus aria-hidden className="size-4" />} onClick={onAddAction}>연결 추가</Button>
+        <Button size="lg" disabled={disabled} leading={<Plus aria-hidden className="size-4" />} onClick={onAddAction}>{copy.add}</Button>
       </div>
       <div className="mt-4 flex flex-col gap-1.5">
-        <label htmlFor={`${purpose}-active-connection`} className="text-sm font-medium">사용할 연결</label>
+        <label htmlFor={`${purpose}-active-connection`} className="text-sm font-medium">{copy.active}</label>
         <select
           id={`${purpose}-active-connection`}
           value={value}
@@ -54,11 +57,11 @@ export function AiPurposeSection({
           onChange={(event) => onValueChangeAction(event.target.value)}
           className={inputClassName}
         >
-          <option value="off">사용 안 함</option>
-          <option value="environment">서버 환경 연결</option>
+          <option value="off">{copy.off}</option>
+          <option value="environment">{copy.environment}</option>
           {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
         </select>
-        <p className="text-sm text-mute">사용 안 함은 저장된 연결을 삭제하지 않아요.</p>
+        <p className="text-sm text-mute">{copy.offNote}</p>
       </div>
       {value !== "off" ? (
         <div className="mt-3">
@@ -83,20 +86,20 @@ export function AiPurposeSection({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{profile.name}</p>
-                {activeId === profile.id ? <Badge tone="ok">사용 중</Badge>
-                  : value === profile.id ? <Badge>선택됨 · 저장 전</Badge> : <Badge>저장됨</Badge>}
+                {activeId === profile.id ? <Badge tone="ok">{copy.inUse}</Badge>
+                  : value === profile.id ? <Badge>{copy.selected}</Badge> : <Badge>{copy.stored}</Badge>}
               </div>
               <p className="mt-1 break-all text-sm text-mute">
                 {profile.connection.provider} · {profile.connection.mode ?? "api"} · {profile.connection.model}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button size="lg" disabled={disabled} leading={<Pencil aria-hidden className="size-4" />} onClick={() => onEditAction(profile)}>편집</Button>
-              <Button variant="danger" size="lg" disabled={disabled} leading={<Trash2 aria-hidden className="size-4" />} onClick={() => onDeleteAction(profile)}>삭제</Button>
+              <Button size="lg" disabled={disabled} leading={<Pencil aria-hidden className="size-4" />} onClick={() => onEditAction(profile)}>{copy.edit}</Button>
+              <Button variant="danger" size="lg" disabled={disabled} leading={<Trash2 aria-hidden className="size-4" />} onClick={() => onDeleteAction(profile)}>{copy.remove}</Button>
             </div>
           </li>
         ))}
-        {profiles.length === 0 ? <li className="py-3 text-sm text-mute">저장된 연결이 없어요. 연결을 추가해도 직접 선택하기 전에는 사용되지 않아요.</li> : null}
+        {profiles.length === 0 ? <li className="py-3 text-sm text-mute">{copy.empty}</li> : null}
       </ul>
     </section>
   );

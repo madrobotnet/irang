@@ -1,3 +1,6 @@
+import { localizedIssue } from "@/lib/i18n/validation";
+import { setupIssueCopy } from "@/lib/i18n/ai-validation-copy";
+import { setupCopy } from "@/server/i18n/setup-copy";
 import argon2 from "argon2";
 import { z } from "zod";
 import { AiSettingsInputSchema, type AiSettingsInput } from "@/lib/ai-settings";
@@ -17,7 +20,7 @@ export const SetupInputSchema = z.object({
   ai: AiSettingsInputSchema,
 }).strict().refine((input) => input.password === input.passwordConfirmation, {
   path: ["passwordConfirmation"],
-  message: "비밀번호가 일치하지 않습니다.",
+  ...localizedIssue(setupIssueCopy.passwordMismatch),
 });
 
 /** Existing AUTH_PASSWORD_HASH remains authoritative; only wizard-created owners are a fallback. */
@@ -42,13 +45,13 @@ export async function completeSetup(input: {
     // Shared with legacy owner creation and settings writes, across processes.
     await client.query("SELECT pg_advisory_xact_lock(7431003)");
     const existing = await client.query<{ occupied: boolean }>(OCCUPIED_SQL);
-    if (existing.rows[0]?.occupied) throw new ApiError("conflict", "기존 데이터가 있는 서버는 최초 설정으로 변경할 수 없습니다.");
+    if (existing.rows[0]?.occupied) throw new ApiError("conflict", setupCopy.hasData);
     const result = await client.query<{ id: string }>(
       "INSERT INTO users (password_hash) VALUES ($1) RETURNING id",
       [hash],
     );
     const owner = result.rows[0];
-    if (!owner) throw new ApiError("internal", "설정을 저장하지 못했습니다.");
+    if (!owner) throw new ApiError("internal", setupCopy.saveFailed);
     const ai = await resolveAiSettings(client, input.ai, {
       ownerId: owner.id, previous: null,
       scope: { key: scopeKey, browserHash: options.browserHash },

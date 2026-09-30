@@ -95,6 +95,7 @@ export function markdownToText(body: string): string {
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
     .replace(WIKILINK_RE, (_m, target: string, _h: string | undefined, label: string | undefined) => (label ?? target).trim())
+    .replace(/^(\s{0,3}[-*+]\s+)\[[ xX]\]\s+/gm, "$1")
     .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
     .replace(/[*_~`]+/g, "")
     .replace(/\s+/g, " ")

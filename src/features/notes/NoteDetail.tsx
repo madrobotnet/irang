@@ -3,21 +3,26 @@
 import { Archive, Pin, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore } from "react";
 import useSWR, { useSWRConfig } from "swr";
+import { useCopy, useLocale } from "@/components/i18n";
 import { Badge, Button, EmptyState, Input, SkeletonLines, useToast } from "@/components/ui";
 import { api } from "@/lib/api-client";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import { textInEveryLocale } from "@/lib/i18n/copy";
 import type { Note } from "@/lib/types";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { MarkdownPreview } from "./MarkdownPreview";
 import { NoteConnections } from "./NoteConnections";
+import { NOTES_COPY } from "./copy";
 import { forgetNoteDraft, getNoteDraft } from "./draft-store";
 import { refreshNoteViews } from "./note-cache";
 
 export function NoteDetail({ noteId }: { noteId: string }) {
+  const copy = useCopy(NOTES_COPY);
   const detail = useSWR<{ note: Note }>(`/api/notes/${noteId}`, { revalidateOnFocus: true });
   if (detail.isLoading) return <section className="min-w-0 flex-1 p-5"><SkeletonLines lines={8} /></section>;
-  if (detail.error || !detail.data) return <section className="min-w-0 flex-1 p-5"><EmptyState title="노트를 열지 못했습니다" description="노트가 삭제되었거나 연결에 문제가 있습니다." action={<Button onClick={() => void detail.mutate()}>다시 시도</Button>} /></section>;
+  if (detail.error || !detail.data) return <section className="min-w-0 flex-1 p-5"><EmptyState title={copy.detail.openFailedTitle} description={copy.detail.openFailedDescription} action={<Button onClick={() => void detail.mutate()}>{copy.retry}</Button>} /></section>;
   return <LoadedNote note={detail.data.note} refresh={() => detail.mutate()} />;
 }
 
@@ -37,16 +42,21 @@ function useDraft(note: Note) {
     const timer = window.setTimeout(() => void controller.flush(), 700);
     return () => window.clearTimeout(timer);
   }, [controller, snapshot.state, snapshot.version]);
+  // Keep both translations; a switch must not re-run the cleanup below, which flushes the draft.
+  const reportLeaveFailure = useEffectEvent(() => {
+    toast(textInEveryLocale((locale) => NOTES_COPY[locale].detail.leaveSaveFailed), { tone: "danger", durationMs: 0 });
+  });
   useEffect(() => () => {
     void controller.flush().then((saved) => {
-      if (!saved) toast("노트를 저장하지 못했습니다. 돌아가서 다시 시도해 주세요.", { tone: "danger", durationMs: 0 });
+      if (!saved) reportLeaveFailure();
     });
-  }, [controller, toast]);
+  }, [controller]);
   return { controller, snapshot };
 }
 
 function LoadedNote({ note, refresh }: { note: Note; refresh: () => Promise<unknown> }) {
   const router = useRouter();
+  const copy = useCopy(NOTES_COPY);
   const { mutate: mutateAll, cache } = useSWRConfig();
   const { toast } = useToast();
   const { controller, snapshot } = useDraft(note);
@@ -57,26 +67,26 @@ function LoadedNote({ note, refresh }: { note: Note; refresh: () => Promise<unkn
     setActionBusy(true);
     try {
       if (!await controller.flush()) {
-        toast("변경 내용을 먼저 저장해 주세요.", { tone: "danger" });
+        toast(textInEveryLocale((locale) => NOTES_COPY[locale].detail.saveFirst), { tone: "danger" });
         return;
       }
       await api(`/api/notes/${note.id}`, { method: "PATCH", json: patch });
       await Promise.all([refresh(), refreshLists()]);
-    } catch (error) { toast(message(error, "노트를 변경하지 못했습니다."), { tone: "danger" }); }
+    } catch (error) { toast(textInEveryLocale((locale) => localizedApiError(error, locale, NOTES_COPY[locale].detail.updateFailed)), { tone: "danger" }); }
     finally { setActionBusy(false); }
   };
   const trash = async () => {
     setActionBusy(true);
     try {
       if (!await controller.flush()) {
-        toast("변경 내용을 저장하지 못해 휴지통으로 옮기지 않았습니다.", { tone: "danger" });
+        toast(textInEveryLocale((locale) => NOTES_COPY[locale].detail.trashBlocked), { tone: "danger" });
         return;
       }
       await api(`/api/notes/${note.id}`, { method: "DELETE" });
       forgetNoteDraft(note.id);
       await refreshLists();
       router.push("/notes?view=trash");
-    } catch (error) { toast(message(error, "휴지통으로 옮기지 못했습니다."), { tone: "danger" }); }
+    } catch (error) { toast(textInEveryLocale((locale) => localizedApiError(error, locale, NOTES_COPY[locale].detail.trashFailed)), { tone: "danger" }); }
     finally { setActionBusy(false); }
   };
   const restore = async () => {
@@ -87,52 +97,52 @@ function LoadedNote({ note, refresh }: { note: Note; refresh: () => Promise<unkn
       await refreshLists();
       router.push(`/notes/${note.id}`);
       await refresh();
-    } catch (error) { toast(message(error, "노트를 복원하지 못했습니다."), { tone: "danger" }); }
+    } catch (error) { toast(textInEveryLocale((locale) => localizedApiError(error, locale, NOTES_COPY[locale].detail.restoreFailed)), { tone: "danger" }); }
     finally { setActionBusy(false); }
   };
   const purge = async () => {
-    if (!window.confirm("이 노트를 영구 삭제할까요? 이 작업은 되돌릴 수 없습니다.")) return;
+    if (!window.confirm(copy.detail.purgeConfirm)) return;
     setActionBusy(true);
     try {
       await api(`/api/notes/${note.id}?purge=1`, { method: "DELETE" });
       forgetNoteDraft(note.id);
       await refreshLists();
       router.push("/notes?view=trash");
-    } catch (error) { toast(message(error, "노트를 영구 삭제하지 못했습니다."), { tone: "danger" }); }
+    } catch (error) { toast(textInEveryLocale((locale) => localizedApiError(error, locale, NOTES_COPY[locale].detail.purgeFailed)), { tone: "danger" }); }
     finally { setActionBusy(false); }
   };
 
   if (note.deletedAt) {
-    return <section className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6"><div className="mx-auto max-w-3xl"><Link href="/notes?view=trash" className="text-sm text-accent">← 휴지통</Link><EmptyState className="mt-5" icon={Trash2} title={note.title} description="휴지통의 노트는 복원한 뒤 편집할 수 있습니다." action={<><Button loading={actionBusy} leading={<RotateCcw aria-hidden className="size-4" />} onClick={() => void restore()}>복원</Button><Button variant="danger" disabled={actionBusy} onClick={() => void purge()}>영구 삭제</Button></>} /></div></section>;
+    return <section className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6"><div className="mx-auto max-w-3xl"><Link href="/notes?view=trash" className="text-sm text-accent">{copy.detail.backToTrash}</Link><EmptyState className="mt-5" icon={Trash2} title={note.title} description={copy.detail.trashedDescription} action={<><Button loading={actionBusy} leading={<RotateCcw aria-hidden className="size-4" />} onClick={() => void restore()}>{copy.detail.restore}</Button><Button variant="danger" disabled={actionBusy} onClick={() => void purge()}>{copy.detail.purge}</Button></>} /></div></section>;
   }
 
   return (
     <section className="min-w-0 flex-1 overflow-y-auto bg-canvas p-3 pb-24 sm:p-6 lg:pb-6 scrollbar-thin">
       <div className="mx-auto max-w-5xl">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Link href="/notes" className="mr-auto text-sm text-mute hover:text-ink lg:hidden">← 노트 목록</Link>
+          <Link href="/notes" className="mr-auto inline-flex min-h-touch items-center text-sm text-mute hover:text-ink lg:hidden">{copy.detail.backToList}</Link>
           <SaveIndicator state={snapshot.state} error={snapshot.error} retry={() => void controller.retry()} />
-          <Button size="sm" variant={note.pinned ? "primary" : "secondary"} disabled={actionBusy} leading={<Pin aria-hidden className="size-4" />} onClick={() => void patchFlag({ pinned: !note.pinned })}>{note.pinned ? "고정 해제" : "고정"}</Button>
-          <Button size="sm" disabled={actionBusy} leading={<Archive aria-hidden className="size-4" />} onClick={() => void patchFlag({ archived: !note.archived })}>{note.archived ? "보관 해제" : "보관"}</Button>
-          <Button size="sm" variant="danger" disabled={actionBusy} iconOnly aria-label="휴지통으로 이동" onClick={() => void trash()}><Trash2 aria-hidden className="size-4" /></Button>
+          <Button size="sm" className="min-h-touch sm:min-h-0" variant={note.pinned ? "primary" : "secondary"} disabled={actionBusy} leading={<Pin aria-hidden className="size-4" />} onClick={() => void patchFlag({ pinned: !note.pinned })}>{note.pinned ? copy.detail.unpin : copy.detail.pin}</Button>
+          <Button size="sm" className="min-h-touch sm:min-h-0" disabled={actionBusy} leading={<Archive aria-hidden className="size-4" />} onClick={() => void patchFlag({ archived: !note.archived })}>{note.archived ? copy.detail.unarchive : copy.detail.archive}</Button>
+          <Button size="sm" className="min-h-touch min-w-touch sm:min-h-0 sm:min-w-0" variant="danger" disabled={actionBusy} iconOnly aria-label={copy.detail.moveToTrash} onClick={() => void trash()}><Trash2 aria-hidden className="size-4" /></Button>
         </div>
-        <Input aria-label="노트 제목" className="min-h-touch border-transparent bg-transparent px-1 py-2 font-semibold shadow-none hover:border-line focus:bg-card"
+        <Input aria-label={copy.detail.titleLabel} placeholder={copy.detail.titleLabel} className="min-h-touch border-transparent bg-transparent px-1 py-2 font-semibold shadow-none hover:border-line focus:bg-card"
           style={{ fontSize: "var(--text-2xl)", lineHeight: "var(--text-2xl--line-height)", height: "auto" }}
           value={snapshot.title} onChange={(event) => controller.update({ title: event.target.value })} />
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
-          <CommaField label="태그" defaultValue={snapshot.tags.join(", ")} placeholder="프로젝트, 아이디어" onCommit={(tags) => controller.update({ tags })} />
-          <CommaField label="별칭" defaultValue={snapshot.aliases.join(", ")} placeholder="다른 이름" onCommit={(aliases) => controller.update({ aliases })} />
+          <CommaField label={copy.detail.tags} defaultValue={snapshot.tags.join(", ")} placeholder={copy.detail.tagsPlaceholder} onCommit={(tags) => controller.update({ tags })} />
+          <CommaField label={copy.detail.aliases} defaultValue={snapshot.aliases.join(", ")} placeholder={copy.detail.aliasesPlaceholder} onCommit={(aliases) => controller.update({ aliases })} />
         </div>
         {note.sourceUrl ? <p className="mt-2 flex min-w-0 items-center gap-2 text-sm">
-          <span className="shrink-0 text-mute">원문</span>
+          <span className="shrink-0 text-mute">{copy.detail.source}</span>
           <a href={note.sourceUrl} target="_blank" rel="noreferrer noopener" className="min-w-0 truncate text-accent underline underline-offset-2 focus-ring">{note.sourceUrl}</a>
         </p> : null}
-        <div className="mt-4 flex rounded-ctl bg-desk p-1 sm:w-fit"><button type="button" className={`rounded-ctl px-4 py-1.5 text-sm ${mode === "edit" ? "bg-card font-medium shadow-card" : "text-mute"}`} onClick={() => setMode("edit")}>편집</button><button type="button" className={`rounded-ctl px-4 py-1.5 text-sm ${mode === "preview" ? "bg-card font-medium shadow-card" : "text-mute"}`} onClick={() => setMode("preview")}>미리보기</button></div>
+        <div className="mt-4 flex rounded-ctl bg-desk p-1 sm:w-fit"><button type="button" className={`min-h-touch rounded-ctl px-4 py-1.5 text-sm sm:min-h-0 ${mode === "edit" ? "bg-card font-medium shadow-card" : "text-mute"}`} onClick={() => setMode("edit")}>{copy.detail.edit}</button><button type="button" className={`min-h-touch rounded-ctl px-4 py-1.5 text-sm sm:min-h-0 ${mode === "preview" ? "bg-card font-medium shadow-card" : "text-mute"}`} onClick={() => setMode("preview")}>{copy.detail.preview}</button></div>
         <div className="mt-3">{mode === "edit" ? <MarkdownEditor noteId={note.id} value={snapshot.body} onChange={(body) => controller.update({ body })} onAppend={(markdown) => {
           const body = controller.getSnapshot().body;
           controller.update({ body: `${body}${body && !body.endsWith("\n") ? "\n" : ""}${markdown}` });
           void controller.flush().then((saved) => {
-            if (!saved) toast("첨부 링크를 저장하지 못했습니다. 노트에서 다시 시도해 주세요.", { tone: "danger", durationMs: 0 });
+            if (!saved) toast(textInEveryLocale((locale) => NOTES_COPY[locale].detail.attachmentLinkFailed), { tone: "danger", durationMs: 0 });
           });
         }} /> : <MarkdownPreview body={snapshot.body} />}</div>
         <NoteConnections noteId={note.id} />
@@ -158,10 +168,13 @@ function CommaField({ label, defaultValue, placeholder, onCommit }: { label: str
   }} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }} />;
 }
 
-function SaveIndicator({ state, error, retry }: { state: string; error: string | null; retry: () => void }) {
-  if (state === "failed") return <span className="flex items-center gap-1 text-sm text-danger">저장 실패<Button size="sm" variant="ghost" onClick={retry}>다시 시도</Button><span className="sr-only">{error}</span></span>;
-  if (state === "saving" || state === "dirty") return <Badge tone="warn">저장 중…</Badge>;
-  return <Badge tone="ok">저장됨</Badge>;
+function SaveIndicator({ state, error, retry }: { state: string; error: unknown; retry: () => void }) {
+  const { locale } = useLocale();
+  const copy = useCopy(NOTES_COPY);
+  if (state === "failed") return <div role="alert" className="order-last w-full rounded-ctl border border-danger/30 bg-danger-soft px-3 py-2 text-sm">
+    <div className="flex items-center justify-between gap-2"><span className="font-medium text-danger">{copy.detail.saveFailed}</span><Button size="sm" className="min-h-touch sm:min-h-0" variant="ghost" onClick={retry}>{copy.retry}</Button></div>
+    <p>{localizedApiError(error, locale, copy.detail.saveFailedDetail)}</p>
+  </div>;
+  if (state === "saving" || state === "dirty") return <Badge tone="warn">{copy.detail.saving}</Badge>;
+  return <Badge tone="ok">{copy.detail.saved}</Badge>;
 }
-
-function message(error: unknown, fallback: string): string { return error instanceof Error ? error.message : fallback; }

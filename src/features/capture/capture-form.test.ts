@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { copyParityIssues } from "@/lib/i18n/copy";
+import { CAPTURE_COPY } from "./capture-copy";
 import { buildCapturePayload, EMPTY_DRAFT, isDraftEmpty, isHttpUrl } from "./capture-form";
 
 describe("isHttpUrl", () => {
@@ -16,13 +18,12 @@ describe("isHttpUrl", () => {
 describe("buildCapturePayload", () => {
   test("rejects an empty draft on the text field", () => {
     const result = buildCapturePayload({ text: "  ", url: "", title: "" });
-    expect(result).toEqual({ ok: false, field: "text", message: expect.any(String) });
+    expect(result).toEqual({ ok: false, field: "text", reason: "empty" });
   });
 
   test("rejects a malformed url without discarding the text", () => {
     const result = buildCapturePayload({ text: "메모", url: "not a url", title: "" });
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.field).toBe("url");
+    expect(result).toEqual({ ok: false, field: "url", reason: "badUrl" });
   });
 
   test("sends trimmed text and omits empty optional fields", () => {
@@ -49,5 +50,11 @@ describe("isDraftEmpty", () => {
     expect(isDraftEmpty(EMPTY_DRAFT)).toBe(true);
     expect(isDraftEmpty({ text: " \n", url: "", title: "" })).toBe(true);
     expect(isDraftEmpty({ text: "", url: "", title: "x" })).toBe(false);
+  });
+});
+
+describe("capture copy", () => {
+  test("has Korean and English parity", () => {
+    expect(copyParityIssues(CAPTURE_COPY)).toEqual([]);
   });
 });

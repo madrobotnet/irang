@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { Children, isValidElement, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { AuthCodeField } from "./AiAuthPanel";
+import { AI_COPY } from "./ai-copy";
+import { captureTree, hangulIn, html, renderInLocale } from "./test-locale";
 
 type InputProps = { readonly onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void };
 
@@ -15,16 +16,14 @@ function findInput(node: ReactNode): ReactElement<InputProps> | null {
   return null;
 }
 
-function codeField(onSubmitAction: () => void) {
-  return AuthCodeField({
-    id: "qa-google-code",
-    value: "4/0Abc",
-    error: null,
-    submitting: false,
-    onChangeAction: () => {},
-    onSubmitAction,
-  });
-}
+const props = (onSubmitAction: () => void) => ({
+  id: "qa-google-code",
+  value: "4/0Abc",
+  error: null,
+  submitting: false,
+  onChangeAction: () => {},
+  onSubmitAction,
+});
 
 function pressEnter(input: ReactElement<InputProps>, isComposing: boolean) {
   let prevented = false;
@@ -38,7 +37,7 @@ function pressEnter(input: ReactElement<InputProps>, isComposing: boolean) {
 
 test("Enter in the Google code field submits the code instead of the surrounding form", () => {
   let submissions = 0;
-  const input = findInput(codeField(() => { submissions += 1; }));
+  const input = findInput(captureTree(AuthCodeField, props(() => { submissions += 1; })));
   if (!input) throw new Error("The code field must render an input");
 
   expect(pressEnter(input, true)).toBe(false);
@@ -48,7 +47,7 @@ test("Enter in the Google code field submits the code instead of the surrounding
 });
 
 test("the Google code field adds no nested form, submit button or form-data entry", () => {
-  const markup = renderToStaticMarkup(codeField(() => {}));
+  const markup = renderInLocale(<AuthCodeField {...props(() => {})} />);
   const buttons = markup.match(/<button\b[^>]*>/g) ?? [];
 
   expect(markup).not.toContain("<form");
@@ -57,4 +56,11 @@ test("the Google code field adds no nested form, submit button or form-data entr
   expect(markup).not.toMatch(/<input\b[^>]*\bname=/);
   expect(markup).toContain('for="qa-google-code"');
   expect(markup).toMatch(/<input\b[^>]*\bautoComplete="off"/);
+});
+
+test("the code field follows the current locale", () => {
+  const english = renderInLocale(<AuthCodeField {...props(() => {})} />, "en");
+  expect(hangulIn(english)).toEqual([]);
+  expect(english).toContain(html(AI_COPY.en.auth.codeSubmit));
+  expect(renderInLocale(<AuthCodeField {...props(() => {})} />, "ko")).toContain(html(AI_COPY.ko.auth.codeSubmit));
 });

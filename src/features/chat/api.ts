@@ -1,4 +1,4 @@
-import { api, ApiClientError } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import type { ApiErrorBody, ChatMessage, ChatThread } from "@/lib/types";
 import { readChatStream, type StreamHandlers, type StreamOutcome } from "./sse";
 
@@ -44,14 +44,9 @@ export async function sendChatMessage({ threadId, content, signal, onCitations, 
   }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-    return { kind: "error", code: body?.error?.code ?? "http_error", message: body?.error?.message ?? "" };
+    const localized = body?.error?.localized;
+    return { kind: "error", code: body?.error?.code ?? "http_error", message: body?.error?.message ?? "", ...(localized ? { localized } : {}) };
   }
   if (!response.body) return { kind: "incomplete", reason: "network" };
   return readChatStream(response.body, { onCitations, onDelta }, signal);
-}
-
-/** Human message for a failed request; the caller supplies the Korean fallbacks. */
-export function describeApiError(error: unknown, fallback: string): string {
-  if (error instanceof ApiClientError && error.message) return error.message;
-  return fallback;
 }

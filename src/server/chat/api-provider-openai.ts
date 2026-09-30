@@ -2,8 +2,8 @@ import { z } from "zod";
 import { consumeJsonSse } from "./api-provider-stream";
 import {
   type ApiAdapterConfig,
-  GROUNDING_INSTRUCTIONS,
   groundedQuestion,
+  groundingInstruction,
   postApiStream,
   requestSignal,
 } from "./api-provider-shared";
@@ -39,7 +39,7 @@ export function createOpenAiApiProvider(config: ApiAdapterConfig): ChatProvider 
         headers: config.headers,
         body: JSON.stringify({
           model: config.model,
-          instructions: GROUNDING_INSTRUCTIONS,
+          instructions: groundingInstruction(input),
           input: [
             ...input.history.map((message) => ({
               role: message.role,

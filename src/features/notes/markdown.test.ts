@@ -1,5 +1,26 @@
 import { describe, expect, test } from "bun:test";
-import { expandWikiLinks, wikiTitleFromHref } from "./markdown";
+import { attachmentMarkdownAt, expandWikiLinks, wikiTitleFromHref } from "./markdown";
+
+describe("attachment insertion", () => {
+  const link = "[file](/api/attachments/fixture-id)";
+
+  test.each(["# Heading", "- Item", "> Quote", "```text\ncode\n```"])("keeps an existing line-start block after the attachment: %s", (document) => {
+    const insert = attachmentMarkdownAt(document, 0, link);
+    expect(insert + document).toBe(`${link}\n\n${document}`);
+  });
+
+  test("separates an attachment before a later heading", () => {
+    const document = "Intro\n\n## Heading";
+    const position = document.indexOf("##");
+    expect(attachmentMarkdownAt(document, position, link)).toBe(`${link}\n\n`);
+  });
+
+  test("keeps inline, empty-document and end-of-document insertion unchanged", () => {
+    expect(attachmentMarkdownAt("Read here.", 5, link)).toBe(link);
+    expect(attachmentMarkdownAt("", 0, link)).toBe(link);
+    expect(attachmentMarkdownAt("Read\n", 5, link)).toBe(link);
+  });
+});
 
 describe("expandWikiLinks", () => {
   test("preserves display labels and encodes targets", () => {

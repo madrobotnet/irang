@@ -2,10 +2,12 @@
 
 import { JEV_PROVIDERS, JevProviderSchema } from "@/lib/ai-settings";
 import { jevAuthModels } from "@/lib/ai-model-catalog";
+import { useCopy } from "@/components/i18n";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
+import { AI_COPY } from "./ai-copy";
 import { AiAuthPanel, abandonAuthAttempt } from "./AiAuthPanel";
-import { ConsentRow, FieldError, SecretInput } from "./AiFieldControls";
+import { ConsentRow, FieldError, SecretInput, useFieldErrorText } from "./AiFieldControls";
 import { AuthModelSelect } from "./AuthModelSelect";
 import { jevProviderInfo, type AiFormErrors, type JevFormState, type SavedAiView } from "./ai-form";
 import { modelForMode, modelForProvider, savedModelFor } from "./model-choice";
@@ -29,6 +31,8 @@ export function JevAiFields({
   readonly setupToken?: string;
   readonly allowDisable?: boolean;
 }) {
+  const { common, jev: copy } = useCopy(AI_COPY);
+  const errorText = useFieldErrorText();
   const retained = saved?.jev?.provider === jev.provider
     && (saved.jev.mode ?? "api") === "api"
     && saved.jev.hasApiKey;
@@ -45,14 +49,13 @@ export function JevAiFields({
 
   return (
     <fieldset className="rounded-card border border-line p-4 sm:p-5" disabled={disabled}>
-      <legend className="px-1 text-md font-semibold">인박스 정리 AI (Jev)</legend>
+      <legend className="px-1 text-md font-semibold">{copy.legend}</legend>
       <p className="text-pretty text-sm leading-relaxed text-mute">
-        캡처할 때 분류, 태그, 중복 후보를 제안해요. 캡처 제목, 본문 앞 4,000자, 최근 노트의 제목·ID가 선택한 제공자에게 전송돼요.
-        채팅 모델과는 별개이며, 꺼졌거나 실패해도 캡처는 저장돼요.
+        {copy.lead}
       </p>
       {saved?.jevManagedByEnvironment ? (
         <p className="mt-2 rounded-ctl bg-warn-soft px-3 py-2 text-sm text-warn">
-          지금은 서버 환경의 기존 Jev 연결을 사용 중이에요. 저장된 연결을 선택하거나 사용을 끄기 전까지 유지돼요.
+          {copy.environment}
         </p>
       ) : null}
       {allowDisable ? (
@@ -70,33 +73,33 @@ export function JevAiFields({
             }}
             className="size-4 shrink-0 accent-accent"
           />
-          인박스 정리에 Jev 사용
+          {copy.enable}
         </label>
       ) : null}
       {jev.enabled ? (
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-jev-name`} className="text-sm font-medium">연결 이름</label>
+            <label htmlFor={`${idPrefix}-jev-name`} className="text-sm font-medium">{common.nameLabel}</label>
             <input
               id={`${idPrefix}-jev-name`}
               value={jev.name}
               maxLength={80}
-              placeholder="예: 업무용 Jev"
+              placeholder={copy.namePlaceholder}
               onChange={(event) => setJev({ name: event.target.value })}
               aria-invalid={errors["jev.name"] ? true : undefined}
               aria-describedby={errors["jev.name"] ? `${idPrefix}-jev-name-error` : undefined}
               className={inputClassName}
             />
-            <FieldError id={`${idPrefix}-jev-name-error`} message={errors["jev.name"]} />
+            <FieldError id={`${idPrefix}-jev-name-error`} message={errorText(errors["jev.name"])} />
             {!errors["jev.name"] ? (
               <p className="text-sm text-mute">
-                {allowDisable ? "비워 두면 제공자 이름으로 저장해요." : "연결을 구분할 이름을 입력해 주세요."}
+                {allowDisable ? common.nameHintOptional : common.nameHintRequired}
               </p>
             ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={`${idPrefix}-jev-provider`} className="text-sm font-medium">Jev 제공자</label>
+              <label htmlFor={`${idPrefix}-jev-provider`} className="text-sm font-medium">{copy.provider}</label>
               <select
                 id={`${idPrefix}-jev-provider`}
                 value={jev.provider}
@@ -118,12 +121,12 @@ export function JevAiFields({
                 aria-invalid={errors["jev.provider"] ? true : undefined}
                 className={cn(inputClassName, "pr-8")}
               >
-                {JEV_PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
+                {JEV_PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{copy.providers[provider.id]}</option>)}
               </select>
-              <FieldError id={`${idPrefix}-jev-provider-error`} message={errors["jev.provider"]} />
+              <FieldError id={`${idPrefix}-jev-provider-error`} message={errorText(errors["jev.provider"])} />
             </div>
             <fieldset className="flex flex-col gap-1.5">
-              <legend className="text-sm font-medium">연결 방식</legend>
+              <legend className="text-sm font-medium">{common.modeLegend}</legend>
               <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1">
                 <label className="flex min-h-touch cursor-pointer items-center gap-2 text-md">
                   <input
@@ -137,7 +140,7 @@ export function JevAiFields({
                     }}
                     className="size-4 accent-accent"
                   />
-                  API 키
+                  {common.modeApi}
                 </label>
                 {jev.provider === "openrouter" ? (
                   <label className="flex min-h-touch cursor-pointer items-center gap-2 text-md">
@@ -149,21 +152,21 @@ export function JevAiFields({
                       onChange={() => setJev({ mode: "auth", apiKey: "", consent: false, ...switchMode("auth") })}
                       className="size-4 accent-accent"
                     />
-                    OpenRouter Auth
+                    {copy.modeAuth}
                   </label>
-                ) : <p className="text-sm text-mute">TypeSafe는 API 키 연결만 지원해요.</p>}
+                ) : <p className="text-sm text-mute">{copy.typesafeApiOnly}</p>}
               </div>
             </fieldset>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-jev-model`} className="text-sm font-medium">사용할 Jev 모델</label>
+            <label htmlFor={`${idPrefix}-jev-model`} className="text-sm font-medium">{copy.model}</label>
             {modelCatalog ? (
               <AuthModelSelect
                 id={`${idPrefix}-jev-model`}
                 value={jev.model}
                 catalog={modelCatalog}
                 savedModel={savedModelFor(savedJev, jev.provider, "auth")}
-                error={errors["jev.model"]}
+                invalid={Boolean(errors["jev.model"])}
                 describedBy={modelDescribedBy}
                 onChangeAction={(model) => setJev({ model })}
               />
@@ -179,22 +182,22 @@ export function JevAiFields({
                 className={inputClassName}
               />
             )}
-            <FieldError id={`${idPrefix}-jev-model-error`} message={errors["jev.model"]} />
+            <FieldError id={`${idPrefix}-jev-model-error`} message={errorText(errors["jev.model"])} />
             {!errors["jev.model"] ? (
               <p id={`${idPrefix}-jev-model-hint`} className="text-pretty text-sm text-mute">
-                TypeSafe API와 OpenRouter API/Auth는 키와 사용량이 각각 관리돼요. Jev Router는 다른 제품이에요.
+                {copy.modelHint}
               </p>
             ) : null}
           </div>
           {jev.mode === "api" ? (
             <SecretInput
               id={`${idPrefix}-jev-key`}
-              label="Jev API 키"
+              label={copy.apiKey}
               value={jev.apiKey}
               disabled={disabled}
               onChangeAction={(apiKey) => setJev({ apiKey })}
-              error={errors["jev.apiKey"]}
-              hint={retained ? "저장된 키가 있어요. 제공자를 바꾸지 않았다면 비워 두세요." : "선택한 Jev 제공자에서 발급한 키를 입력하세요. 저장 뒤에는 다시 표시되지 않아요."}
+              error={errorText(errors["jev.apiKey"])}
+              hint={retained ? copy.apiKeyRetained : copy.apiKeyHint}
             />
           ) : (
             <>
@@ -210,7 +213,7 @@ export function JevAiFields({
                 }
                 onReadyAction={(authAttemptId) => setJev({ authAttemptId })}
               />
-              <FieldError id={`${idPrefix}-jev-auth-error`} message={errors["jev.auth"]} />
+              <FieldError id={`${idPrefix}-jev-auth-error`} message={errorText(errors["jev.auth"])} />
             </>
           )}
           <ConsentRow
@@ -218,9 +221,9 @@ export function JevAiFields({
             checked={jev.consent}
             disabled={disabled}
             onChangeAction={(consent) => setJev({ consent })}
-            error={errors["jev.consent"]}
+            error={errorText(errors["jev.consent"])}
           >
-            캡처 내용과 최근 노트 정보를 선택한 Jev 제공자에게 보내는 데 동의합니다.
+            {copy.consent}
           </ConsentRow>
         </div>
       ) : null}

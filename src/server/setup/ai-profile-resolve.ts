@@ -1,3 +1,4 @@
+import { setupCopy } from "@/server/i18n/setup-copy";
 import type { PoolClient } from "pg";
 import {
   ChatConnectionSchema, JevConnectionSchema,
@@ -26,8 +27,8 @@ export async function resolveChatConnection(
       const apiKey = input.apiKey ?? previousKey;
       if (apiKey === undefined) {
         throw new ApiError("validation", isCustomProvider(input.provider)
-          ? "API 키를 입력하거나 키 없는 연결을 명시적으로 선택해 주세요."
-          : "선택한 제공자의 API 키를 입력해 주세요.");
+          ? setupCopy.keyOrKeyless
+          : setupCopy.apiKey);
       }
       const headers = input.headers ?? (unchanged && previous.mode === "api" ? previous.headers : undefined);
       return ChatConnectionSchema.parse({ ...input, apiKey, ...(headers ? { headers } : {}) });
@@ -52,9 +53,9 @@ export async function resolveChatConnection(
             && previous?.mode === "auth" && previous.provider === input.provider) {
             return ChatConnectionSchema.parse(connection);
           }
-          if (!credential) throw new ApiError("validation", "제공자 로그인을 완료한 뒤 연결을 저장해 주세요.");
+          if (!credential) throw new ApiError("validation", setupCopy.signInFirst);
           if (credential?.provider === "github-copilot" && credential.enterpriseDomain !== input.enterpriseDomain) {
-            throw new ApiError("validation", "로그인한 GitHub 기업 도메인과 설정이 다릅니다. 다시 연결해 주세요.");
+            throw new ApiError("validation", setupCopy.domainChanged);
           }
           return ChatConnectionSchema.parse({ ...connection, ...(credential ? { credential } : {}) });
         }
@@ -81,7 +82,7 @@ export async function resolveJevConnection(
     const credential = input.authAttemptId
       ? await consumeAuthAttempt(context.client, { id: input.authAttemptId, provider: "openrouter", scope: context.scope })
       : previousCredential;
-    if (!credential) throw new ApiError("validation", "OpenRouter 로그인을 완료한 뒤 Jev 연결을 저장해 주세요.");
+    if (!credential) throw new ApiError("validation", setupCopy.openRouterFirst);
     return StoredJevConnectionSchema.parse({
       mode: "auth", provider: "openrouter", model: input.model,
       ...(credential ? { credential } : {}),
@@ -90,7 +91,7 @@ export async function resolveJevConnection(
   const previousKey = previous && previous.mode !== "auth" && previous.provider === input.provider
     ? previous.apiKey : undefined;
   const apiKey = input.apiKey ?? previousKey;
-  if (!apiKey) throw new ApiError("validation", "선택한 Jev 제공자의 API 키를 입력해 주세요.");
+  if (!apiKey) throw new ApiError("validation", setupCopy.jevApiKey);
   return JevConnectionSchema.parse({ provider: input.provider, model: input.model, apiKey });
 }
 

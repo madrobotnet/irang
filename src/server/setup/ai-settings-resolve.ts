@@ -1,3 +1,4 @@
+import { setupCopy } from "@/server/i18n/setup-copy";
 import type { PoolClient } from "pg";
 import {
   AI_PROVIDERS, JEV_PROVIDERS,
@@ -12,7 +13,7 @@ import { writeConnectionProfile } from "./ai-profiles";
 
 function requireProfile(profiles: readonly ConnectionProfile[], id: string, purpose: ConnectionPurpose): string {
   if (!profiles.some((profile) => profile.id === id && profile.purpose === purpose)) {
-    throw new ApiError("validation", "선택한 용도에 맞는 저장된 연결을 골라 주세요.");
+    throw new ApiError("validation", setupCopy.purposeMismatch);
   }
   return id;
 }
@@ -27,7 +28,7 @@ export async function resolveAiSettings(
   },
 ): Promise<AiSettingsDocument> {
   if ((input.chat && !input.chatConsent) || (input.jev && !input.jevConsent)) {
-    throw new ApiError("validation", "선택한 제공자에게 데이터를 보내는 데 동의해 주세요.");
+    throw new ApiError("validation", setupCopy.consent);
   }
   const profiles = await connectionProfiles(context.ownerId, client);
   let chatId: string | null = null;

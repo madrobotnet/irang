@@ -4,6 +4,10 @@ import {
   type AiSettingsView,
 } from "@/lib/ai-settings";
 import { ApiClientError } from "@/lib/api-client";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import type { Locale } from "@/lib/i18n/locale";
+import { AI_COPY, type ConnectionErrorKey } from "./ai-copy";
+import { SETUP_COPY, type SetupSecretErrorKey } from "./setup-copy";
 import {
   buildChatConnection,
   buildJevConnection,
@@ -25,7 +29,10 @@ export {
   type JevFormState,
 } from "./connection-form";
 
-/** Server-reported auth (CLI) readiness; credentials are never part of this shape. */
+/**
+ * Server-reported auth (CLI) readiness; credentials are never part of this shape.
+ * `instructions` and `detail` are server text and are not rendered; the UI words the status from `available`.
+ */
 export type AiConnectionStatus = {
   provider: AiProvider;
   available: boolean;
@@ -60,7 +67,8 @@ export function aiFormFromView(view: SavedAiView): AiFormState {
 
 export type AiFieldKey = `${"chat" | "jev"}.${ConnectionFieldKey}`;
 
-export type AiFormErrors = Partial<Record<AiFieldKey, string>>;
+/** Field -> validation reason. Rendered through AI_COPY so an error follows a language switch. */
+export type AiFormErrors = Partial<Record<AiFieldKey, ConnectionErrorKey>>;
 
 const CONNECTION_ERROR_KEYS = [
   "name",
@@ -81,8 +89,8 @@ export function mergeConnectionErrors(
   source: ConnectionErrors,
 ): void {
   for (const key of CONNECTION_ERROR_KEYS) {
-    const message = source[key];
-    if (message) target[`${purpose}.${key}`] = message;
+    const reason = source[key];
+    if (reason) target[`${purpose}.${key}`] = reason;
   }
 }
 
@@ -126,39 +134,44 @@ export function buildAiInput(state: AiFormState, saved: SavedAiView): AiBuildRes
   };
 }
 
-export type SetupSecretErrors = Partial<Record<"setupToken" | "password" | "passwordConfirmation", string>>;
+export type SetupSecretErrors = Partial<Record<"setupToken" | "password" | "passwordConfirmation", SetupSecretErrorKey>>;
 
 export function validateSetupSecrets(input: { setupToken: string; password: string; passwordConfirmation: string }): SetupSecretErrors {
   const errors: SetupSecretErrors = {};
-  if (input.setupToken.trim().length < 32) errors.setupToken = "설치자가 받은 32자 이상의 확인 코드를 입력해 주세요.";
-  if (input.password.length < 12) errors.password = "비밀번호는 12자 이상으로 정해 주세요.";
-  else if (input.password.length > 512) errors.password = "비밀번호는 512자를 넘을 수 없어요.";
-  if (input.passwordConfirmation !== input.password) errors.passwordConfirmation = "비밀번호가 일치하지 않습니다.";
+  if (input.setupToken.trim().length < 32) errors.setupToken = "setupTokenShort";
+  if (input.password.length < 12) errors.password = "passwordShort";
+  else if (input.password.length > 512) errors.password = "passwordLong";
+  if (input.passwordConfirmation !== input.password) errors.passwordConfirmation = "passwordMismatch";
   return errors;
 }
 
 export type SetupFailureGroup = "token" | "password" | "ai" | "form";
-export type SetupFailure = { group: SetupFailureGroup; message: string };
+/** The retained failure itself; its text is chosen at render time in the current language. */
+export type SetupFailure = { readonly group: SetupFailureGroup; readonly cause: unknown };
 
 /** Map a POST /api/setup failure to the fieldset that owns it. */
 export function setupFailure(error: unknown): SetupFailure {
-  if (error instanceof ApiClientError) {
-    if (error.status === 403) return { group: "token", message: error.message };
-    if (error.status === 409) return { group: "form", message: error.message };
-    if (error.status === 503) return { group: "form", message: error.message };
-    if (error.status === 400) return { group: "form", message: error.message };
-    return { group: "form", message: "설정을 저장하지 못했습니다. 다시 시도해 주세요." };
-  }
-  if (error instanceof TypeError) return { group: "form", message: "서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요." };
-  return { group: "form", message: "설정을 저장하지 못했습니다. 다시 시도해 주세요." };
+  return { group: error instanceof ApiClientError && error.status === 403 ? "token" : "form", cause: error };
 }
 
-/** Map a PUT /api/settings/ai failure to a plain message; input stays editable. */
-export function aiSaveFailureMessage(error: unknown): string {
+/** Server-explained statuses show the server's localized message; others keep a local fallback. */
+const EXPLAINED_STATUSES: ReadonlySet<number> = new Set([400, 409, 503]);
+
+export function setupFailureText(failure: SetupFailure, locale: Locale): string {
+  const copy = SETUP_COPY[locale].failure;
+  const error = failure.cause;
   if (error instanceof ApiClientError) {
-    if (error.status === 400 || error.status === 409 || error.status === 503) return error.message;
-    return "AI 설정을 저장하지 못했습니다. 다시 시도해 주세요.";
+    if (error.status === 403) return localizedApiError(error, locale, copy.token);
+    return EXPLAINED_STATUSES.has(error.status) ? localizedApiError(error, locale, copy.save) : copy.save;
   }
-  if (error instanceof TypeError) return "서버에 연결하지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.";
-  return "AI 설정을 저장하지 못했습니다. 다시 시도해 주세요.";
+  return error instanceof TypeError ? copy.network : copy.save;
+}
+
+/** Text for a PUT/POST/DELETE /api/settings/ai failure; the form input stays editable. */
+export function aiSaveFailureText(error: unknown, locale: Locale): string {
+  const copy = AI_COPY[locale].save;
+  if (error instanceof ApiClientError) {
+    return EXPLAINED_STATUSES.has(error.status) ? localizedApiError(error, locale, copy.failed) : copy.failed;
+  }
+  return error instanceof TypeError ? copy.network : copy.failed;
 }

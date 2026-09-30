@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useCopy, useLocale } from "@/components/i18n";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { api } from "@/lib/api-client";
 import type { AiSettingsView, ConnectionProfileView } from "@/lib/ai-settings";
 import { AiFields } from "@/features/setup/AiFields";
 import { abandonAuthAttempt } from "@/features/setup/AiAuthPanel";
-import { aiSaveFailureMessage, type AiConnectionStatus, type AiFormErrors } from "@/features/setup/ai-form";
+import { aiSaveFailureText, type AiConnectionStatus, type AiFormErrors } from "@/features/setup/ai-form";
+import { SETTINGS_COPY } from "./settings-copy";
 import {
   buildProfileInput,
   newProfileForm,
@@ -49,8 +51,11 @@ export function ConnectionProfileDialog({
   readonly onSavedAction: (response: ProfileResponse) => void;
 }) {
   const [form, setForm] = useState(() => profile ? profileFormFromView(profile) : newProfileForm(purpose));
+  const { locale } = useLocale();
+  const copy = useCopy(SETTINGS_COPY).dialog;
   const [errors, setErrors] = useState<AiFormErrors>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
+  // The failed request itself; its message follows the current language.
+  const [saveError, setSaveError] = useState<{ readonly cause: unknown } | null>(null);
   const [saving, setSaving] = useState(false);
 
   const close = () => {
@@ -80,7 +85,7 @@ export function ConnectionProfileDialog({
       });
       onSavedAction(response);
     } catch (cause) {
-      setSaveError(aiSaveFailureMessage(cause));
+      setSaveError({ cause });
     } finally {
       setSaving(false);
     }
@@ -92,16 +97,14 @@ export function ConnectionProfileDialog({
       dismissible={!saving}
       onOpenChange={(next) => next ? onOpenChangeAction(true) : close()}
       size="lg"
-      title={profile ? "AI 연결 편집" : purpose === "chat" ? "채팅 연결 추가" : "Jev 연결 추가"}
-      description={profile
-        ? "사용 중인 연결의 변경은 저장 즉시 적용돼요. 사용하지 않는 연결은 별도로 선택해야 해요."
-        : "저장해도 바로 사용되지는 않아요. 목록에서 이 연결을 선택한 뒤 사용 설정을 저장하세요."}
+      title={profile ? copy.editTitle : purpose === "chat" ? copy.addChatTitle : copy.addJevTitle}
+      description={profile ? copy.editDescription : copy.addDescription}
       bodyClassName="px-3 sm:px-5"
       footer={
         <>
-          <Button size="lg" disabled={saving} onClick={close}>취소</Button>
+          <Button size="lg" disabled={saving} onClick={close}>{copy.cancel}</Button>
           <Button variant="primary" size="lg" loading={saving} onClick={() => void save()}>
-            {saving ? "저장 중…" : "연결 저장"}
+            {saving ? copy.saving : copy.save}
           </Button>
         </>
       }
@@ -119,7 +122,7 @@ export function ConnectionProfileDialog({
       />
       {saveError ? (
         <p role="alert" className="mt-3 rounded-ctl bg-danger-soft px-3 py-2 text-sm text-danger">
-          {saveError}
+          {aiSaveFailureText(saveError.cause, locale)}
         </p>
       ) : null}
     </Dialog>

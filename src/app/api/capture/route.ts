@@ -2,6 +2,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { captureInbox, enrichInboxItem } from "@/server/inbox";
 import { json, parseJson, withApi } from "@/server/http";
+import { localeFromRequest } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,8 @@ const CaptureBody = z.object({
 }).strict();
 
 export const POST = withApi(async (request) => {
-  const item = await captureInbox(await parseJson(request, CaptureBody));
-  after(async () => { await enrichInboxItem(item.id); });
+  const locale = localeFromRequest(request);
+  const item = await captureInbox(await parseJson(request, CaptureBody), locale);
+  after(async () => { await enrichInboxItem(item.id, {}, locale); });
   return json({ item }, { status: 201 });
 });

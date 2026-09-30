@@ -1,5 +1,6 @@
 import path from "node:path";
 import { ApiError } from "@/server/http";
+import { attachmentCopy } from "@/server/i18n/copy";
 
 // v1 appended a native basename; on Linux a literal backslash is part of it.
 // Reject actual path components and NUL without renaming those existing files.
@@ -11,7 +12,7 @@ export function attachmentsDir(): string {
 
 export function storagePath(key: string): string {
   if (!STORAGE_KEY_RE.test(key) || path.basename(key) !== key) {
-    throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
+    throw new ApiError("not_found", attachmentCopy.notFound);
   }
   return path.join(attachmentsDir(), key);
 }

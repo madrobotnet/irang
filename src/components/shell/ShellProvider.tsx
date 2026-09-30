@@ -6,8 +6,10 @@ import useSWR, { SWRConfig } from "swr";
 import { api, fetcher } from "@/lib/api-client";
 import { CaptureDialog } from "@/features/capture/CaptureDialog";
 import { hasUnsavedNoteDrafts } from "@/features/notes/draft-store";
+import { useCopy } from "@/components/i18n/LocaleProvider";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import { CommandPalette, type PaletteMode } from "./CommandPalette";
+import { everyLocale, SHELL_COPY } from "./copy";
 import { readRailExpanded, subscribeRail, writeRailExpanded } from "./rail";
 import { IDLE_CHORD, isEditableTarget, resolveShortcut, type ChordState } from "./shortcuts";
 import { ThemeProvider, useTheme, type ResolvedTheme, type Theme } from "./ThemeProvider";
@@ -40,6 +42,7 @@ function ShellState({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const themeCtx = useTheme();
   const { toast } = useToast();
+  const copy = useCopy(SHELL_COPY);
 
   useEffect(() => {
     const protectDrafts = (event: BeforeUnloadEvent) => {
@@ -87,16 +90,17 @@ function ShellState({ children }: { children: ReactNode }) {
   const closePalette = useCallback(() => setPaletteOpen(false), []);
 
   const logout = useCallback(async () => {
-    if (hasUnsavedNoteDrafts() && !window.confirm("저장되지 않은 노트 변경 내용이 있습니다. 로그아웃할까요?")) return;
+    if (hasUnsavedNoteDrafts() && !window.confirm(copy.session.confirmUnsaved)) return;
     try {
       await api<{ ok: boolean }>("/api/auth/logout", { method: "POST" });
     } catch {
-      toast("로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.", { tone: "danger", durationMs: 0 });
+      // Stays until closed, so it carries every locale and follows a language switch.
+      toast(everyLocale((c) => c.session.logoutFailed), { tone: "danger", durationMs: 0 });
       return;
     }
     router.push("/login");
     router.refresh();
-  }, [router, toast]);
+  }, [copy, router, toast]);
 
   const focusSearch = useCallback(() => {
     const field = document.querySelector<HTMLElement>("[data-search-input]");

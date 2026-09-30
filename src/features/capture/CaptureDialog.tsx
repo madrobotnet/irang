@@ -3,11 +3,15 @@
 import { Eraser, Inbox, Link2, Save } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { useSWRConfig } from "swr";
+import { useCopy, useLocale } from "@/components/i18n";
 import { Button, Dialog, Input, Textarea, useToast } from "@/components/ui";
 import { api } from "@/lib/api-client";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import { textInEveryLocale } from "@/lib/i18n/copy";
 import type { InboxItem } from "@/lib/types";
 import { INBOX_KEY, type InboxListData, withItem } from "@/features/inbox/inbox-triage";
-import { buildCapturePayload, EMPTY_DRAFT, isDraftEmpty, type CaptureDraft } from "./capture-form";
+import { CAPTURE_COPY } from "./capture-copy";
+import { buildCapturePayload, EMPTY_DRAFT, isDraftEmpty, type CaptureDraft, type CaptureInvalidReason } from "./capture-form";
 
 /**
  * CONTRACT (owned by the inbox lane): quick-capture dialog.
@@ -16,14 +20,19 @@ import { buildCapturePayload, EMPTY_DRAFT, isDraftEmpty, type CaptureDraft } fro
  */
 export type CaptureDialogProps = { open: boolean; onOpenChange: (open: boolean) => void };
 
+/** Locale-neutral: validation keys and the retained API failure re-render after a language switch. */
+type CaptureErrors = { text?: CaptureInvalidReason; url?: CaptureInvalidReason; form?: { cause: unknown } };
+
 export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
   const [draft, setDraft] = useState<CaptureDraft>(EMPTY_DRAFT);
-  const [errors, setErrors] = useState<Partial<Record<"text" | "url" | "form", string>>>({});
+  const [errors, setErrors] = useState<CaptureErrors>({});
   const [saving, setSaving] = useState(false);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const revisionRef = useRef(0);
   const { mutate } = useSWRConfig();
   const { toast } = useToast();
+  const { locale } = useLocale();
+  const copy = useCopy(CAPTURE_COPY);
 
   const update = (field: keyof CaptureDraft, value: string) => {
     revisionRef.current += 1;
@@ -32,7 +41,7 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
   };
 
   const clear = () => {
-    if (!isDraftEmpty(draft) && !window.confirm("작성 중인 캡처를 지울까요? 이 작업은 되돌릴 수 없습니다.")) return;
+    if (!isDraftEmpty(draft) && !window.confirm(copy.confirmClear)) return;
     revisionRef.current += 1;
     setDraft(EMPTY_DRAFT);
     setErrors({});
@@ -43,7 +52,7 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
     event.preventDefault();
     const built = buildCapturePayload(draft);
     if (!built.ok) {
-      setErrors({ [built.field]: built.message });
+      setErrors(built.field === "text" ? { text: built.reason } : { url: built.reason });
       return;
     }
     const submittedRevision = revisionRef.current;
@@ -59,9 +68,9 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
         setDraft(EMPTY_DRAFT);
         onOpenChange(false);
       }
-      toast(draftUnchanged ? "인박스에 저장했습니다." : "인박스에 저장했습니다. 새 입력은 그대로 두었습니다.", { tone: "ok" });
+      toast(textInEveryLocale((locale) => CAPTURE_COPY[locale][draftUnchanged ? "saved" : "savedKeptDraft"]), { tone: "ok" });
     } catch (cause) {
-      setErrors({ form: cause instanceof Error ? cause.message : "저장하지 못했습니다. 입력은 그대로 보관했습니다." });
+      setErrors({ form: { cause } });
     } finally {
       setSaving(false);
     }
@@ -71,59 +80,59 @@ export function CaptureDialog({ open, onOpenChange }: CaptureDialogProps) {
     <Dialog
       open={open}
       onOpenChange={onOpenChange}
-      title="빠른 캡처"
-      description="지금 적고, 분류는 인박스에서 나중에 하세요."
+      title={copy.title}
+      description={copy.description}
       initialFocusRef={textRef}
       footer={
         <>
           {!isDraftEmpty(draft) ? (
             <Button variant="ghost" leading={<Eraser aria-hidden className="size-4" />} disabled={saving} onClick={clear} className="mr-auto">
-              입력 지우기
+              {copy.clear}
             </Button>
           ) : null}
           <Button variant="ghost" disabled={saving} onClick={() => onOpenChange(false)}>
-            닫기
+            {copy.close}
           </Button>
           <Button variant="primary" loading={saving} leading={<Save aria-hidden className="size-4" />} onClick={() => textRef.current?.form?.requestSubmit()}>
-            인박스에 저장
+            {copy.save}
           </Button>
         </>
       }
     >
-      <form className="flex flex-col gap-4" onSubmit={submit}>
+      <form noValidate className="flex flex-col gap-4" onSubmit={submit}>
         <Textarea
           ref={textRef}
-          label="내용"
+          label={copy.textLabel}
           rows={7}
           value={draft.text}
           onChange={(event) => update("text", event.target.value)}
-          placeholder="떠오른 생각, 할 일, 인용할 문장을 적어 보세요. URL만 붙여 넣어도 됩니다."
-          error={errors.text}
+          placeholder={copy.textPlaceholder}
+          error={errors.text ? copy.invalid[errors.text] : undefined}
           disabled={saving}
           className="min-h-36"
         />
         <Input
-          label="원문 URL (선택)"
+          label={copy.urlLabel}
           type="url"
           inputMode="url"
           value={draft.url}
           onChange={(event) => update("url", event.target.value)}
           placeholder="https://example.com/article"
-          error={errors.url}
+          error={errors.url ? copy.invalid[errors.url] : undefined}
           disabled={saving}
           leading={<Link2 aria-hidden />}
         />
         <Input
-          label="제목 (선택)"
+          label={copy.titleLabel}
           value={draft.title}
           onChange={(event) => update("title", event.target.value)}
-          placeholder="비워 두면 내용에서 자동으로 정합니다."
+          placeholder={copy.titlePlaceholder}
           disabled={saving}
           leading={<Inbox aria-hidden />}
         />
         {errors.form ? (
           <p role="alert" className="rounded-ctl border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
-            {errors.form}
+            {localizedApiError(errors.form.cause, locale, copy.saveFailed)}
           </p>
         ) : null}
       </form>

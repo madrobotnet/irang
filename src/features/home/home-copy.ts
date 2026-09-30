@@ -1,0 +1,138 @@
+import { defineCopy } from "@/lib/i18n/copy";
+
+/**
+ * Home dashboard copy. Count phrases take the raw count (for plurals) and a `value`
+ * slot where the dashboard renders the styled number, so word order can differ per locale.
+ */
+export const HOME_COPY = defineCopy({
+  ko: {
+    title: "홈",
+    headline: {
+      inbox: (count: number) => `정리할 캡처가 ${count}개 있어요`,
+      firstNote: "첫 생각을 붙잡아 볼까요",
+      startDaily: "오늘 노트를 시작해 볼까요",
+      clear: "인박스를 모두 정리했어요",
+    },
+    counts: {
+      notes: (_count: number, value: string) => `노트 ${value}개`,
+      links: (_count: number, value: string) => `연결 ${value}개`,
+      tags: (_count: number, value: string) => `태그 ${value}개`,
+    },
+    capture: "빠르게 캡처",
+    newNote: "새 노트",
+    createFailed: "노트를 만들지 못했습니다.",
+    loadError: {
+      title: "홈 정보를 불러오지 못했습니다.",
+      help: "네트워크 상태를 확인한 뒤 다시 시도해 주세요.",
+      retry: "다시 불러오기",
+    },
+    loading: "홈 정보를 불러오는 중",
+    asideLabel: "고정한 노트와 다시 볼 노트",
+    inbox: {
+      title: "인박스",
+      reviewAll: (count: number) => `${count}개 모두 정리하기`,
+      review: "정리하기",
+      emptyTitle: "인박스가 비어 있어요",
+      emptyDescription: "떠오른 생각이나 링크를 분류 없이 먼저 캡처해 두세요.",
+      capture: "캡처하기",
+      untitled: "제목 없는 캡처",
+    },
+    today: {
+      title: "오늘 노트",
+      emptyExcerpt: "아직 아무것도 적지 않았어요.",
+      prompt: "오늘 한 일과 떠오른 생각을 한 곳에 모아 두세요.",
+      continue: "이어 쓰기",
+      create: "오늘 노트 만들기",
+    },
+    recent: {
+      title: "최근 수정한 노트",
+      all: "전체 노트",
+      allPinnedTitle: "최근 노트는 모두 고정되어 있어요",
+      allPinnedDescription: "고정한 노트 목록에서 바로 열 수 있어요.",
+      noneTitle: "아직 노트가 없어요",
+      noneDescription: "새 노트를 만들거나 인박스의 캡처를 노트로 옮겨 보세요.",
+    },
+    moreTags: (count: number) => `외 ${count}개`,
+    pinned: {
+      title: "고정한 노트",
+      emptyTitle: "고정한 노트가 없어요",
+      emptyDescription: "자주 여는 노트를 노트 화면에서 고정하면 여기에 모여요.",
+      browse: "노트 보기",
+    },
+    resurface: {
+      title: "다시 볼 노트",
+      description: "2주 넘게 손대지 않은 노트 가운데 오늘 고른 노트예요.",
+      emptyTitle: "아직 다시 꺼낼 노트가 없어요",
+      emptyDescription: "노트가 2주 넘게 쉬고 나면 하루에 몇 개씩 이곳에 다시 보여 드려요.",
+    },
+    time: {
+      justNow: "방금",
+      yesterday: "어제",
+    },
+  },
+  en: {
+    title: "Home",
+    headline: {
+      inbox: (count) => (count === 1 ? "You have 1 capture to review" : `You have ${count} captures to review`),
+      firstNote: "Ready to capture your first thought?",
+      startDaily: "Ready to start today's note?",
+      clear: "Your inbox is all clear",
+    },
+    counts: {
+      notes: (count, value) => `${value} ${count === 1 ? "note" : "notes"}`,
+      links: (count, value) => `${value} ${count === 1 ? "link" : "links"}`,
+      tags: (count, value) => `${value} ${count === 1 ? "tag" : "tags"}`,
+    },
+    capture: "Quick capture",
+    newNote: "New note",
+    createFailed: "Couldn't create the note.",
+    loadError: {
+      title: "Couldn't load your home page.",
+      help: "Check your network connection and try again.",
+      retry: "Try again",
+    },
+    loading: "Loading your home page",
+    asideLabel: "Pinned notes and notes to revisit",
+    inbox: {
+      title: "Inbox",
+      reviewAll: (count) => `Review all ${count}`,
+      review: "Review",
+      emptyTitle: "Your inbox is empty",
+      emptyDescription: "Capture thoughts and links now. Sort them out later.",
+      capture: "Capture",
+      untitled: "Untitled capture",
+    },
+    today: {
+      title: "Today's note",
+      emptyExcerpt: "Nothing written yet.",
+      prompt: "Keep what you did today and what came to mind in one place.",
+      continue: "Keep writing",
+      create: "Create today's note",
+    },
+    recent: {
+      title: "Recently edited",
+      all: "All notes",
+      allPinnedTitle: "Your recent notes are all pinned",
+      allPinnedDescription: "Open them straight from your pinned notes.",
+      noneTitle: "No notes yet",
+      noneDescription: "Create a note, or turn a capture from your inbox into one.",
+    },
+    moreTags: (count) => `+${count} more`,
+    pinned: {
+      title: "Pinned notes",
+      emptyTitle: "No pinned notes",
+      emptyDescription: "Pin the notes you open often on the Notes page, and they'll gather here.",
+      browse: "Browse notes",
+    },
+    resurface: {
+      title: "Notes to revisit",
+      description: "Picked today from notes you haven't touched in over two weeks.",
+      emptyTitle: "Nothing to revisit yet",
+      emptyDescription: "Once a note has rested for more than two weeks, a few will show up here each day.",
+    },
+    time: {
+      justNow: "just now",
+      yesterday: "yesterday",
+    },
+  },
+});

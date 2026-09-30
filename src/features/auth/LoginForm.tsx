@@ -2,16 +2,18 @@
 
 import { Eye, EyeOff, KeyRound, LockKeyhole } from "lucide-react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useCopy, useLocale } from "@/components/i18n";
 import { api, ApiClientError } from "@/lib/api-client";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { inputClassName } from "@/components/ui/Input";
-import { formatRemaining, LOGIN_COPY } from "./login-copy";
+import { formatRemaining, LOGIN_COPY, type LoginErrorKey } from "./login-copy";
 
+/** Locale-neutral: a failure is a reason, rendered in the current language. */
 type FormState =
   | { kind: "idle" }
   | { kind: "submitting" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; reason: LoginErrorKey }
   | { kind: "locked"; until: number }
   | { kind: "success" };
 
@@ -21,6 +23,8 @@ export type LoginFormProps = {
 };
 
 export function LoginForm({ next }: LoginFormProps) {
+  const { locale } = useLocale();
+  const copy = useCopy(LOGIN_COPY);
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [state, setState] = useState<FormState>({ kind: "idle" });
@@ -63,13 +67,13 @@ export function LoginForm({ next }: LoginFormProps) {
 
   const message =
     state.kind === "error"
-      ? state.message
+      ? copy.errors[state.reason]
       : state.kind === "locked"
         ? locked
-          ? LOGIN_COPY.locked(formatRemaining(remainingSeconds))
-          : LOGIN_COPY.lockedReady
+          ? copy.locked(formatRemaining(remainingSeconds, locale))
+          : copy.lockedReady
         : state.kind === "success"
-          ? LOGIN_COPY.success
+          ? copy.success
           : null;
   const tone = state.kind === "success" ? "ok" : state.kind === "locked" && !locked ? "ok" : "danger";
 
@@ -77,7 +81,7 @@ export function LoginForm({ next }: LoginFormProps) {
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4" aria-describedby={message ? statusId : undefined}>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="login-password" className="text-sm font-medium text-ink">
-          {LOGIN_COPY.passwordLabel}
+          {copy.passwordLabel}
         </label>
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-mute">
@@ -94,13 +98,13 @@ export function LoginForm({ next }: LoginFormProps) {
             disabled={busy || locked}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={LOGIN_COPY.passwordPlaceholder}
+            placeholder={copy.passwordPlaceholder}
             aria-invalid={state.kind === "error" || undefined}
             className={cn(inputClassName, "h-11 pl-9 pr-12")}
           />
           <button
             type="button"
-            aria-label={visible ? LOGIN_COPY.hidePassword : LOGIN_COPY.showPassword}
+            aria-label={visible ? copy.hidePassword : copy.showPassword}
             aria-pressed={visible}
             onClick={() => setVisible((v) => !v)}
             disabled={busy}
@@ -112,7 +116,7 @@ export function LoginForm({ next }: LoginFormProps) {
       </div>
 
       <Button type="submit" variant="primary" size="lg" loading={state.kind === "submitting"} disabled={busy || locked || password.length === 0} className="w-full">
-        {state.kind === "submitting" ? LOGIN_COPY.submitting : LOGIN_COPY.submit}
+        {state.kind === "submitting" ? copy.submitting : copy.submit}
       </Button>
 
       <p
@@ -133,10 +137,10 @@ function toFailure(error: unknown): FormState {
       const seconds = error.body?.error.retryAfterSeconds ?? 60;
       return { kind: "locked", until: Date.now() + Math.max(1, seconds) * 1000 };
     }
-    if (error.status === 401) return { kind: "error", message: LOGIN_COPY.wrongPassword };
-    if (error.code === "unavailable" || error.status === 503) return { kind: "error", message: LOGIN_COPY.unavailable };
-    return { kind: "error", message: LOGIN_COPY.unknown };
+    if (error.status === 401) return { kind: "error", reason: "wrongPassword" };
+    if (error.code === "unavailable" || error.status === 503) return { kind: "error", reason: "unavailable" };
+    return { kind: "error", reason: "unknown" };
   }
-  if (error instanceof TypeError) return { kind: "error", message: LOGIN_COPY.network };
-  return { kind: "error", message: LOGIN_COPY.unknown };
+  if (error instanceof TypeError) return { kind: "error", reason: "network" };
+  return { kind: "error", reason: "unknown" };
 }

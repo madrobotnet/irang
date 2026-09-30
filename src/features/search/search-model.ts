@@ -1,4 +1,6 @@
-import type { SearchHit } from "@/lib/types";
+import type { Locale } from "@/lib/i18n/locale";
+import type { SearchHit, SearchMatch } from "@/lib/types";
+import { SEARCH_COPY } from "./search-copy";
 
 export function searchUrl(query: string, tag: string): string {
   const params = new URLSearchParams();
@@ -15,6 +17,17 @@ export function searchApiUrl(query: string, tag: string): string | null {
   return `/api/search?${params}`;
 }
 
-export function matchLabel(hit: SearchHit): string[] {
-  return hit.matchedBy.map((match) => match === "semantic" ? "문자 유사도" : match === "fuzzy" ? "오타 유사도" : "키워드");
+/**
+ * Catalog key for each server retrieval signal. "semantic" is the server's internal name for
+ * hashed character n-gram similarity, so it is shown as character similarity, never as meaning.
+ */
+export const MATCH_SIGNAL_COPY = {
+  keyword: "keyword",
+  fuzzy: "similarSpelling",
+  semantic: "characterSimilarity",
+} as const satisfies Record<SearchMatch, keyof (typeof SEARCH_COPY)["ko"]["signals"]>;
+
+export function matchLabel(hit: Pick<SearchHit, "matchedBy">, locale: Locale): string[] {
+  const signals = SEARCH_COPY[locale].signals;
+  return hit.matchedBy.map((match) => signals[MATCH_SIGNAL_COPY[match]]);
 }

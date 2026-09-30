@@ -1,3 +1,4 @@
+import { aiAuthCopy } from "@/server/i18n/ai-auth-copy";
 import { createHash, randomBytes } from "node:crypto";
 import { getSession } from "@/server/auth/session";
 import { ApiError } from "@/server/http";
@@ -26,6 +27,6 @@ export function authBrowserIdentity(request: Request): { readonly key: string; r
 export async function authorizeAiAuth(request: Request, setupToken?: string): Promise<AiAuthScope> {
   const session = await getSession();
   if (session) return { key: `owner:${session.userId}`, browserHash: authBrowserHash(request) };
-  if (!setupToken) throw new ApiError("unauthorized", "로그인하거나 설치 확인 코드를 입력해 주세요.");
+  if (!setupToken) throw new ApiError("unauthorized", aiAuthCopy.loginOrSetupCode);
   return { key: await requireInstallerAccess(setupToken), browserHash: authBrowserHash(request) };
 }

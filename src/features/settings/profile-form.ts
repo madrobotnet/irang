@@ -54,7 +54,7 @@ export function buildProfileInput(
   const errors: AiFormErrors = {};
   if (purpose === "chat") {
     const name = state.chat.name.trim();
-    if (!name) errors["chat.name"] = "연결 이름을 입력해 주세요.";
+    if (!name) errors["chat.name"] = "nameRequired";
     const built = buildChatConnection(state.chat, saved?.purpose === "chat" ? saved.connection : null);
     if (!built.ok) {
       mergeConnectionErrors(errors, "chat", built.errors);
@@ -66,7 +66,7 @@ export function buildProfileInput(
     };
   }
   const name = state.jev.name.trim();
-  if (!name) errors["jev.name"] = "연결 이름을 입력해 주세요.";
+  if (!name) errors["jev.name"] = "nameRequired";
   const built = buildJevConnection(state.jev, saved?.purpose === "jev" ? saved.connection : null);
   if (!built.ok) {
     mergeConnectionErrors(errors, "jev", built.errors);

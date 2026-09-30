@@ -1,3 +1,4 @@
+import { aiAuthCopy } from "@/server/i18n/ai-auth-copy";
 import { AuthCodeInputSchema, type AuthAttemptView } from "@/lib/ai-auth-flow";
 import type { AuthProtocolOptions } from "@/lib/ai-auth";
 import { tx } from "@/server/db";
@@ -13,7 +14,7 @@ export async function submitAuthCode(
   const result = await tx(async (client) => {
     const attempt = await lockedAuthAttempt(client, input.id);
     requireAttemptScope(attempt, scope);
-    if (attempt.provider !== "google") throw new ApiError("validation", "이 로그인은 인증 코드 입력을 지원하지 않습니다.");
+    if (attempt.provider !== "google") throw new ApiError("validation", aiAuthCopy.codeUnsupported);
     const now = (options.now ?? Date.now)();
     if (attempt.expires_at.getTime() <= now) {
       await client.query("UPDATE ai_auth_attempts SET status = 'expired', payload = '{}'::jsonb WHERE id = $1", [attempt.id]);
@@ -22,7 +23,7 @@ export async function submitAuthCode(
     // A late duplicate submit must not overwrite an already-ready credential.
     if (attempt.status !== "pending") return authAttemptView(attempt, now);
     const payload = PkcePayloadSchema.parse(attempt.payload);
-    if (payload.code) throw new ApiError("conflict", "이미 제출한 코드의 인증 결과를 기다려 주세요.");
+    if (payload.code) throw new ApiError("conflict", aiAuthCopy.codePending);
     return prepareCodeExchange(client, { ...attempt, payload: { ...payload, code } }, options);
   });
   return "attempt" in result ? completeCodeExchange(result, options) : result;

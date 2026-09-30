@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import type { Citation } from "@/lib/types";
 import { renameThread, sendChatMessage, THREADS_KEY, threadKey, type ThreadDetail } from "./api";
-import { CHAT_COPY } from "./copy";
-import type { StreamOutcome } from "./sse";
+import { isDefaultThreadTitle, type StreamFailure } from "./chat-model";
 
 /** The question currently in flight (or the one that just failed), shown after persisted history. */
 export type Exchange = {
@@ -13,24 +12,11 @@ export type Exchange = {
   citations: Citation[];
   text: string;
   phase: "streaming" | "failed";
-  /** Set when `phase === "failed"`. */
-  error: string | null;
+  /** Set when `phase === "failed"`. Kept as data so failureMessage() renders it in the current language. */
+  failure: StreamFailure | null;
 };
 
 const MAX_AUTO_TITLE = 60;
-
-export function failureMessage(outcome: Exclude<StreamOutcome, { kind: "done" }>): string {
-  switch (outcome.kind) {
-    case "aborted":
-      return CHAT_COPY.stopped;
-    case "incomplete":
-      return outcome.reason === "malformed" ? CHAT_COPY.malformed : outcome.reason === "network" ? CHAT_COPY.network : CHAT_COPY.incomplete;
-    case "error":
-      if (outcome.code === "unavailable") return CHAT_COPY.unavailable;
-      if (outcome.code === "conflict") return CHAT_COPY.conflict;
-      return outcome.message || CHAT_COPY.unknown;
-  }
-}
 
 /**
  * One thread's history plus the streaming state machine. Mount it keyed by
@@ -61,7 +47,7 @@ export function useChatThread(threadId: string) {
       const previousMessages = detail.data?.messages.length ?? 0;
       const previousTitle = detail.data?.thread.title ?? null;
       setDraft("");
-      setExchange({ content, citations: [], text: "", phase: "streaming", error: null });
+      setExchange({ content, citations: [], text: "", phase: "streaming", failure: null });
 
       const outcome = await sendChatMessage({
         threadId,
@@ -74,8 +60,8 @@ export function useChatThread(threadId: string) {
       controller.current = null;
 
       if (outcome.kind !== "done") {
-        const error = failureMessage(outcome);
-        setExchange((prev) => (prev ? { ...prev, phase: "failed", error } : prev));
+        const failure: StreamFailure = outcome;
+        setExchange((prev) => (prev ? { ...prev, phase: "failed", failure } : prev));
         setDraft((prev) => (prev.trim() ? prev : content));
         return;
       }
@@ -97,7 +83,7 @@ export function useChatThread(threadId: string) {
       ).catch(() => undefined);
       setExchange(null);
 
-      if (previousMessages === 0 && previousTitle === CHAT_COPY.newThread) {
+      if (previousMessages === 0 && isDefaultThreadTitle(previousTitle)) {
         const title = content.replace(/\s+/g, " ").slice(0, MAX_AUTO_TITLE);
         await renameThread(threadId, title)
           .then(({ thread }) => detail.mutate((current) => (current ? { ...current, thread } : current), { revalidate: false }))

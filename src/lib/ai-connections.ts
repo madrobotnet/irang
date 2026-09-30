@@ -1,3 +1,5 @@
+import { localizedIssue } from "@/lib/i18n/validation";
+import { connectionIssueCopy } from "@/lib/i18n/ai-validation-copy";
 import { z } from "zod";
 import { OAuthCredentialSchema } from "./ai-auth";
 import { AiProviderSchema, isCustomProvider, JevProviderSchema } from "./ai-providers";
@@ -14,22 +16,22 @@ const ApiDraft = z.object({
 function validateApi(input: z.infer<typeof ApiDraft>, context: z.RefinementCtx): void {
   const custom = isCustomProvider(input.provider);
   if (custom && !input.baseUrl) {
-    context.addIssue({ code: "custom", path: ["baseUrl"], message: "API 기본 URL을 입력해 주세요." });
+    context.addIssue({ code: "custom", path: ["baseUrl"], ...localizedIssue(connectionIssueCopy.baseUrlRequired) });
   }
   if (!custom && (input.baseUrl !== undefined || input.headers !== undefined)) {
-    context.addIssue({ code: "custom", path: ["baseUrl"], message: "사용자 지정 주소·헤더는 Compatible 연결에서 설정해 주세요." });
+    context.addIssue({ code: "custom", path: ["baseUrl"], ...localizedIssue(connectionIssueCopy.customOnly) });
   }
   if (!custom && input.apiKey === "") {
-    context.addIssue({ code: "custom", path: ["apiKey"], message: "API 키를 입력해 주세요." });
+    context.addIssue({ code: "custom", path: ["apiKey"], ...localizedIssue(connectionIssueCopy.apiKeyRequired) });
   }
   if (input.apiFormat && !custom && input.provider !== "github-copilot") {
-    context.addIssue({ code: "custom", path: ["apiFormat"], message: "이 제공자는 정해진 API 형식을 사용합니다." });
+    context.addIssue({ code: "custom", path: ["apiFormat"], ...localizedIssue(connectionIssueCopy.fixedApiFormat) });
   }
   if (input.provider === "anthropic-compatible" && input.apiFormat && input.apiFormat !== "anthropic-messages") {
-    context.addIssue({ code: "custom", path: ["apiFormat"], message: "Anthropic Messages 형식을 선택해 주세요." });
+    context.addIssue({ code: "custom", path: ["apiFormat"], ...localizedIssue(connectionIssueCopy.anthropicFormat) });
   }
   if (input.provider === "openai-compatible" && input.apiFormat === "anthropic-messages") {
-    context.addIssue({ code: "custom", path: ["apiFormat"], message: "OpenAI 호환 API 형식을 선택해 주세요." });
+    context.addIssue({ code: "custom", path: ["apiFormat"], ...localizedIssue(connectionIssueCopy.openAiFormat) });
   }
 }
 
@@ -48,10 +50,10 @@ function validateAuth(
   context: z.RefinementCtx,
 ): void {
   if (input.provider !== "github-copilot" && (input.apiFormat || input.enterpriseDomain)) {
-    context.addIssue({ code: "custom", message: "API 형식과 기업 도메인은 Copilot 연결에서 설정해 주세요." });
+    context.addIssue({ code: "custom", ...localizedIssue(connectionIssueCopy.copilotOnly) });
   }
   if ("credential" in input && input.credential && input.credential.provider !== input.provider) {
-    context.addIssue({ code: "custom", path: ["credential"], message: "제공자 인증 정보가 일치하지 않습니다." });
+    context.addIssue({ code: "custom", path: ["credential"], ...localizedIssue(connectionIssueCopy.credentialMismatch) });
   }
 }
 
@@ -71,13 +73,13 @@ export type ChatConnection = z.infer<typeof ChatConnectionSchema>;
 export const JevConnectionSchema = z.object({
   provider: JevProviderSchema,
   model: ModelSchema,
-  apiKey: ApiKeySchema.refine((key) => key.length > 0, "Jev API 키를 입력해 주세요."),
+  apiKey: ApiKeySchema.refine((key) => key.length > 0, localizedIssue(connectionIssueCopy.jevApiKeyRequired)),
 }).strict();
 export type JevConnection = z.infer<typeof JevConnectionSchema>;
 
 const JevApiInput = JevConnectionSchema.extend({
   mode: z.literal("api").optional(),
-  apiKey: ApiKeySchema.refine((key) => key.length > 0, "Jev API 키를 입력해 주세요.").optional(),
+  apiKey: ApiKeySchema.refine((key) => key.length > 0, localizedIssue(connectionIssueCopy.jevApiKeyRequired)).optional(),
 }).strict();
 const JevAuthFields = { mode: z.literal("auth"), provider: z.literal("openrouter"), model: ModelSchema } as const;
 export const JevInputSchema = z.union([

@@ -2,29 +2,19 @@
 
 import { ExternalLink, LogIn, X } from "lucide-react";
 import { useEffect, useId, useMemo, useSyncExternalStore } from "react";
+import { useCopy, useLocale } from "@/components/i18n";
 import { Button } from "@/components/ui/Button";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
 import type { WebAuthProvider } from "@/lib/ai-auth";
+import { AI_COPY } from "./ai-copy";
 import { FieldError } from "./AiFieldControls";
-import { AuthAttemptController, awaitingAuthCode, isActiveAttempt } from "./auth-attempt";
+import { AuthAttemptController, authPanelErrorText, awaitingAuthCode, isActiveAttempt } from "./auth-attempt";
 
 export { abandonAuthAttempt } from "./auth-attempt";
 
-const DEFAULT_INTRO = "제공자 페이지에서 로그인하고, 확인 코드가 표시되면 그 페이지에 입력하세요. 비밀번호와 발급된 토큰은 앱 입력창에 넣지 않아요.";
-const PROVIDER_COPY: Record<WebAuthProvider, { readonly intro: string; readonly link: string }> = {
-  "github-copilot": { intro: DEFAULT_INTRO, link: "로그인 페이지 열기" },
-  openrouter: { intro: DEFAULT_INTRO, link: "로그인 페이지 열기" },
-  xai: { intro: DEFAULT_INTRO, link: "로그인 페이지 열기" },
-  openai: {
-    intro: "ChatGPT 로그인 페이지를 열고, 아래 확인 코드를 그 페이지에 입력하세요. 이 앱에는 코드나 비밀번호를 입력하지 않아요.",
-    link: "ChatGPT 로그인 페이지 열기",
-  },
-  google: {
-    intro: "Google 로그인 페이지에서 권한을 허용하면 일회용 인증 코드가 표시돼요. 그 코드를 복사해 아래에 붙여 넣으세요. 비밀번호와 발급된 토큰은 앱에 입력하지 않아요.",
-    link: "Google 로그인 페이지 열기",
-  },
-};
+/** Providers with their own intro and link wording; the others share the device-code wording. */
+const providerVariant = (provider: WebAuthProvider) => (provider === "openai" || provider === "google" ? provider : "default");
 
 /** Google's one-time authorization code entry. Lives inside setup/settings forms, so it never submits them. */
 export function AuthCodeField({
@@ -44,9 +34,10 @@ export function AuthCodeField({
   readonly onChangeAction: (code: string) => void;
   readonly onSubmitAction: () => void;
 }) {
+  const copy = useCopy(AI_COPY).auth;
   return (
     <div className="mt-3 flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-ink">Google 인증 코드</label>
+      <label htmlFor={id} className="text-sm font-medium text-ink">{copy.codeLabel}</label>
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           id={id}
@@ -72,12 +63,12 @@ export function AuthCodeField({
           className={cn(inputClassName, "h-11 font-mono")}
         />
         <Button size="lg" loading={submitting} disabled={disabled} onClick={() => onSubmitAction()}>
-          {submitting ? "코드 확인 중…" : "인증 코드 제출"}
+          {submitting ? copy.codeSubmitting : copy.codeSubmit}
         </Button>
       </div>
       {error ? <FieldError id={`${id}-error`} message={error} /> : (
         <p id={`${id}-hint`} className="text-pretty text-sm text-mute">
-          한 번만 쓸 수 있는 코드예요. 주소(URL) 전체가 아니라 코드만 붙여 넣어 주세요.
+          {copy.codeHint}
         </p>
       )}
     </div>
@@ -101,6 +92,7 @@ export function AiAuthPanel({
   readonly hasSavedCredential?: boolean;
   readonly onReadyAction: (attemptId?: string) => void;
 }) {
+  // The attempt is scoped to provider and credentials only; a language switch re-renders it, never rebuilds it.
   const controller = useMemo(
     () => new AuthAttemptController({ provider, enterpriseDomain, setupToken }),
     [provider, enterpriseDomain, setupToken],
@@ -110,21 +102,23 @@ export function AiAuthPanel({
   useEffect(() => () => controller.release(), [controller]);
   const { attempt, starting, submitting, code, codeError, error } =
     useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
+  const { locale } = useLocale();
+  const copy = useCopy(AI_COPY).auth;
   const codeId = useId();
-  const copy = PROVIDER_COPY[provider];
+  const variant = providerVariant(provider);
   const active = isActiveAttempt(attempt);
   const awaitingCode = awaitingAuthCode(attempt);
   const waiting = awaitingCode
-    ? "Google 인증 코드를 기다리는 중이에요."
+    ? copy.waitingCode
     : attempt?.status === "pending" && attempt.requiresCode === false
-      ? "인증 코드를 확인하는 중이에요."
-      : "로그인 완료를 기다리는 중이에요.";
+      ? copy.checkingCode
+      : copy.waiting;
 
   return (
     <div className="rounded-ctl border border-line bg-desk px-3 py-3 text-sm">
-      <p className="text-pretty">{copy.intro}</p>
+      <p className="text-pretty">{copy.intro[variant]}</p>
       {provider === "openrouter" ? (
-        <p className="mt-2 text-mute">OpenRouter Auth는 API 키를 발급하는 방식이며 OpenRouter 사용 요금이 적용돼요. 다른 서비스의 구독 이용권을 가져오지 않아요.</p>
+        <p className="mt-2 text-mute">{copy.openRouterNote}</p>
       ) : null}
       {attempt?.verificationUrl ? (
         <a
@@ -133,27 +127,25 @@ export function AiAuthPanel({
           rel="noreferrer"
           className="mt-3 inline-flex min-h-touch items-center gap-2 text-accent underline focus-ring"
         >
-          {copy.link}
+          {copy.link[variant]}
           <ExternalLink aria-hidden className="size-4" />
         </a>
       ) : null}
       {attempt?.userCode ? (
         <p className="mt-2">
-          확인 코드: <code className="select-all rounded-ctl border border-line bg-card px-2 py-0.5 font-mono text-md font-semibold tracking-wider">{attempt.userCode}</code>
+          {copy.userCode} <code className="select-all rounded-ctl border border-line bg-card px-2 py-0.5 font-mono text-md font-semibold tracking-wider">{attempt.userCode}</code>
         </p>
       ) : null}
       {provider === "openai" && attempt && attempt.status !== "ready" ? (
         <p className="mt-2 text-pretty text-mute">
-          코드 입력이 막히거나 거부되면 ChatGPT 설정의 보안에서 Codex 기기 코드 로그인을 켜 주세요. 워크스페이스 계정은 관리자가 허용해야 해요.
+          {copy.openaiDeviceHelp}
         </p>
       ) : null}
       {attempt?.status === "ready" || readyAttemptId ? (
-        <p role="status" className="mt-2 text-ok">로그인을 확인했어요. 이제 연결을 저장하세요.</p>
+        <p role="status" className="mt-2 text-ok">{copy.ready}</p>
       ) : hasSavedCredential ? (
         <p className="mt-2 text-mute">
-          {provider === "github-copilot"
-            ? "저장된 로그인이 있어요. 제공자와 기업 도메인을 바꾸지 않으면 그대로 유지돼요."
-            : "저장된 로그인이 있어요. 제공자를 바꾸지 않으면 그대로 유지돼요."}
+          {provider === "github-copilot" ? copy.savedWithDomain : copy.saved}
         </p>
       ) : active ? (
         <p role="status" className="mt-2 text-mute">{waiting}</p>
@@ -162,7 +154,7 @@ export function AiAuthPanel({
         <AuthCodeField
           id={codeId}
           value={code}
-          error={codeError}
+          error={codeError ? copy.codeErrors[codeError] : null}
           submitting={submitting}
           disabled={disabled}
           onChangeAction={controller.setCode}
@@ -177,20 +169,20 @@ export function AiAuthPanel({
           leading={<LogIn aria-hidden className="size-4" />}
           onClick={() => void controller.start()}
         >
-          {readyAttemptId ? "다시 로그인" : "로그인 시작"}
+          {readyAttemptId ? copy.restart : copy.start}
         </Button>
         {error && active ? (
           <Button size="lg" disabled={disabled || submitting} onClick={controller.retryStatus}>
-            상태 다시 확인
+            {copy.retryStatus}
           </Button>
         ) : null}
         {attempt ? (
           <Button size="lg" disabled={disabled} leading={<X aria-hidden className="size-4" />} onClick={() => void controller.cancel()}>
-            로그인 취소
+            {copy.cancel}
           </Button>
         ) : null}
       </div>
-      {error ? <p role="alert" className="mt-2 text-danger">{error}</p> : null}
+      {error ? <p role="alert" className="mt-2 text-danger">{authPanelErrorText(error, locale)}</p> : null}
     </div>
   );
 }

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { getSession } from "@/server/auth/session";
+import type { LocalizedText } from "@/lib/i18n/locale";
+import { httpCopy } from "@/server/i18n/copy";
+import { issuesText } from "@/lib/i18n/validation";
+import { AI_FIELD_COPY } from "@/server/i18n/ai-field-copy";
 
 export type ApiErrorCode =
   | "unauthorized"
@@ -28,12 +32,15 @@ const STATUS: Record<ApiErrorCode, number> = {
 };
 
 export class ApiError extends Error {
+  readonly localized?: LocalizedText;
+
   constructor(
     readonly code: ApiErrorCode,
-    message: string,
+    message: string | LocalizedText,
     readonly extra?: Record<string, unknown>,
   ) {
-    super(message);
+    super(typeof message === "string" ? message : message.en);
+    if (typeof message !== "string") this.localized = message;
     this.name = "ApiError";
   }
 }
@@ -44,8 +51,15 @@ export function json<T>(data: T, init?: ResponseInit): NextResponse {
   return response;
 }
 
-export function errorResponse(code: ApiErrorCode, message: string, extra?: Record<string, unknown>): NextResponse {
-  const response = json({ error: { code, message, ...extra } }, { status: STATUS[code] });
+export function errorResponse(code: ApiErrorCode, message: string | LocalizedText, extra?: Record<string, unknown>): NextResponse {
+  const response = json({
+    error: {
+      code,
+      message: typeof message === "string" ? message : message.en,
+      ...extra,
+      ...(typeof message === "string" ? {} : { localized: message }),
+    },
+  }, { status: STATUS[code] });
   if (code === "rate_limited" && typeof extra?.retryAfterSeconds === "number") {
     response.headers.set("retry-after", String(extra.retryAfterSeconds));
   }
@@ -56,13 +70,13 @@ export function errorResponse(code: ApiErrorCode, message: string, extra?: Recor
 export async function parseJson<T>(request: Request, schema: ZodType<T>): Promise<T> {
   const contentType = request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase();
   if (contentType !== "application/json") {
-    throw new ApiError("validation", "Content-Type must be application/json");
+    throw new ApiError("validation", httpCopy.jsonContentType);
   }
   let raw: unknown;
   try {
     raw = await request.json();
   } catch {
-    throw new ApiError("validation", "Request body must be JSON");
+    throw new ApiError("validation", httpCopy.jsonBody);
   }
   return schema.parse(raw);
 }
@@ -73,7 +87,7 @@ function requireSameOrigin(request: Request): void {
   if (["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
   const origin = request.headers.get("origin");
   if (request.headers.get("sec-fetch-site") === "cross-site") {
-    throw new ApiError("forbidden", "Cross-site requests are not allowed");
+    throw new ApiError("forbidden", httpCopy.crossSite);
   }
   if (origin) {
     // Host preserves the public authority when TLS terminates at the proxy.
@@ -82,21 +96,26 @@ function requireSameOrigin(request: Request): void {
     try {
       originUrl = new URL(origin);
     } catch {
-      throw new ApiError("forbidden", "Invalid request origin");
+      throw new ApiError("forbidden", httpCopy.badOrigin);
     }
     if (!["http:", "https:"].includes(originUrl.protocol) || originUrl.host !== authority) {
-      throw new ApiError("forbidden", "Cross-origin requests are not allowed");
+      throw new ApiError("forbidden", httpCopy.crossOrigin);
     }
   }
 }
 
-function toResponse(error: unknown): Response {
-  if (error instanceof ApiError) return errorResponse(error.code, error.message, error.extra);
+function toResponse(error: unknown, request: Request): Response {
+  if (error instanceof ApiError) return errorResponse(error.code, error.localized ?? error.message, error.extra);
   if (error instanceof ZodError) {
-    return errorResponse("validation", error.issues.map((i) => `${i.path.join(".") || "body"}: ${i.message}`).join("; "));
+    const aiRoute = /^\/api\/(?:setup$|settings\/ai(?:\/|$)|ai\/auth(?:\/|$))/.test(new URL(request.url).pathname);
+    const fields = aiRoute ? AI_FIELD_COPY : undefined;
+    return errorResponse("validation", {
+      ko: issuesText("ko", error.issues, fields),
+      en: issuesText("en", error.issues, fields),
+    });
   }
   console.error("[api] unhandled error", error);
-  return errorResponse("internal", "Something went wrong");
+  return errorResponse("internal", httpCopy.internal);
 }
 
 /** Session-protected route handler with uniform error mapping. */
@@ -105,10 +124,10 @@ export function withApi<C = unknown>(handler: Handler<C>): Handler<C> {
     try {
       requireSameOrigin(request);
       const session = await getSession();
-      if (!session) return errorResponse("unauthorized", "Login required");
+      if (!session) return errorResponse("unauthorized", httpCopy.loginRequired);
       return await handler(request, context);
     } catch (error) {
-      return toResponse(error);
+      return toResponse(error, request);
     }
   };
 }
@@ -120,7 +139,7 @@ export function withPublicApi<C = unknown>(handler: Handler<C>): Handler<C> {
       requireSameOrigin(request);
       return await handler(request, context);
     } catch (error) {
-      return toResponse(error);
+      return toResponse(error, request);
     }
   };
 }

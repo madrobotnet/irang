@@ -8,10 +8,14 @@ import useSWR, { useSWRConfig } from "swr";
 import { localDateKey } from "@/features/home/home-model";
 import { refreshNoteViews } from "@/features/notes/note-cache";
 import { api } from "@/lib/api-client";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import { textInEveryLocale } from "@/lib/i18n/copy";
 import type { NoteRef } from "@/lib/types";
+import { useCopy } from "@/components/i18n/LocaleProvider";
 import { useModalDialog } from "@/components/ui/Dialog";
 import { Kbd } from "@/components/ui/Kbd";
 import { useToast } from "@/components/ui/Toast";
+import { keywordsInEveryLocale, SHELL_COPY } from "./copy";
 import { NAV_ITEMS } from "./nav";
 import { modKey } from "./shortcuts";
 import { useTheme } from "./ThemeProvider";
@@ -33,13 +37,14 @@ const NOTE_LIMIT = 12;
 export function CommandPalette({ open, mode, onOpenChange, onModeChange, onCapture }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { ref, onClose, onBackdropClick } = useModalDialog(open, onOpenChange, inputRef);
+  const copy = useCopy(SHELL_COPY);
 
   return (
     <dialog
       ref={ref}
       onClose={onClose}
       onClick={onBackdropClick}
-      aria-label={mode === "notes" ? "노트 전환" : "명령 팔레트"}
+      aria-label={mode === "notes" ? copy.palette.switcherLabel : copy.actions.palette}
       className="mx-auto mb-auto mt-[10dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-hidden rounded-card border border-line bg-card p-0 text-ink shadow-pop backdrop:bg-scrim sm:mt-[14dvh]"
     >
       {open ? <PaletteBody mode={mode} onOpenChange={onOpenChange} onModeChange={onModeChange} onCapture={onCapture} inputRef={inputRef} /> : null}
@@ -55,6 +60,7 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
   const { cache, mutate } = useSWRConfig();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const copy = useCopy(SHELL_COPY);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -74,7 +80,7 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
         await fn();
         onOpenChange(false);
       } catch (error) {
-        toast(error instanceof Error ? error.message : "요청을 처리하지 못했습니다.", { tone: "danger" });
+        toast(textInEveryLocale((locale) => localizedApiError(error, locale, SHELL_COPY[locale].palette.failed)), { tone: "danger" });
       } finally {
         setBusy(false);
       }
@@ -97,7 +103,7 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
 
   return (
     <Command
-      label={mode === "notes" ? "노트 전환" : "명령 팔레트"}
+      label={mode === "notes" ? copy.palette.switcherLabel : copy.actions.palette}
       loop
       shouldFilter={mode === "all"}
       filter={(value, search, keywords) => {
@@ -119,17 +125,17 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
           value={query}
           onValueChange={setQuery}
           autoFocus
-          placeholder={mode === "notes" ? "노트 제목으로 이동…" : "명령이나 노트 제목 입력…"}
+          placeholder={mode === "notes" ? copy.palette.switcherPlaceholder : copy.palette.placeholder}
           className="h-12 min-w-0 flex-1 bg-transparent text-md text-ink outline-none placeholder:text-mute"
         />
         <div className="hidden shrink-0 items-center gap-1 sm:flex">
           {mode === "all" ? (
             <button type="button" onClick={() => onModeChange("notes")} className="rounded-ctl px-1.5 py-0.5 text-xs text-mute hover:bg-line/60 hover:text-ink">
-              노트만
+              {copy.palette.notesOnly}
             </button>
           ) : (
             <button type="button" onClick={() => onModeChange("all")} className="rounded-ctl px-1.5 py-0.5 text-xs text-mute hover:bg-line/60 hover:text-ink">
-              전체
+              {copy.palette.all}
             </button>
           )}
           <Kbd>esc</Kbd>
@@ -138,33 +144,54 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
 
       <Command.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 py-1.5 scrollbar-thin">
         <Command.Empty className="px-3 py-8 text-center text-sm text-mute">
-          {notes.isValidating ? "노트를 검색하는 중입니다." : notes.error ? "노트 목록을 불러오지 못했습니다." : "일치하는 항목이 없습니다."}
+          {notes.isValidating ? copy.palette.searching : notes.error ? copy.palette.loadFailed : copy.palette.empty}
         </Command.Empty>
 
         {mode === "all" ? (
-          <Command.Group heading="동작" className={GROUP}>
-            <Command.Item value="capture" keywords={["캡처", "빠른 입력", "capture", "c"]} onSelect={() => run(() => onCapture?.())} className={ITEM}>
+          <Command.Group heading={copy.palette.groups.actions} className={GROUP}>
+            <Command.Item
+              value="capture"
+              keywords={[...keywordsInEveryLocale((c) => c.actions.capture, (c) => c.palette.keywords.capture), "c"]}
+              onSelect={() => run(() => onCapture?.())}
+              className={ITEM}
+            >
               <Zap aria-hidden className={ICON} />
-              <span className="flex-1">빠르게 캡처</span>
+              <span className="flex-1">{copy.actions.capture}</span>
               <Hint keys={["c"]} />
             </Command.Item>
-            <Command.Item value="new-note" keywords={["새 노트", "만들기", "new", "note"]} onSelect={() => createNote()} className={ITEM}>
+            <Command.Item
+              value="new-note"
+              keywords={keywordsInEveryLocale((c) => c.palette.newNote, (c) => c.palette.keywords.newNote)}
+              onSelect={() => createNote()}
+              className={ITEM}
+            >
               <Plus aria-hidden className={ICON} />
-              <span className="flex-1">새 노트</span>
+              <span className="flex-1">{copy.palette.newNote}</span>
             </Command.Item>
-            <Command.Item value="daily" keywords={["오늘", "데일리", "일지", "daily", "today"]} onSelect={openDaily} className={ITEM}>
+            <Command.Item
+              value="daily"
+              keywords={keywordsInEveryLocale((c) => c.palette.openDaily, (c) => c.palette.keywords.daily)}
+              onSelect={openDaily}
+              className={ITEM}
+            >
               <CalendarDays aria-hidden className={ICON} />
-              <span className="flex-1">오늘 노트 열기</span>
+              <span className="flex-1">{copy.palette.openDaily}</span>
             </Command.Item>
           </Command.Group>
         ) : null}
 
         {mode === "all" ? (
-          <Command.Group heading="이동" className={GROUP}>
+          <Command.Group heading={copy.palette.groups.go} className={GROUP}>
             {NAV_ITEMS.map((item) => (
-              <Command.Item key={item.id} value={`go-${item.id}`} keywords={[item.label, item.id, item.href]} onSelect={() => go(item.href)} className={ITEM}>
+              <Command.Item
+                key={item.id}
+                value={`go-${item.id}`}
+                keywords={[...keywordsInEveryLocale((c) => c.nav[item.id]), item.id, item.href]}
+                onSelect={() => go(item.href)}
+                className={ITEM}
+              >
                 <item.icon aria-hidden className={ICON} />
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1">{copy.nav[item.id]}</span>
                 {item.goKey ? <Hint keys={["g", item.goKey]} /> : null}
               </Command.Item>
             ))}
@@ -172,31 +199,31 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
         ) : null}
 
         {mode === "all" ? (
-          <Command.Group heading="테마" className={GROUP}>
+          <Command.Group heading={copy.palette.groups.theme} className={GROUP}>
             {(
               [
-                ["light", "밝게", Sun],
-                ["dark", "어둡게", Moon],
-                ["system", "시스템 설정 따르기", Monitor],
+                ["light", Sun],
+                ["dark", Moon],
+                ["system", Monitor],
               ] as const
-            ).map(([value, label, Icon]) => (
+            ).map(([value, Icon]) => (
               <Command.Item
                 key={value}
                 value={`theme-${value}`}
-                keywords={["테마", "theme", label, value]}
+                keywords={[...keywordsInEveryLocale((c) => c.palette.keywords.theme, (c) => c.theme.palette[value]), value]}
                 onSelect={() => run(() => setTheme(value))}
                 className={ITEM}
               >
                 <Icon aria-hidden className={ICON} />
-                <span className="flex-1">{label}</span>
-                {theme === value ? <span className="text-xs text-mute">현재</span> : null}
+                <span className="flex-1">{copy.theme.palette[value]}</span>
+                {theme === value ? <span className="text-xs text-mute">{copy.palette.current}</span> : null}
               </Command.Item>
             ))}
           </Command.Group>
         ) : null}
 
         {noteList.length > 0 || canCreate ? (
-          <Command.Group heading="노트" className={GROUP}>
+          <Command.Group heading={copy.palette.groups.notes} className={GROUP}>
             {noteList.map((note) => (
               <Command.Item key={note.id} value={`note-${note.id}`} keywords={[note.title, trimmed]} onSelect={() => go(`/notes/${note.id}`)} className={ITEM}>
                 <FileText aria-hidden className={ICON} />
@@ -204,10 +231,15 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
               </Command.Item>
             ))}
             {canCreate ? (
-              <Command.Item value={`create-${trimmed}`} keywords={[trimmed, "새 노트"]} onSelect={() => createNote(trimmed)} className={ITEM}>
+              <Command.Item
+                value={`create-${trimmed}`}
+                keywords={[trimmed, ...keywordsInEveryLocale((c) => c.palette.newNote)]}
+                onSelect={() => createNote(trimmed)}
+                className={ITEM}
+              >
                 <Plus aria-hidden className={ICON} />
                 <span className="flex-1 truncate">
-                  <span className="text-mute">새 노트: </span>
+                  <span className="text-mute">{copy.palette.createPrefix} </span>
                   {trimmed}
                 </span>
               </Command.Item>
@@ -219,14 +251,14 @@ function PaletteBody({ mode, onOpenChange, onModeChange, onCapture, inputRef }: 
       <div className="hidden items-center gap-3 border-t border-line px-3 py-1.5 text-2xs text-mute sm:flex">
         <span className="inline-flex items-center gap-1">
           <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd> 이동
+          <Kbd>↓</Kbd> {copy.palette.hints.move}
         </span>
         <span className="inline-flex items-center gap-1">
-          <Kbd>↵</Kbd> 열기
+          <Kbd>↵</Kbd> {copy.palette.hints.open}
         </span>
         <span className="ml-auto inline-flex items-center gap-1">
           <Kbd>{mod}</Kbd>
-          <Kbd>P</Kbd> 노트만
+          <Kbd>P</Kbd> {copy.palette.notesOnly}
         </span>
       </div>
     </Command>

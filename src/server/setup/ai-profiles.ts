@@ -1,3 +1,4 @@
+import { setupCopy } from "@/server/i18n/setup-copy";
 import type { PoolClient } from "pg";
 import {
   ConnectionProfileSchema, type ConnectionProfile, type ConnectionProfileInput,
@@ -15,14 +16,14 @@ export async function writeConnectionProfile(
 ): Promise<ConnectionProfile> {
   const previous = options.previous;
   if (previous && previous.purpose !== input.purpose) {
-    throw new ApiError("validation", "연결 용도는 바꿀 수 없습니다. 새 연결을 추가해 주세요.");
+    throw new ApiError("validation", setupCopy.purposeLocked);
   }
   if (!previous) {
     const count = await client.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM ai_connections WHERE owner_id = $1",
       [options.ownerId],
     );
-    if ((count.rows[0]?.count ?? 0) >= 40) throw new ApiError("validation", "연결은 40개까지 저장할 수 있어요.");
+    if ((count.rows[0]?.count ?? 0) >= 40) throw new ApiError("validation", setupCopy.limit);
   }
   const context = { client, scope: options.scope };
   let connection;
@@ -54,10 +55,10 @@ export async function saveConnectionProfile(
   return tx(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [AI_SETTINGS_LOCK]);
     const ownerId = await settingsOwner(client);
-    if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+    if (!ownerId) throw new ApiError("conflict", setupCopy.setupFirst);
     const profiles = await connectionProfiles(ownerId, client);
     const previous = options.id ? profiles.find((profile) => profile.id === options.id) : undefined;
-    if (options.id && !previous) throw new ApiError("not_found", "저장된 연결을 찾을 수 없습니다.");
+    if (options.id && !previous) throw new ApiError("not_found", setupCopy.notFound);
     return writeConnectionProfile(client, input, {
       ownerId, previous, scope: { key: `owner:${ownerId}`, browserHash: options.browserHash },
     });
@@ -68,9 +69,9 @@ export async function deleteConnectionProfile(id: string): Promise<void> {
   await tx(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [AI_SETTINGS_LOCK]);
     const ownerId = await settingsOwner(client);
-    if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+    if (!ownerId) throw new ApiError("conflict", setupCopy.setupFirst);
     const removed = await client.query("DELETE FROM ai_connections WHERE id = $1 AND owner_id = $2 RETURNING id", [id, ownerId]);
-    if (!removed.rowCount) throw new ApiError("not_found", "저장된 연결을 찾을 수 없습니다.");
+    if (!removed.rowCount) throw new ApiError("not_found", setupCopy.notFound);
     const saved = await settingsDocument(client);
     if (saved && (saved.chatId === id || saved.jevId === id)) {
       const updated = { ...saved, chatId: saved.chatId === id ? null : saved.chatId, jevId: saved.jevId === id ? null : saved.jevId };

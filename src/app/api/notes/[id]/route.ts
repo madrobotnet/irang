@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { ApiError, json, parseJson, withApi } from "@/server/http";
 import { getNote, purgeNote, trashNote, updateNote } from "@/server/notes/service";
+import { localizedIssue } from "@/lib/i18n/validation";
+import { notesCopy } from "@/server/i18n/copy";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
@@ -11,12 +13,12 @@ const UpdateBody = z.object({
   aliases: z.array(z.string().min(1).max(300)).max(100).optional(),
   pinned: z.boolean().optional(),
   archived: z.boolean().optional(),
-}).strict().refine((value) => Object.keys(value).length > 0, "변경할 내용을 입력해 주세요.");
+}).strict().refine((value) => Object.keys(value).length > 0, { ...localizedIssue(notesCopy.patchEmpty) });
 
 export const GET = withApi<Context>(async (_request, { params }) => {
   const { id } = await params;
   const note = await getNote(id);
-  if (!note) throw new ApiError("not_found", "노트를 찾을 수 없습니다.");
+  if (!note) throw new ApiError("not_found", notesCopy.notFound);
   return json({ note });
 });
 

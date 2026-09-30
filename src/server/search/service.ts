@@ -3,6 +3,7 @@ import { embedText, tokenize, vectorLiteral } from "@/lib/embed";
 import { excerpt, markdownToText, normalizeTag } from "@/lib/wikilinks";
 import { query } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { notesCopy, searchCopy } from "@/server/i18n/copy";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -43,7 +44,7 @@ type RankedCandidate = {
 function validatedLimit(limit: number | undefined): number {
   const value = limit ?? DEFAULT_LIMIT;
   if (!Number.isInteger(value) || value < 1 || value > MAX_LIMIT) {
-    throw new ApiError("validation", `limit은 1 이상 ${MAX_LIMIT} 이하의 정수여야 합니다.`);
+    throw new ApiError("validation", searchCopy.limit(MAX_LIMIT));
   }
   return value;
 }
@@ -52,7 +53,7 @@ function validatedTag(tag: string | undefined): string | undefined {
   if (tag === undefined) return undefined;
   const value = normalizeTag(tag);
   if (!value || value.length > 100) {
-    throw new ApiError("validation", "tag는 1자 이상 100자 이하이어야 합니다.");
+    throw new ApiError("validation", searchCopy.tagLength);
   }
   return value;
 }
@@ -247,7 +248,7 @@ export async function relatedNotes(noteId: string, limitValue?: number): Promise
     [noteId],
   );
   const embedding = source[0]?.embedding;
-  if (!embedding) throw new ApiError("not_found", "노트를 찾을 수 없습니다.");
+  if (!embedding) throw new ApiError("not_found", notesCopy.notFound);
 
   const rows = await query<RelatedRow>(
     `SELECT id::text, title, body, 1 - (search_embedding <=> $1::vector) AS score

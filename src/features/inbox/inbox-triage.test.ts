@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { copyParityIssues } from "@/lib/i18n/copy";
+import { LOCALES } from "@/lib/i18n/locale";
+import { URL_FAILED_MARKER, URL_PENDING_MARKER } from "@/lib/inbox-url-status";
 import type { InboxItem } from "@/lib/types";
+import { INBOX_COPY } from "./inbox-copy";
 import {
   excerpt,
+  formatCreated,
+  kindLabel,
   mergeTags,
   moveSelection,
   neighbourAfterRemoval,
@@ -126,8 +132,37 @@ describe("url status lines", () => {
     const failed = "> URL 내용을 가져오지 못했습니다. 원문 링크는 보존되었습니다.";
     expect(urlStatus(failed)).toBe("failed");
     expect(stripUrlStatus(failed)).toBe("");
+    expect(urlStatus(`memo\n\n${URL_PENDING_MARKER}`)).toBe("pending");
+    expect(stripUrlStatus(`memo\n\n${URL_FAILED_MARKER}`)).toBe("memo");
     expect(urlStatus("평범한 본문")).toBeNull();
     expect(excerpt("첫 줄\n둘째 줄  셋째", 8)).toBe("첫 줄 둘째 …");
     expect(excerpt("짧다")).toBe("짧다");
+  });
+});
+
+describe("formatCreated", () => {
+  const now = Date.parse("2026-09-27T12:00:00.000Z");
+  test("formats in the requested locale", () => {
+    for (const locale of LOCALES) expect(formatCreated("2026-09-27T12:00:10.000Z", locale, now)).toBe(INBOX_COPY[locale].justNow);
+    for (const iso of ["2026-09-27T11:55:00.000Z", "2026-09-27T09:00:00.000Z", "2026-09-25T12:00:00.000Z", "2026-09-01T12:00:00.000Z"]) {
+      expect(formatCreated(iso, "en", now)).not.toBe(formatCreated(iso, "ko", now));
+    }
+  });
+});
+
+describe("kindLabel", () => {
+  test("labels known kinds and shows unknown ids as stored", () => {
+    for (const locale of LOCALES) {
+      const labels = INBOX_COPY[locale].kind;
+      expect(kindLabel("reference", labels)).toBe(labels.reference);
+      expect(kindLabel("custom", labels)).toBe("custom");
+      expect(kindLabel("toString", labels)).toBe("toString");
+    }
+  });
+});
+
+describe("inbox copy", () => {
+  test("has Korean and English parity", () => {
+    expect(copyParityIssues(INBOX_COPY)).toEqual([]);
   });
 });

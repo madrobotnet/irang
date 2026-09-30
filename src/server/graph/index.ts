@@ -2,6 +2,7 @@ import type { GraphData, GraphLink, GraphNode } from "@/lib/types";
 import { normalizeTag } from "@/lib/wikilinks";
 import { query, queryOne } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { graphCopy } from "@/server/i18n/copy";
 
 export const GRAPH_NODE_LIMIT = 2_000;
 
@@ -29,26 +30,26 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 export function parseGraphQuery(url: URL): GraphOptions {
   const focus = url.searchParams.get("focus");
   if (focus !== null && !UUID_RE.test(focus)) {
-    throw new ApiError("validation", "focus는 올바른 UUID여야 합니다");
+    throw new ApiError("validation", graphCopy.focusUuid);
   }
 
   const depthValue = url.searchParams.get("depth");
   if (depthValue !== null && !/^[123]$/.test(depthValue)) {
-    throw new ApiError("validation", "depth는 1부터 3 사이여야 합니다");
+    throw new ApiError("validation", graphCopy.depth);
   }
 
   const parseFlag = (name: "tags" | "orphans", fallback: boolean): boolean => {
     const value = url.searchParams.get(name);
     if (value === null) return fallback;
     if (value !== "0" && value !== "1") {
-      throw new ApiError("validation", `${name}는 0 또는 1이어야 합니다`);
+      throw new ApiError("validation", graphCopy.flag(name));
     }
     return value === "1";
   };
 
   const rawTag = url.searchParams.get("tag");
   const tag = rawTag === null ? undefined : normalizeTag(rawTag);
-  if (rawTag !== null && !tag) throw new ApiError("validation", "tag는 비어 있을 수 없습니다");
+  if (rawTag !== null && !tag) throw new ApiError("validation", graphCopy.tagEmpty);
 
   return {
     ...(focus ? { focusId: focus } : {}),
@@ -78,7 +79,7 @@ async function loadNotes(options: GraphOptions): Promise<NoteRow[]> {
     "SELECT id FROM notes WHERE id = $1 AND deleted_at IS NULL AND status <> 'archived'",
     [options.focusId],
   );
-  if (!focus) throw new ApiError("not_found", "기준 노트를 찾을 수 없습니다");
+  if (!focus) throw new ApiError("not_found", graphCopy.focusMissing);
 
   return query<NoteRow>(
     `WITH RECURSIVE walk(id, distance) AS (

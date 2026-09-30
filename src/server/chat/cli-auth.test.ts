@@ -1,6 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { LOCALES } from "@/lib/i18n/locale";
+import { readinessCopy } from "@/server/i18n/copy";
 import {
   cliCredentialFile, getCliAuthReadiness,
 } from "./cli-auth";
@@ -35,6 +37,15 @@ test("reports only file readiness without reading, validating, or refreshing tok
   expect(result.available).toBe(true);
   expect(JSON.stringify(result)).not.toContain("SECRET");
   expect(await readFile(file, "utf8")).toBe("SECRET-invalid-token");
+});
+
+test.each([...LOCALES])("readiness explanation uses the requested %s locale without changing credential access", async (locale) => {
+  const { file, env } = await setup();
+  await writeFile(file, "SECRET-invalid-token");
+  const result = await getCliAuthReadiness("google", { env, locale });
+  expect(result.available).toBe(true);
+  expect(result.detail).toBe(readinessCopy.cliReady[locale]);
+  expect(JSON.stringify(result)).not.toContain("SECRET");
 });
 
 test("reports missing credentials without scanning HOME", async () => {

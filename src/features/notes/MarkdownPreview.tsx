@@ -5,7 +5,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useToast } from "@/components/ui";
 import { api } from "@/lib/api-client";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import { textInEveryLocale } from "@/lib/i18n/copy";
 import type { NoteRef } from "@/lib/types";
+import { NOTES_COPY } from "./copy";
 import { expandWikiLinks, wikiTitleFromHref } from "./markdown";
 
 export function MarkdownPreview({ body }: { body: string }) {
@@ -27,7 +30,7 @@ export function MarkdownPreview({ body }: { body: string }) {
                     event.preventDefault();
                     void api<{ note: NoteRef }>("/api/notes/by-title", { method: "POST", json: { title } })
                       .then(({ note }) => router.push(`/notes/${note.id}`))
-                      .catch((error: unknown) => toast(error instanceof Error ? error.message : "연결 노트를 열지 못했습니다.", { tone: "danger" }));
+                      .catch((error: unknown) => toast(textInEveryLocale((locale) => localizedApiError(error, locale, NOTES_COPY[locale].openLinkFailed)), { tone: "danger" }));
                   }}
                 >
                   {children}

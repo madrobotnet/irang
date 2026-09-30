@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { daysUntil } from "./settings-model";
+import { daysUntil, formatExpiry } from "./settings-model";
 
 describe("daysUntil", () => {
   const now = Date.parse("2026-09-27T12:00:00.000Z");
@@ -11,5 +11,17 @@ describe("daysUntil", () => {
   test("returns null when the server has no expiry to report", () => {
     expect(daysUntil(null, now)).toBeNull();
     expect(daysUntil("nope", now)).toBeNull();
+  });
+});
+
+describe("formatExpiry", () => {
+  test("formats the same instant in each locale's own date style", () => {
+    const at = "2026-10-27T12:00:00.000Z";
+    const ko = formatExpiry(at, "ko");
+    const en = formatExpiry(at, "en");
+    expect(ko).toContain("2026");
+    expect(en).toContain("2026");
+    expect(en).not.toBe(ko);
+    expect(en).not.toMatch(/[\uac00-\ud7af]/);
   });
 });

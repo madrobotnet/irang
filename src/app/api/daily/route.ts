@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, json, parseJson, withApi } from "@/server/http";
 import { getOrCreateDaily } from "@/server/notes/service";
+import { notesCopy } from "@/server/i18n/copy";
 
 const Body = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).strict();
 function validDate(value: string): boolean {
@@ -9,6 +10,6 @@ function validDate(value: string): boolean {
 }
 export const POST = withApi(async (request) => {
   const { date = new Date().toISOString().slice(0, 10) } = await parseJson(request, Body);
-  if (!validDate(date)) throw new ApiError("validation", "올바른 날짜를 입력해 주세요.");
+  if (!validDate(date)) throw new ApiError("validation", notesCopy.dailyBadDate);
   return json({ note: await getOrCreateDaily(date) });
 });

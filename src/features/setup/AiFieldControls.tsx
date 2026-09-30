@@ -2,7 +2,15 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
+import { useCopy } from "@/components/i18n";
 import { Input } from "@/components/ui/Input";
+import { AI_COPY, type ConnectionErrorKey } from "./ai-copy";
+
+/** Message for a retained validation reason in the current language. */
+export function useFieldErrorText(): (reason?: ConnectionErrorKey) => string | undefined {
+  const errors = useCopy(AI_COPY).errors;
+  return (reason) => (reason ? errors[reason] : undefined);
+}
 
 export function FieldError({ id, message }: { readonly id: string; readonly message?: string }) {
   return message ? <p id={id} role="alert" className="text-sm text-danger">{message}</p> : null;
@@ -18,6 +26,7 @@ export function SecretInput({ id, label, hint, error, value, disabled, onChangeA
   readonly onChangeAction: (next: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const copy = useCopy(AI_COPY).common;
   return (
     <Input
       id={id}
@@ -34,7 +43,7 @@ export function SecretInput({ id, label, hint, error, value, disabled, onChangeA
       trailing={
         <button
           type="button"
-          aria-label={visible ? "키 숨기기" : "키 보기"}
+          aria-label={visible ? copy.hideKey : copy.showKey}
           aria-pressed={visible}
           disabled={disabled}
           onClick={() => setVisible((current) => !current)}

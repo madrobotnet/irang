@@ -1,16 +1,12 @@
-import type { InboxItem, InboxSource, InboxSuggestions } from "@/lib/types";
+import { INTL_LOCALE, type Locale } from "@/lib/i18n/locale";
+import { inboxUrlStatus, stripInboxUrlStatus } from "@/lib/inbox-url-status";
+import type { InboxItem, InboxSuggestions } from "@/lib/types";
+import { INBOX_COPY } from "./inbox-copy";
 
 /** Wire shape of GET /api/inbox; also the SWR cache entry the shell badge reads. */
 export type InboxListData = { items: InboxItem[]; count: number };
 
 export const INBOX_KEY = "/api/inbox";
-
-export const SOURCE_LABEL: Record<InboxSource, string> = {
-  web: "직접 입력",
-  url: "링크",
-  share: "공유",
-  api: "API",
-};
 
 export type TriageAction = "next" | "prev" | "first" | "last" | "open" | "promote" | "discard" | "clear";
 
@@ -130,21 +126,21 @@ export function suggestionView(suggestions: InboxSuggestions | null): Suggestion
   return { kind: "ready", suggestions };
 }
 
-const URL_PLACEHOLDER = /^> URL 내용을 (가져오는 중입니다|가져오지 못했습니다)/m;
+/** Kinds the server asks Jev to choose from; the stored choice stays this machine id. */
+export type SuggestionKind = "idea" | "reference" | "task" | "other";
+
+/** Display label for a suggested kind; an unknown id is shown as stored. */
+export function kindLabel(choice: string, labels: Readonly<Record<SuggestionKind, string>>): string {
+  return Object.hasOwn(labels, choice) ? labels[choice as SuggestionKind] : choice;
+}
 
 /** Body text with the server's URL status line removed; that line is UI status, not note content. */
 export function stripUrlStatus(body: string): string {
-  return body
-    .split(/\r?\n/)
-    .filter((line) => !URL_PLACEHOLDER.test(line))
-    .join("\n")
-    .trim();
+  return stripInboxUrlStatus(body);
 }
 
 export function urlStatus(body: string): "pending" | "failed" | null {
-  if (/^> URL 내용을 가져오는 중입니다/m.test(body)) return "pending";
-  if (/^> URL 내용을 가져오지 못했습니다/m.test(body)) return "failed";
-  return null;
+  return inboxUrlStatus(body);
 }
 
 export function excerpt(body: string, limit = 140): string {
@@ -152,19 +148,25 @@ export function excerpt(body: string, limit = 140): string {
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
 }
 
-const RELATIVE = new Intl.RelativeTimeFormat("ko", { numeric: "auto" });
-const ABSOLUTE = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const ABSOLUTE_OPTIONS: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
-export function formatCreated(iso: string, now = Date.now()): string {
+/** One formatter pair per UI language, created where the module loads so dates use the viewer's time zone. */
+const FORMATS: Readonly<Record<Locale, { relative: Intl.RelativeTimeFormat; absolute: Intl.DateTimeFormat }>> = {
+  ko: { relative: new Intl.RelativeTimeFormat(INTL_LOCALE.ko, { numeric: "auto" }), absolute: new Intl.DateTimeFormat(INTL_LOCALE.ko, ABSOLUTE_OPTIONS) },
+  en: { relative: new Intl.RelativeTimeFormat(INTL_LOCALE.en, { numeric: "auto" }), absolute: new Intl.DateTimeFormat(INTL_LOCALE.en, ABSOLUTE_OPTIONS) },
+};
+
+export function formatCreated(iso: string, locale: Locale, now = Date.now()): string {
+  const { relative, absolute } = FORMATS[locale];
   const then = new Date(iso).getTime();
   const diffMinutes = Math.round((then - now) / 60_000);
-  if (Math.abs(diffMinutes) < 1) return "방금";
-  if (Math.abs(diffMinutes) < 60) return RELATIVE.format(diffMinutes, "minute");
+  if (Math.abs(diffMinutes) < 1) return INBOX_COPY[locale].justNow;
+  if (Math.abs(diffMinutes) < 60) return relative.format(diffMinutes, "minute");
   const diffHours = Math.round(diffMinutes / 60);
-  if (Math.abs(diffHours) < 24) return RELATIVE.format(diffHours, "hour");
+  if (Math.abs(diffHours) < 24) return relative.format(diffHours, "hour");
   const diffDays = Math.round(diffHours / 24);
-  if (Math.abs(diffDays) < 7) return RELATIVE.format(diffDays, "day");
-  return ABSOLUTE.format(new Date(then));
+  if (Math.abs(diffDays) < 7) return relative.format(diffDays, "day");
+  return absolute.format(new Date(then));
 }
 
 export function percent(value: number): string {

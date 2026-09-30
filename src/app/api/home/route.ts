@@ -1,6 +1,7 @@
 import { getHomeData } from "@/server/home";
 import { ApiError, json, withApi } from "@/server/http";
 import { z } from "zod";
+import { homeCopy } from "@/server/i18n/copy";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ export const GET = withApi(async (request) => {
     try {
       new Intl.DateTimeFormat("en-US", { timeZone });
     } catch {
-      throw new ApiError("validation", "올바른 시간대를 입력해 주세요.");
+      throw new ApiError("validation", homeCopy.badTimeZone);
     }
   }
   return json(await getHomeData({ timeZone }));

@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { AiSettingsView } from "@/lib/ai-settings";
+import { ApiClientError } from "@/lib/api-client";
+import { LOCALES } from "@/lib/i18n/locale";
+import { AI_COPY } from "./ai-copy";
 import {
   aiFormFromView,
+  aiSaveFailureText,
   buildAiInput,
   emptyAiForm,
+  type AiFieldKey,
   type AiFormState,
 } from "./ai-form";
 
@@ -115,7 +120,7 @@ describe("buildAiInput", () => {
       },
     }, saved);
     expect(changed.ok).toBe(false);
-    if (!changed.ok) expect(changed.errors["chat.apiKey"]).toBeString();
+    if (!changed.ok) expect(changed.errors["chat.apiKey"]).toBe("apiKeyOrKeyless");
   });
 
   test("allows explicit keyless custom endpoints and explicit header clearing", () => {
@@ -169,7 +174,7 @@ describe("buildAiInput", () => {
     };
     const missing = buildAiInput(pending, null);
     expect(missing.ok).toBe(false);
-    if (!missing.ok) expect(missing.errors["chat.auth"]).toBeString();
+    if (!missing.ok) expect(missing.errors["chat.auth"]).toBe("browserLoginRequired");
 
     const ready = buildAiInput({
       ...pending,
@@ -245,8 +250,8 @@ describe("buildAiInput", () => {
     }, null);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors["chat.consent"]).toBeString();
-      expect(result.errors["jev.consent"]).toBeString();
+      expect(result.errors["chat.consent"]).toBe("chatConsent");
+      expect(result.errors["jev.consent"]).toBe("jevConsent");
     }
   });
 });
@@ -301,7 +306,7 @@ describe("existing provider form contracts", () => {
   test("requires an API key when nothing is saved for the provider", () => {
     const result = buildAiInput({ ...enabledChat, chat: { ...enabledChat.chat, apiKey: "" } }, null);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors["chat.apiKey"]).toBeString();
+    if (!result.ok) expect(result.errors["chat.apiKey"]).toBe("apiKeyRequired");
   });
 
   test("retains a native key only for the unchanged provider", () => {
@@ -320,7 +325,7 @@ describe("existing provider form contracts", () => {
       ...enabledChat, chat: { ...enabledChat.chat, provider: "openai", apiKey: "" },
     }, saved);
     expect(switched.ok).toBe(false);
-    if (!switched.ok) expect(switched.errors["chat.apiKey"]).toBeString();
+    if (!switched.ok) expect(switched.errors["chat.apiKey"]).toBe("apiKeyRequired");
   });
 
   test("auth mode carries no API key and rejects Claude", () => {
@@ -340,13 +345,13 @@ describe("existing provider form contracts", () => {
     });
     const claude = buildAiInput({ ...google, chat: { ...google.chat, provider: "anthropic" } }, null);
     expect(claude.ok).toBe(false);
-    if (!claude.ok) expect(claude.errors["chat.provider"]).toBeString();
+    if (!claude.ok) expect(claude.errors["chat.provider"]).toBe("apiKeyOnly");
   });
 
   test("rejects a blank model", () => {
     const result = buildAiInput({ ...enabledChat, chat: { ...enabledChat.chat, model: "   " } }, null);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.errors["chat.model"]).toBeString();
+    if (!result.ok) expect(result.errors["chat.model"]).toBe("modelFormat");
   });
 
   test("Auth accepts listed models and the unchanged saved model, never other text", () => {
@@ -358,8 +363,8 @@ describe("existing provider form contracts", () => {
     const unlisted = buildAiInput(auth, null);
     expect(unlisted.ok).toBe(false);
     if (!unlisted.ok) {
-      expect(unlisted.errors["chat.model"]).toBeString();
-      expect(unlisted.errors["jev.model"]).toBeString();
+      expect(unlisted.errors["chat.model"]).toBe("authModelRequired");
+      expect(unlisted.errors["jev.model"]).toBe("authModelRequired");
     }
 
     const saved = settingsView({
@@ -377,7 +382,7 @@ describe("existing provider form contracts", () => {
 
     const otherProvider = buildAiInput({ ...auth, chat: { ...auth.chat, provider: "xai", model: "gemini-2.5-flash" } }, saved);
     expect(otherProvider.ok).toBe(false);
-    if (!otherProvider.ok) expect(otherProvider.errors["chat.model"]).toBeString();
+    if (!otherProvider.ok) expect(otherProvider.errors["chat.model"]).toBe("authModelRequired");
   });
 
   test("API mode keeps free-text model IDs", () => {
@@ -415,6 +420,57 @@ describe("existing provider form contracts", () => {
     });
     const switched = buildAiInput({ ...same, jev: { ...same.jev, provider: "openrouter" } }, saved);
     expect(switched.ok).toBe(false);
-    if (!switched.ok) expect(switched.errors["jev.apiKey"]).toBeString();
+    if (!switched.ok) expect(switched.errors["jev.apiKey"]).toBe("jevApiKeyRequired");
+  });
+});
+
+describe("connection problems are stable reasons, never schema message text", () => {
+  const base = emptyAiForm();
+  const LOCAL = "http://host.docker.internal:11434/v1";
+  const custom = (patch: Partial<AiFormState["chat"]>) => buildAiInput({
+    ...base,
+    chat: { ...base.chat, enabled: true, provider: "openai-compatible", model: "local/model", keyless: true, consent: true, ...patch },
+  }, null);
+  const reason = (result: ReturnType<typeof buildAiInput>, key: AiFieldKey) => (result.ok ? null : result.errors[key]);
+
+  test("base URL problems map to their own reasons", () => {
+    expect(reason(custom({ baseUrl: "  " }), "chat.baseUrl")).toBe("baseUrlRequired");
+    expect(reason(custom({ baseUrl: "not a url" }), "chat.baseUrl")).toBe("baseUrlInvalid");
+    expect(reason(custom({ baseUrl: "http://user:secret@host.docker.internal/v1" }), "chat.baseUrl")).toBe("baseUrlUnsafe");
+    expect(reason(custom({ baseUrl: `${LOCAL}?tenant=a` }), "chat.baseUrl")).toBe("baseUrlUnsafe");
+    expect(reason(custom({ baseUrl: `https://host.example/${"a".repeat(2050)}` }), "chat.baseUrl")).toBe("baseUrlTooLong");
+  });
+
+  test("extra header problems map to their own reasons", () => {
+    const headers = (headersJson: string) => reason(custom({ baseUrl: LOCAL, headerAction: "replace", headersJson }), "chat.headers");
+    expect(headers("{")).toBe("headersNotObject");
+    expect(headers("[]")).toBe("headersNotObject");
+    expect(headers('{"Host":"x"}')).toBe("headersReserved");
+    expect(headers(JSON.stringify(Object.fromEntries(Array.from({ length: 17 }, (_, index) => [`x-h${index}`, "v"]))))).toBe("headersTooMany");
+    expect(headers('{"bad header":"x"}')).toBe("headersInvalid");
+    expect(custom({ baseUrl: LOCAL, headerAction: "replace", headersJson: '{"X-Tenant":"a"}' }))
+      .toMatchObject({ ok: true, input: { chat: { headers: { "x-tenant": "a" } } } });
+  });
+
+  test("every reason the form can produce has copy in every locale", () => {
+    for (const locale of LOCALES) {
+      for (const key of Object.keys(AI_COPY.ko.errors) as (keyof typeof AI_COPY.ko.errors)[]) {
+        expect(AI_COPY[locale].errors[key].trim()).not.toBe("");
+      }
+    }
+  });
+});
+
+describe("aiSaveFailureText", () => {
+  test("a retained failure follows the current locale; unexplained failures use local copy", () => {
+    const localized = { ko: "ko-marker", en: "en-marker" };
+    const withText = (status: number) =>
+      new ApiClientError(status, "conflict", localized.en, { error: { code: "conflict", message: localized.en, localized } });
+    for (const locale of LOCALES) {
+      for (const status of [400, 409, 503]) expect(aiSaveFailureText(withText(status), locale)).toBe(localized[locale]);
+      expect(aiSaveFailureText(withText(500), locale)).toBe(AI_COPY[locale].save.failed);
+      expect(aiSaveFailureText(new ApiClientError(400, "validation", "legacy diagnostic"), locale)).toBe(AI_COPY[locale].save.failed);
+      expect(aiSaveFailureText(new TypeError("fetch failed"), locale)).toBe(AI_COPY[locale].save.network);
+    }
   });
 });

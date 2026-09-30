@@ -1,4 +1,6 @@
-import type { HomeData, InboxSource, NoteSummary } from "@/lib/types";
+import { INTL_LOCALE, type Locale } from "@/lib/i18n/locale";
+import type { HomeData, NoteSummary } from "@/lib/types";
+import { HOME_COPY } from "./home-copy";
 
 /** Local calendar date as YYYY-MM-DD (the browser's zone, not UTC). */
 export function localDateKey(date: Date): string {
@@ -26,33 +28,55 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** Short Korean relative time against an explicit `now` (keeps render pure and testable). */
-export function relativeTime(iso: string, now: number): string {
+/** Elapsed-time bucket, locale-neutral so the label can follow a language switch. */
+export type RelativeAge =
+  | { unit: "now" }
+  | { unit: "minute" | "hour" | "day" | "week"; value: number }
+  | { unit: "date"; sameYear: boolean };
+
+/** Buckets a timestamp against an explicit `now` (keeps render pure and testable); future times clamp to now. */
+export function relativeAge(iso: string, now: number): RelativeAge | null {
   const then = Date.parse(iso);
-  if (Number.isNaN(then)) return "";
+  if (Number.isNaN(then)) return null;
   const diff = Math.max(0, now - then);
-  if (diff < MINUTE) return "방금";
-  if (diff < HOUR) return `${Math.floor(diff / MINUTE)}분 전`;
-  if (diff < DAY) return `${Math.floor(diff / HOUR)}시간 전`;
+  if (diff < MINUTE) return { unit: "now" };
+  if (diff < HOUR) return { unit: "minute", value: Math.floor(diff / MINUTE) };
+  if (diff < DAY) return { unit: "hour", value: Math.floor(diff / HOUR) };
   const days = Math.floor(diff / DAY);
-  if (days < 7) return days === 1 ? "어제" : `${days}일 전`;
-  if (days < 30) return `${Math.floor(days / 7)}주 전`;
-  const date = new Date(then);
-  const sameYear = date.getFullYear() === new Date(now).getFullYear();
-  return new Intl.DateTimeFormat("ko-KR", sameYear ? { month: "long", day: "numeric" } : { year: "numeric", month: "long", day: "numeric" }).format(date);
+  if (days < 7) return { unit: "day", value: days };
+  if (days < 30) return { unit: "week", value: Math.floor(days / 7) };
+  return { unit: "date", sameYear: new Date(then).getFullYear() === new Date(now).getFullYear() };
 }
 
-export const SOURCE_LABEL: Record<InboxSource, string> = {
-  web: "직접 입력",
-  url: "링크",
-  share: "공유",
-  api: "API",
-};
+/** Short relative time in `locale`; older dates use the viewer's local calendar. */
+export function relativeTime(iso: string, now: number, locale: Locale): string {
+  const age = relativeAge(iso, now);
+  if (!age) return "";
+  const { time } = HOME_COPY[locale];
+  if (age.unit === "now") return time.justNow;
+  if (age.unit === "date") {
+    const options: Intl.DateTimeFormatOptions = age.sameYear ? { month: "long", day: "numeric" } : { year: "numeric", month: "long", day: "numeric" };
+    return new Intl.DateTimeFormat(INTL_LOCALE[locale], options).format(new Date(iso));
+  }
+  if (age.unit === "day" && age.value === 1) return time.yesterday;
+  return new Intl.RelativeTimeFormat(INTL_LOCALE[locale], { numeric: "always" }).format(-age.value, age.unit);
+}
 
-/** Headline for the top of home, chosen from what actually needs attention. */
-export function homeHeadline(home: Pick<HomeData, "inboxCount" | "stats">, hasDaily: boolean): string {
-  if (home.inboxCount > 0) return `정리할 캡처가 ${home.inboxCount}개 있어요`;
-  if (home.stats.notes === 0) return "첫 생각을 붙잡아 볼까요";
-  if (!hasDaily) return "오늘 노트를 시작해 볼까요";
-  return "인박스를 모두 정리했어요";
+/** Placeholder for the styled number inside a translated count phrase. */
+const COUNT_SLOT = "\u0000";
+
+/** Text before and after the number in a count phrase ("노트 {n}개", "{n} notes"). */
+export function splitCountPhrase(phrase: (count: number, value: string) => string, count: number): [string, string] {
+  const [before = "", after = ""] = phrase(count, COUNT_SLOT).split(COUNT_SLOT);
+  return [before, after];
+}
+
+export type HomeHeadline = "inbox" | "firstNote" | "startDaily" | "clear";
+
+/** Which headline tops home, chosen from what actually needs attention. */
+export function homeHeadline(home: Pick<HomeData, "inboxCount" | "stats">, hasDaily: boolean): HomeHeadline {
+  if (home.inboxCount > 0) return "inbox";
+  if (home.stats.notes === 0) return "firstNote";
+  if (!hasDaily) return "startDaily";
+  return "clear";
 }

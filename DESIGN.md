@@ -1,8 +1,8 @@
-# Second Brain interface contract
+# Irang interface contract
 
 ## 1. Purpose
 
-A private Korean knowledge workbench: capture first, organize later, connect
+A private Korean/English knowledge workbench: capture first, organize later, connect
 ideas while writing, and retrieve the source behind an answer. Preserve the
 existing desk direction rather than introduce a new marketing aesthetic.
 Product research and adoption decisions live in `docs/research/ADOPTION.md`.
@@ -11,8 +11,11 @@ Product research and adoption decisions live in `docs/research/ADOPTION.md`.
 
 `src/app/globals.css` is the executable token source. Light surfaces use canvas
 `#efe8dc`, desk `#f7f2ea`, card `#fffcf7`, ink `#1c1917`, line `#e4dccf` and accent
-`#c45c26`. The charcoal navigation rail is `#2a2622`. Dark mode replaces these
+`#a24518`. The charcoal navigation rail is `#2a2622`. Dark mode replaces these
 through `.dark`, not component-local colors.
+Small text and placeholder colors meet 4.5:1 against their semantic surfaces.
+The light secondary, success and warning shades are `#68615b`, `#356d42` and
+`#885a0f`. Static brand artwork keeps the canonical terracotta `#c45c26`.
 
 Use `bg-canvas`, `bg-desk`, `bg-card`, `text-ink`, `text-mute`, `border-line` and
 the semantic `ok`, `warn`, `danger` tokens. Card elevation is subtle; floating
@@ -39,6 +42,9 @@ own bounded panes with `min-height: 0`, explicit overflow and dynamic viewport
 height. A graph canvas owns pan/zoom; its inspector remains reachable outside
 the canvas. On narrow screens, list/detail panes stack or navigate explicitly.
 Nothing may scroll underneath a fixed bottom action without safe-area padding.
+Sheet bottom padding adds the safe-area inset to its normal spacing.
+Graphs fit their first settled layout and canvas resizes; user gestures keep
+their chosen view until new data, an explicit reset or a resize.
 
 ## 5. Reusable primitives
 
@@ -46,9 +52,17 @@ The public component contracts are documented in `src/components/ui/README.md`.
 Reuse Button, Input/Textarea, Dialog/Sheet, EmptyState, Badge/TagBadge, Toast,
 Skeleton and the shared shell rather than adding parallel implementations.
 
+`BrandMark` uses the approved Interlock geometry with the existing accent token
+and a 20px default; caller size/color utilities override it. Pair the decorative
+mark with the localized product name: 이랑 / Irang. Installed-app names stay
+`Irang`; repository, database, cookie and storage identifiers do not change.
+
 Controls need resting, focus, busy, disabled and failure states. Dialogs use
 native modal focus trapping and restore focus to the opener. Destructive actions
 need explicit confirmation. Saving, capture and chat failures preserve input.
+Note save failures show their reason visibly beside the retry action.
+Icon-only buttons use their square size and zero horizontal padding, without
+the text-button padding that would shrink their glyphs.
 AI connection dialogs block Escape, backdrop and header dismissal while saving or deleting.
 Actual login, capture, settings and error scenarios serve as the primitive state
 harness during browser QA.
@@ -59,6 +73,8 @@ The shell owns navigation, quick capture and the command palette. Shortcuts must
 not intercept editor text or IME composition. Search state belongs in the URL.
 Note persistence is serialized; new edits survive an in-flight save. References
 open real notes, and missing targets require an explicit creation action.
+Chat failures and translated failure text stay visible above the composer,
+without moving a reader's position merely for a language switch in normal history.
 
 Use the existing soft easing and meaningful opacity/transform transitions.
 Respect reduced motion; a settled graph must stop spending simulation frames.
@@ -100,3 +116,17 @@ and prevent duplicate submissions while saving. A completed setup directs
 the owner to the ordinary login screen. Cover unconfigured-server, invalid
 installer code, validation, saving, completed/locked and configured-credential
 states in browser QA, including 390px mobile and 768px tablet layouts.
+
+## 10. Language
+
+Use Korean when the primary preferred system/browser language is Korean,
+otherwise English. An explicit `sb_locale` choice wins and persists. Switching
+changes labels, errors, accessibility names and document titles in place without
+remounting forms, editors or provider login controllers. Preserve drafts and
+pending logins. Keep retained failures as codes or bilingual values, not rendered
+prose, so they can switch language too.
+
+Existing notes, titles, tags and messages are user data and stay unchanged.
+New generated defaults and model instructions use the request locale explicitly.
+Dates use the viewer's time zone. Verify English long labels and Korean text
+at desktop, tablet and mobile widths; `한국어` as a language endonym is intentional.

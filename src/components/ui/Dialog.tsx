@@ -2,8 +2,10 @@
 
 import { X } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, type MouseEvent, type ReactNode, type RefObject } from "react";
+import { useCopy } from "@/components/i18n/LocaleProvider";
 import { Button } from "./Button";
 import { cn } from "./cn";
+import { UI_COPY } from "./copy";
 
 export type ModalProps = {
   open: boolean;
@@ -65,6 +67,16 @@ export function useModalDialog(open: boolean, onOpenChange: (open: boolean) => v
   return { ref, onClose, onBackdropClick };
 }
 
+/** Header close button; its accessible name follows the current locale. */
+function CloseButton({ className, disabled, onClick }: { className: string; disabled?: boolean; onClick: () => void }) {
+  const copy = useCopy(UI_COPY);
+  return (
+    <Button variant="ghost" size="sm" iconOnly aria-label={copy.close} disabled={disabled} onClick={onClick} className={className}>
+      <X className="size-4" />
+    </Button>
+  );
+}
+
 const DIALOG_BASE =
   "m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] overflow-hidden p-0 text-ink backdrop:bg-scrim " +
   "surface-card shadow-pop open:flex open:flex-col";
@@ -121,11 +133,7 @@ export function Dialog({
                   </p>
                 ) : null}
               </div>
-              {!hideTitle ? (
-                <Button variant="ghost" size="sm" iconOnly aria-label="닫기" disabled={!dismissible} onClick={() => onOpenChange(false)} className="-mr-2 -mt-1">
-                  <X className="size-4" />
-                </Button>
-              ) : null}
+              {!hideTitle ? <CloseButton disabled={!dismissible} onClick={() => onOpenChange(false)} className="-mr-2 -mt-1" /> : null}
             </header>
           ) : null}
           <div className={cn("min-h-0 flex-1 overflow-y-auto px-5 py-3 scrollbar-thin", bodyClassName)}>{children}</div>
@@ -173,14 +181,10 @@ export function Sheet({ open, onOpenChange, title, description, children, footer
                 </p>
               ) : null}
             </div>
-            {!hideTitle ? (
-              <Button variant="ghost" size="sm" iconOnly aria-label="닫기" onClick={() => onOpenChange(false)} className="-mr-1">
-                <X className="size-4" />
-              </Button>
-            ) : null}
+            {!hideTitle ? <CloseButton onClick={() => onOpenChange(false)} className="-mr-1" /> : null}
           </header>
-          <div className={cn("min-h-0 flex-1 overflow-y-auto px-2 pb-2 pb-safe scrollbar-thin", bodyClassName)}>{children}</div>
-          {footer ? <footer className="border-t border-line px-4 py-3 pb-safe">{footer}</footer> : null}
+          <div className={cn("min-h-0 flex-1 overflow-y-auto px-2 pb-[calc(var(--spacing)*2+env(safe-area-inset-bottom,0px))] scrollbar-thin", bodyClassName)}>{children}</div>
+          {footer ? <footer className="border-t border-line px-4 pt-3 pb-[calc(var(--spacing)*3+env(safe-area-inset-bottom,0px))]">{footer}</footer> : null}
         </>
       ) : null}
     </dialog>

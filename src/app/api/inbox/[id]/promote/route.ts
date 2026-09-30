@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { json, parseJson, withApi } from "@/server/http";
 import { promoteInbox } from "@/server/inbox";
+import { localeFromRequest } from "@/lib/i18n/server";
 
 export const runtime = "nodejs";
 type Context = { params: Promise<{ id: string }> };
@@ -12,5 +13,5 @@ const PromoteBody = z.object({
 
 export const POST = withApi<Context>(async (request, { params }) => {
   const { id } = await params;
-  return json({ note: await promoteInbox(id, await parseJson(request, PromoteBody)) });
+  return json({ note: await promoteInbox(id, await parseJson(request, PromoteBody), localeFromRequest(request)) });
 });

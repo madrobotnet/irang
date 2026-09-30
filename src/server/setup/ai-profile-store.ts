@@ -1,3 +1,4 @@
+import { setupCopy } from "@/server/i18n/setup-copy";
 import type { PoolClient } from "pg";
 import {
   AiSettingsDocumentSchema, ConnectionProfileSchema,
@@ -82,9 +83,9 @@ export async function aiSelection(purpose: ConnectionPurpose): Promise<AiSelecti
   if (id === "environment") return { source: "environment" };
   if (id === null) return { source: "disabled" };
   const ownerId = await settingsOwner();
-  if (!ownerId) throw new ApiError("conflict", "최초 설정을 먼저 완료해 주세요.");
+  if (!ownerId) throw new ApiError("conflict", setupCopy.setupFirst);
   const profiles = await connectionProfiles(ownerId);
   const profile = profiles.find((entry) => entry.id === id && entry.purpose === purpose);
-  if (!profile) throw new ApiError("conflict", "선택한 AI 연결을 찾을 수 없습니다. 설정에서 다시 선택해 주세요.");
+  if (!profile) throw new ApiError("conflict", setupCopy.selectedMissing);
   return { source: "profile", profile };
 }

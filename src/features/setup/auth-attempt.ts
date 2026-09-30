@@ -1,6 +1,9 @@
 import { api } from "@/lib/api-client";
 import { AuthCodeInputSchema, type AuthAttemptView } from "@/lib/ai-auth-flow";
 import type { WebAuthProvider } from "@/lib/ai-auth";
+import { localizedApiError } from "@/lib/i18n/api-error";
+import type { Locale } from "@/lib/i18n/locale";
+import { AI_COPY, type AuthCodeErrorKey, type AuthErrorKey } from "./ai-copy";
 
 export type AuthRequest = <T>(path: string, init: RequestInit & { json?: unknown }) => Promise<T>;
 export type AuthTimers = {
@@ -13,18 +16,23 @@ type AuthScope = {
   readonly setupToken?: string;
 };
 
+/**
+ * A sign-in problem kept as a reason plus the failed request, never as rendered text, so
+ * the panel re-renders it in the current language without rebuilding the controller.
+ */
+export type AuthPanelError = { readonly key: AuthErrorKey; readonly cause?: unknown };
+
 export type AuthPanelSnapshot = {
   readonly attempt: AuthAttemptView | null;
   readonly starting: boolean;
   readonly submitting: boolean;
   /** Google authorization code typed by the user; lives only in memory and is cleared once used or abandoned. */
   readonly code: string;
-  readonly codeError: string | null;
-  readonly error: string | null;
+  readonly codeError: AuthCodeErrorKey | null;
+  readonly error: AuthPanelError | null;
 };
 
 const IDLE: AuthPanelSnapshot = { attempt: null, starting: false, submitting: false, code: "", codeError: null, error: null };
-const CODE_REJECTED = "인증 코드를 확인하지 못했어요. Google 로그인 페이지에서 새 코드를 받아 붙여 넣어 주세요.";
 const browserTimers: AuthTimers = {
   set: (callback, ms) => window.setTimeout(() => void callback(), ms),
   clear: (handle) => window.clearTimeout(handle),
@@ -34,8 +42,15 @@ function scopeBody(setupToken: string | undefined): { setupToken?: string } {
   return setupToken ? { setupToken: setupToken.trim() } : {};
 }
 
-function failure(cause: unknown, fallback: string): string {
-  return cause instanceof Error ? cause.message : fallback;
+/** A failed request keeps its error so the server's localized explanation, if any, can be shown. */
+function failure(key: AuthErrorKey, cause: unknown): AuthPanelError {
+  return { key, cause };
+}
+
+/** Render a retained sign-in problem in `locale`. */
+export function authPanelErrorText(error: AuthPanelError, locale: Locale): string {
+  const fallback = AI_COPY[locale].auth.errors[error.key];
+  return "cause" in error ? localizedApiError(error.cause, locale, fallback) : fallback;
 }
 
 export async function abandonAuthAttempt(id: string, scope: AuthScope, request: AuthRequest = api): Promise<void> {
@@ -51,16 +66,14 @@ export function awaitingAuthCode(attempt: AuthAttemptView | null): boolean {
   return attempt?.status === "pending" && attempt.requiresCode === true;
 }
 
-export function attemptError(status: AuthAttemptView["status"], provider?: WebAuthProvider): string | null {
+export function attemptError(status: AuthAttemptView["status"], provider?: WebAuthProvider): AuthPanelError | null {
   switch (status) {
     case "denied":
-      return "로그인이 거부됐어요. 다시 시작해 주세요.";
+      return { key: "denied" };
     case "expired":
-      return "로그인 시간이 만료됐어요. 다시 시작해 주세요.";
+      return { key: "expired" };
     case "failed":
-      return provider === "google"
-        ? "인증 코드를 확인하지 못했어요. 로그인 시작을 눌러 새 코드를 받아 주세요."
-        : "로그인을 완료하지 못했어요. 다시 시도해 주세요.";
+      return { key: provider === "google" ? "googleFailed" : "failed" };
     case "starting":
     case "pending":
     case "ready":
@@ -110,7 +123,7 @@ export class AuthAttemptController {
   start = async (): Promise<void> => {
     const { provider, enterpriseDomain, setupToken } = this.options;
     if (setupToken !== undefined && setupToken.trim().length < 32) {
-      this.update({ error: "먼저 32자 이상의 설치 확인 코드를 입력해 주세요." });
+      this.update({ error: { key: "needSetupToken" } });
       return;
     }
     const generation = this.generation;
@@ -137,7 +150,7 @@ export class AuthAttemptController {
     } catch (cause) {
       if (generation !== this.generation) return;
       if (previous) this.show({ ...previous, status: "failed" });
-      this.update({ error: failure(cause, "로그인을 시작하지 못했어요.") });
+      this.update({ error: failure("startFailed", cause) });
     } finally {
       if (generation === this.generation) this.update({ starting: false });
     }
@@ -153,7 +166,7 @@ export class AuthAttemptController {
     try {
       await abandonAuthAttempt(attempt.id, this.options, this.request);
     } catch (cause) {
-      this.update({ error: failure(cause, "로그인 시도를 취소하지 못했어요.") });
+      this.update({ error: failure("cancelFailed", cause) });
     }
   };
 
@@ -170,11 +183,11 @@ export class AuthAttemptController {
     if (!attempt || !awaitingAuthCode(attempt) || this.snapshot.submitting) return;
     const code = this.snapshot.code.trim();
     if (!code) {
-      this.update({ codeError: "Google 인증 코드를 붙여 넣어 주세요." });
+      this.update({ codeError: "missing" });
       return;
     }
     if (!AuthCodeInputSchema.shape.code.safeParse(code).success) {
-      this.update({ codeError: "Google 페이지에 표시된 인증 코드만 붙여 넣어 주세요. 주소(URL)나 공백은 넣지 않아요." });
+      this.update({ codeError: "format" });
       return;
     }
     const generation = this.generation;
@@ -187,11 +200,11 @@ export class AuthAttemptController {
       });
       if (!this.owns(generation, attempt.id)) return;
       // The server has decided on this code either way; a rejected code must be replaced, not resent.
-      this.show(next, { code: "", submitting: false, codeError: awaitingAuthCode(next) ? CODE_REJECTED : null });
+      this.show(next, { code: "", submitting: false, codeError: awaitingAuthCode(next) ? "rejected" : null });
     } catch (cause) {
       if (!this.owns(generation, attempt.id)) return;
       // Transport or request failure: keep the pasted code so the user can resend or check status.
-      this.update({ submitting: false, error: failure(cause, "인증 코드를 보내지 못했어요. 다시 시도해 주세요.") });
+      this.update({ submitting: false, error: failure("codeSendFailed", cause) });
     }
   };
 
@@ -239,11 +252,11 @@ export class AuthAttemptController {
       if (this.pollAbort !== controller) return;
       this.pollAbort = null;
       const rejected = attempt.requiresCode === false && awaitingAuthCode(next);
-      this.show(next, rejected ? { codeError: CODE_REJECTED } : {});
+      this.show(next, rejected ? { codeError: "rejected" } : {});
     } catch (cause) {
       if (this.pollAbort !== controller) return;
       this.pollAbort = null;
-      this.update({ error: failure(cause, "로그인 상태를 확인하지 못했어요.") });
+      this.update({ error: failure("statusFailed", cause) });
     }
   }
 

@@ -1,7 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import type { WebAuthProvider } from "@/lib/ai-auth";
 import type { AuthAttemptView } from "@/lib/ai-auth-flow";
-import { AuthAttemptController, awaitingAuthCode, type AuthRequest, type AuthTimers } from "./auth-attempt";
+import { ApiClientError } from "@/lib/api-client";
+import { LOCALES } from "@/lib/i18n/locale";
+import { AI_COPY } from "./ai-copy";
+import {
+  attemptError,
+  AuthAttemptController,
+  authPanelErrorText,
+  awaitingAuthCode,
+  type AuthRequest,
+  type AuthTimers,
+} from "./auth-attempt";
 
 const ID = "123e4567-e89b-42d3-a456-426614174020";
 const NEXT_ID = "123e4567-e89b-42d3-a456-426614174021";
@@ -125,9 +135,10 @@ describe("Google authorization-code login", () => {
     qa.controller.setCode("4/0Abc");
 
     const submitted = qa.controller.submitCode();
-    qa.calls[1]?.reject(new Error("네트워크 연결이 끊겼어요."));
+    const lost = new TypeError("fetch failed");
+    qa.calls[1]?.reject(lost);
     await submitted;
-    expect(qa.controller.getSnapshot()).toMatchObject({ code: "4/0Abc", submitting: false, error: "네트워크 연결이 끊겼어요." });
+    expect(qa.controller.getSnapshot()).toMatchObject({ code: "4/0Abc", submitting: false, error: { key: "codeSendFailed", cause: lost } });
     expect(qa.scheduled.size).toBe(0);
 
     qa.controller.retryStatus();
@@ -152,7 +163,7 @@ describe("Google authorization-code login", () => {
 
     const snapshot = qa.controller.getSnapshot();
     expect(snapshot.code).toBe("");
-    expect(snapshot.codeError).not.toBeNull();
+    expect(snapshot.codeError).toBe("rejected");
     expect(awaitingAuthCode(snapshot.attempt)).toBe(true);
     expect(qa.scheduled.size).toBe(0);
   });
@@ -163,14 +174,14 @@ describe("Google authorization-code login", () => {
 
     qa.controller.setCode("   ");
     await qa.controller.submitCode();
-    expect(qa.controller.getSnapshot().codeError).not.toBeNull();
+    expect(qa.controller.getSnapshot().codeError).toBe("missing");
 
     qa.controller.setCode("https://codeassist.google.com/authcode?code=4/0Abc");
     expect(qa.controller.getSnapshot().codeError).toBeNull();
     await qa.controller.submitCode();
 
     expect(qa.controller.getSnapshot()).toMatchObject({ code: "https://codeassist.google.com/authcode?code=4/0Abc", submitting: false });
-    expect(qa.controller.getSnapshot().codeError).not.toBeNull();
+    expect(qa.controller.getSnapshot().codeError).toBe("format");
     expect(qa.routes()).toEqual(["POST /api/ai/auth"]);
   });
 
@@ -246,10 +257,11 @@ describe("device and shared login lifecycle", () => {
     const qa = harness("xai", null);
     await qa.start(view({ provider: "xai", requiresCode: undefined, userCode: "WXYZ" }));
     let poll = qa.firePoll();
-    qa.calls[1]?.reject(new Error("잠시 후 다시 시도해 주세요."));
+    const busy = new ApiClientError(503, "unavailable", "detail");
+    qa.calls[1]?.reject(busy);
     await poll.settled;
 
-    expect(qa.controller.getSnapshot().error).toBe("잠시 후 다시 시도해 주세요.");
+    expect(qa.controller.getSnapshot().error).toEqual({ key: "statusFailed", cause: busy });
     expect(qa.scheduled.size).toBe(0);
 
     qa.controller.retryStatus();
@@ -280,12 +292,13 @@ describe("device and shared login lifecycle", () => {
     const restarted = qa.controller.start();
     // The previous attempt is abandoned before the new start request is issued.
     const startCall = await qa.waitForCall(2);
-    startCall.reject(new Error("진행 중인 로그인을 취소한 뒤 다시 시도해 주세요."));
+    const conflict = new ApiClientError(409, "conflict", "detail");
+    startCall.reject(conflict);
     await restarted;
 
     expect(qa.routes()).toEqual(["POST /api/ai/auth", `DELETE /api/ai/auth/${ID}`, "POST /api/ai/auth"]);
     expect(qa.controller.getSnapshot()).toMatchObject({
-      starting: false, error: "진행 중인 로그인을 취소한 뒤 다시 시도해 주세요.", attempt: { id: ID, status: "failed" },
+      starting: false, error: { key: "startFailed", cause: conflict }, attempt: { id: ID, status: "failed" },
     });
     expect(qa.scheduled.size).toBe(0);
   });
@@ -296,6 +309,28 @@ describe("device and shared login lifecycle", () => {
 
     expect(qa.calls).toHaveLength(0);
     expect(qa.readiness).toEqual([]);
-    expect(qa.controller.getSnapshot().error).not.toBeNull();
+    expect(qa.controller.getSnapshot().error).toEqual({ key: "needSetupToken" });
+  });
+});
+
+describe("auth panel errors are reasons rendered in the current locale", () => {
+  test("terminal attempt states map to reasons, with Google's own restart guidance", () => {
+    expect(attemptError("denied")).toEqual({ key: "denied" });
+    expect(attemptError("expired")).toEqual({ key: "expired" });
+    expect(attemptError("failed", "google")).toEqual({ key: "googleFailed" });
+    expect(attemptError("failed", "openai")).toEqual({ key: "failed" });
+    expect(attemptError("pending")).toBeNull();
+    expect(attemptError("ready")).toBeNull();
+  });
+
+  test("a retained failure shows the server's localized text, otherwise the reason's own copy", () => {
+    const localized = { ko: "ko-marker", en: "en-marker" };
+    const explained = new ApiClientError(409, "conflict", localized.en, { error: { code: "conflict", message: localized.en, localized } });
+    for (const locale of LOCALES) {
+      const copy = AI_COPY[locale].auth.errors;
+      expect(authPanelErrorText({ key: "startFailed", cause: explained }, locale)).toBe(localized[locale]);
+      expect(authPanelErrorText({ key: "statusFailed", cause: new Error("raw provider text") }, locale)).toBe(copy.statusFailed);
+      expect(authPanelErrorText({ key: "needSetupToken" }, locale)).toBe(copy.needSetupToken);
+    }
   });
 });

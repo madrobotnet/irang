@@ -2,8 +2,8 @@ import { z } from "zod";
 import { consumeJsonSse } from "./api-provider-stream";
 import {
   type ApiAdapterConfig,
-  GROUNDING_INSTRUCTIONS,
   groundedQuestion,
+  groundingInstruction,
   postApiStream,
   requestSignal,
 } from "./api-provider-shared";
@@ -28,7 +28,7 @@ export function createAnthropicApiProvider(config: ApiAdapterConfig): ChatProvid
         body: JSON.stringify({
           model: config.model,
           max_tokens: config.maxOutputTokens ?? 4096,
-          system: GROUNDING_INSTRUCTIONS,
+          system: groundingInstruction(input),
           messages: [
             ...input.history.map((message) => ({
               role: message.role,

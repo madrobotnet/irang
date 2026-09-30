@@ -1,4 +1,6 @@
+import type { Locale } from "@/lib/i18n/locale";
 import type { GraphData, GraphLink, GraphNode } from "@/lib/types";
+import { GRAPH_COPY } from "./graph-copy";
 
 export type GraphFilters = {
   focusId: string | null;
@@ -48,9 +50,9 @@ export function endpointId(endpoint: string | MutableGraphNode): string {
 }
 
 /** The canvas library interprets labels as HTML, unlike React text children. */
-export function graphTooltip(node: Pick<GraphNode, "label" | "degree">): string {
+export function graphTooltip(node: Pick<GraphNode, "label" | "degree">, locale: Locale): string {
   const label = node.label.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-  return `${label} · ${node.degree}개 연결`;
+  return `${label} · ${GRAPH_COPY[locale].canvas.tooltipLinks(node.degree)}`;
 }
 
 export function neighborIds(data: MutableGraphData, nodeId: string | null): Set<string> {

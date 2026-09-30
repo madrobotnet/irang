@@ -1,15 +1,16 @@
 import { choice, noul } from "@typesafe-ai/sdk";
 import type { PoolClient, QueryResultRow } from "pg";
 import type { InboxItem, InboxSource, InboxSuggestions, Note } from "@/lib/types";
+import type { Locale } from "@/lib/i18n/locale";
+import { replacePendingInboxUrlStatus, stripInboxUrlStatus, URL_FAILED_MARKER, URL_PENDING_MARKER } from "@/lib/inbox-url-status";
 import { db, tx } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { CAPTURE_TITLE, inboxCopy, jevCaptureQuestions, notesCopy } from "@/server/i18n/copy";
 import { getJev } from "@/server/jev/client";
 import { createNote, getNote } from "@/server/notes/service";
 import { fetchUrlText, type UrlIntakeDependencies } from "./url";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const URL_PENDING = "> URL 내용을 가져오는 중입니다.";
-const URL_FAILED = "> URL 내용을 가져오지 못했습니다. 원문 링크는 보존되었습니다.";
 
 type InboxRow = QueryResultRow & {
   id: string; title: string; body: string; source: string; url: string | null;
@@ -21,7 +22,7 @@ export type CaptureInboxInput = { text?: string; url?: string; title?: string; s
 export type PromoteInboxInput = { title?: string; body?: string; tags?: string[] };
 
 function assertId(id: string): void {
-  if (!UUID_RE.test(id)) throw new ApiError("validation", "올바른 UUID가 아닙니다.");
+  if (!UUID_RE.test(id)) throw new ApiError("validation", notesCopy.badUuid);
 }
 
 function probability(value: unknown): number | null {
@@ -62,26 +63,26 @@ function mapItem(row: InboxRow): InboxItem {
   };
 }
 
-function initialTitle(input: CaptureInboxInput): string {
+function initialTitle(input: CaptureInboxInput, locale: Locale): string {
   const given = input.title?.trim();
   if (given) return given;
   const firstLine = input.text?.trim().split(/\r?\n/)[0]?.trim();
   if (firstLine) return firstLine.slice(0, 120);
   if (input.url) {
-    try { return new URL(input.url).hostname || "링크 캡처"; } catch { return "링크 캡처"; }
+    try { return new URL(input.url).hostname || CAPTURE_TITLE.link[locale]; } catch { return CAPTURE_TITLE.link[locale]; }
   }
-  return "빠른 캡처";
+  return CAPTURE_TITLE.quick[locale];
 }
 
-export async function captureInbox(input: CaptureInboxInput): Promise<InboxItem> {
+export async function captureInbox(input: CaptureInboxInput, locale: Locale = "ko"): Promise<InboxItem> {
   const text = input.text?.trim() ?? "";
   const url = input.url?.trim() || null;
-  if (!text && !url) throw new ApiError("validation", "텍스트나 URL을 입력해 주세요.");
-  const body = url ? [text, URL_PENDING].filter(Boolean).join("\n\n") : text;
+  if (!text && !url) throw new ApiError("validation", inboxCopy.textOrUrl);
+  const body = url ? [text, URL_PENDING_MARKER].filter(Boolean).join("\n\n") : text;
   const pool = await db();
   const result = await pool.query<InboxRow>(
     "INSERT INTO inbox_items (title,body,source,url) VALUES ($1,$2,$3,$4) RETURNING *",
-    [initialTitle(input), body, input.source ?? (url ? "url" : "web"), url],
+    [initialTitle(input, locale), body, input.source ?? (url ? "url" : "web"), url],
   );
   return mapItem(result.rows[0]!);
 }
@@ -106,26 +107,26 @@ export async function getInboxItem(id: string): Promise<InboxItem | null> {
   return row ? mapItem(row) : null;
 }
 
-export async function promoteInbox(id: string, input: PromoteInboxInput = {}): Promise<Note> {
+export async function promoteInbox(id: string, input: PromoteInboxInput = {}, locale: Locale = "ko"): Promise<Note> {
   assertId(id);
   const noteId = await tx(async (client) => {
     const locked = await client.query<InboxRow>("SELECT * FROM inbox_items WHERE id=$1 FOR UPDATE", [id]);
     const item = locked.rows[0];
-    if (!item) throw new ApiError("not_found", "인박스 항목을 찾을 수 없습니다.");
-    if (item.discarded_at) throw new ApiError("conflict", "버린 항목은 노트로 만들 수 없습니다.");
+    if (!item) throw new ApiError("not_found", inboxCopy.notFound);
+    if (item.discarded_at) throw new ApiError("conflict", inboxCopy.discarded);
     if (item.promoted_note_id) return item.promoted_note_id;
     const note = await createNote({
       title: input.title?.trim() || item.title,
-      body: input.body ?? item.body.replace(`\n\n${URL_PENDING}`, "").replace(URL_PENDING, ""),
+      body: input.body ?? stripInboxUrlStatus(item.body),
       tags: input.tags,
       sourceUrl: item.url,
-    }, client);
+    }, client, locale);
     await client.query("UPDATE inbox_items SET promoted_note_id=$2 WHERE id=$1", [id, note.id]);
     await client.query("UPDATE attachments SET note_id=$2,inbox_item_id=NULL WHERE inbox_item_id=$1", [id, note.id]);
     return note.id;
   });
   const note = await getNote(noteId);
-  if (!note) throw new ApiError("not_found", "승격된 노트를 찾을 수 없습니다.");
+  if (!note) throw new ApiError("not_found", inboxCopy.promotedMissing);
   return note;
 }
 
@@ -134,15 +135,15 @@ export async function discardInbox(id: string): Promise<void> {
   await tx(async (client) => {
     const result = await client.query<InboxRow>("SELECT * FROM inbox_items WHERE id=$1 FOR UPDATE", [id]);
     const item = result.rows[0];
-    if (!item) throw new ApiError("not_found", "인박스 항목을 찾을 수 없습니다.");
-    if (item.promoted_note_id) throw new ApiError("conflict", "이미 노트로 만든 항목입니다.");
+    if (!item) throw new ApiError("not_found", inboxCopy.notFound);
+    if (item.promoted_note_id) throw new ApiError("conflict", inboxCopy.alreadyPromoted);
     await client.query("UPDATE inbox_items SET discarded_at=coalesce(discarded_at,now()) WHERE id=$1", [id]);
   });
 }
 
 type Answer = { type?: unknown; noul?: unknown; choice?: unknown; confidence?: unknown; probabilities?: unknown };
 
-async function buildSuggestions(item: InboxRow): Promise<InboxSuggestions> {
+async function buildSuggestions(item: InboxRow, locale: Locale): Promise<InboxSuggestions> {
   try {
     const jev = await getJev();
     if (!jev) return { status: "unavailable", tags: [], kind: null, duplicateOf: null };
@@ -150,16 +151,15 @@ async function buildSuggestions(item: InboxRow): Promise<InboxSuggestions> {
     const notes = await pool.query<{ id: string; title: string }>(
       "SELECT id,title FROM notes WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT 20",
     );
-    const duplicateChoices: Record<string, string | null> = { none: "기존 노트와 중복되지 않음" };
+    const copy = jevCaptureQuestions(locale);
+    const duplicateChoices: Record<string, string | null> = { none: copy.noDuplicate };
     for (const note of notes.rows) duplicateChoices[note.id] = note.title;
     const response = await jev.systemOne({
       state: { title: item.title, body: item.body.slice(0, 4000), existingNotes: notes.rows },
       questions: {
-        kind: choice("이 캡처의 주된 종류를 하나 고르세요.", { idea: "아이디어", reference: "참고 자료", task: "할 일", other: "기타" }),
-        tag_idea: noul("idea 태그를 제안할까요?"),
-        tag_reference: noul("reference 태그를 제안할까요?"),
-        tag_task: noul("task 태그를 제안할까요?"),
-        ...(notes.rows.length ? { duplicate: choice("실질적으로 같은 기존 노트를 고르거나 none을 고르세요.", duplicateChoices) } : {}),
+        kind: choice(copy.kindQuestion, copy.kindLabels),
+        tag_idea: noul(copy.tagIdea), tag_reference: noul(copy.tagReference), tag_task: noul(copy.tagTask),
+        ...(notes.rows.length ? { duplicate: choice(copy.duplicate, duplicateChoices) } : {}),
       },
     });
     const answers = response.answers as Record<string, Answer>;
@@ -185,28 +185,28 @@ async function buildSuggestions(item: InboxRow): Promise<InboxSuggestions> {
   }
 }
 
-export async function suggestInbox(id: string): Promise<InboxItem> {
+export async function suggestInbox(id: string, locale: Locale = "ko"): Promise<InboxItem> {
   const item = await rowById(id);
-  if (!item) throw new ApiError("not_found", "인박스 항목을 찾을 수 없습니다.");
-  const suggestions = await buildSuggestions(item);
+  if (!item) throw new ApiError("not_found", inboxCopy.notFound);
+  const suggestions = await buildSuggestions(item, locale);
   const pool = await db();
   const result = await pool.query<InboxRow>("UPDATE inbox_items SET suggestions=$2::jsonb WHERE id=$1 RETURNING *", [id, JSON.stringify(suggestions)]);
   return mapItem(result.rows[0]!);
 }
 
 /** Best-effort post-response URL intake and Jev suggestion persistence. */
-export async function enrichInboxItem(id: string, dependencies: UrlIntakeDependencies = {}): Promise<void> {
+export async function enrichInboxItem(id: string, dependencies: UrlIntakeDependencies = {}, locale: Locale = "ko"): Promise<void> {
   const item = await rowById(id);
   if (!item || item.discarded_at || item.promoted_note_id) return;
   if (item.url) {
     const fetched = await fetchUrlText(item.url, dependencies);
-    const replacement = fetched.ok && fetched.text ? fetched.text : URL_FAILED;
-    const body = item.body.includes(URL_PENDING) ? item.body.replace(URL_PENDING, replacement) : item.body;
+    const replacement = fetched.ok && fetched.text ? fetched.text : URL_FAILED_MARKER;
+    const body = replacePendingInboxUrlStatus(item.body, replacement);
     const pool = await db();
     await pool.query(
       "UPDATE inbox_items SET body=$2,url=CASE WHEN $3::text IS NULL THEN url ELSE $3 END WHERE id=$1 AND promoted_note_id IS NULL AND discarded_at IS NULL",
       [id, body, fetched.ok ? fetched.url : null],
     );
   }
-  await suggestInbox(id).catch(() => undefined);
+  await suggestInbox(id, locale).catch(() => undefined);
 }

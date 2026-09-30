@@ -3,15 +3,15 @@ import { activeNavId, goToHref, isMoreActive, isNavActive, MOBILE_MORE, MOBILE_P
 
 describe("nav", () => {
   test("rail order and routes follow the architecture contract", () => {
-    expect(NAV_ITEMS.map((i) => [i.label, i.href])).toEqual([
-      ["홈", "/"],
-      ["인박스", "/inbox"],
-      ["노트", "/notes"],
-      ["오늘", "/daily"],
-      ["검색", "/search"],
-      ["그래프", "/graph"],
-      ["채팅", "/chat"],
-      ["설정", "/settings"],
+    expect(NAV_ITEMS.map((i) => [i.id, i.href])).toEqual([
+      ["home", "/"],
+      ["inbox", "/inbox"],
+      ["notes", "/notes"],
+      ["daily", "/daily"],
+      ["search", "/search"],
+      ["graph", "/graph"],
+      ["chat", "/chat"],
+      ["settings", "/settings"],
     ]);
   });
 
@@ -23,7 +23,7 @@ describe("nav", () => {
     expect(activeNavId("/nowhere")).toBeNull();
   });
 
-  test("mobile bar shows 홈·노트·검색 and 더보기 lights up for the rest", () => {
+  test("mobile bar shows home, notes and search; More lights up for the rest", () => {
     expect(MOBILE_PRIMARY).toEqual(["home", "notes", "search"]);
     expect(MOBILE_MORE).toEqual(["inbox", "daily", "graph", "chat", "settings"]);
     expect(isMoreActive("/inbox")).toBe(true);

@@ -1,3 +1,4 @@
+import { aiAuthCopy } from "@/server/i18n/ai-auth-copy";
 import { z } from "zod";
 import type { PoolClient } from "pg";
 import { WebAuthProviderSchema, type WebAuthProvider } from "@/lib/ai-auth";
@@ -42,7 +43,7 @@ export type AuthAttemptRow = {
 export async function lockedAuthAttempt(client: PoolClient, id: string): Promise<AuthAttemptRow> {
   const result = await client.query<AuthAttemptRow>("SELECT * FROM ai_auth_attempts WHERE id = $1 FOR UPDATE", [id]);
   const row = result.rows[0];
-  if (!row) throw new ApiError("not_found", "로그인 요청이 만료되었거나 취소되었습니다.");
+  if (!row) throw new ApiError("not_found", aiAuthCopy.attemptGone);
   WebAuthProviderSchema.parse(row.provider);
   AuthAttemptStatusSchema.parse(row.status);
   return row;
@@ -50,7 +51,7 @@ export async function lockedAuthAttempt(client: PoolClient, id: string): Promise
 
 export function requireAttemptScope(attempt: AuthAttemptRow, scope: AiAuthScope): void {
   if (!scope.browserHash || attempt.scope_key !== scope.key || attempt.browser_hash !== scope.browserHash) {
-    throw new ApiError("forbidden", "로그인을 시작한 브라우저에서 다시 시도해 주세요.");
+    throw new ApiError("forbidden", aiAuthCopy.wrongBrowser);
   }
 }
 

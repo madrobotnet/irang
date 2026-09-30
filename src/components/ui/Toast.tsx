@@ -2,22 +2,34 @@
 
 import { CircleAlert, CircleCheck, Info, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCopy, useLocale } from "@/components/i18n/LocaleProvider";
+import type { Locale, LocalizedText } from "@/lib/i18n/locale";
 import { cn } from "./cn";
+import { UI_COPY } from "./copy";
 
 export type ToastTone = "info" | "ok" | "danger";
 
+/**
+ * Retained UI text carries every locale, so a toast that stays open follows a language switch.
+ */
+export type ToastText = LocalizedText;
+
+export function toastText(text: ToastText, locale: Locale): string {
+  return text[locale];
+}
+
 export type ToastOptions = {
   tone?: ToastTone;
-  /** Optional single action (e.g. 실행 취소). */
-  action?: { label: string; onClick: () => void };
+  /** Optional single action (e.g. undo). */
+  action?: { label: ToastText; onClick: () => void };
   /** Milliseconds before auto-dismiss; 0 keeps it until closed. */
   durationMs?: number;
 };
 
-export type ToastItem = ToastOptions & { id: number; message: string };
+export type ToastItem = ToastOptions & { id: number; message: ToastText };
 
 export type ToastContextValue = {
-  toast: (message: string, options?: ToastOptions) => number;
+  toast: (message: ToastText, options?: ToastOptions) => number;
   dismiss: (id: number) => void;
 };
 
@@ -27,6 +39,8 @@ const TONE_ICON: Record<ToastTone, typeof Info> = { info: Info, ok: CircleCheck,
 const TONE_TEXT: Record<ToastTone, string> = { info: "text-mute", ok: "text-ok", danger: "text-danger" };
 
 function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
+  const { locale } = useLocale();
+  const copy = useCopy(UI_COPY);
   const tone = item.tone ?? "info";
   const Icon = TONE_ICON[tone];
   const duration = item.durationMs ?? (item.action ? 6000 : 3500);
@@ -45,7 +59,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: (id: numbe
       )}
     >
       <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", TONE_TEXT[tone])} />
-      <p className="min-w-0 flex-1 leading-snug">{item.message}</p>
+      <p className="min-w-0 flex-1 leading-snug">{toastText(item.message, locale)}</p>
       {item.action ? (
         <button
           type="button"
@@ -55,12 +69,12 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: (id: numbe
             onDismiss(item.id);
           }}
         >
-          {item.action.label}
+          {toastText(item.action.label, locale)}
         </button>
       ) : null}
       <button
         type="button"
-        aria-label="알림 닫기"
+        aria-label={copy.dismissToast}
         className="-mr-1 shrink-0 rounded-ctl p-1 text-mute hover:bg-line/60 hover:text-ink focus-ring"
         onClick={() => onDismiss(item.id)}
       >
@@ -75,7 +89,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const seq = useRef(0);
 
   const dismiss = useCallback((id: number) => setItems((prev) => prev.filter((t) => t.id !== id)), []);
-  const toast = useCallback((message: string, options?: ToastOptions) => {
+  const toast = useCallback((message: ToastText, options?: ToastOptions) => {
     const id = ++seq.current;
     setItems((prev) => [...prev.slice(-3), { id, message, ...options }]);
     return id;

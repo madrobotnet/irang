@@ -1,3 +1,5 @@
+import { localizedIssue } from "@/lib/i18n/validation";
+import { settingsIssueCopy } from "@/lib/i18n/ai-validation-copy";
 import { z } from "zod";
 import {
   ChatConnectionSchema, ChatInputSchema, JevConnectionSchema,
@@ -23,10 +25,10 @@ export const AiSettingsInputSchema = z.object({
   jevName: ConnectionNameSchema.optional(),
 }).strict().superRefine((input, context) => {
   if (input.chat && !input.chatConsent) {
-    context.addIssue({ code: "custom", path: ["chatConsent"], message: "선택한 AI 제공자에게 질문과 관련 노트를 보내는 데 동의해 주세요." });
+    context.addIssue({ code: "custom", path: ["chatConsent"], ...localizedIssue(settingsIssueCopy.chatConsent) });
   }
   if (input.jev && !input.jevConsent) {
-    context.addIssue({ code: "custom", path: ["jevConsent"], message: "선택한 Jev 제공자에게 캡처 내용과 최근 노트 제목을 보내는 데 동의해 주세요." });
+    context.addIssue({ code: "custom", path: ["jevConsent"], ...localizedIssue(settingsIssueCopy.jevConsent) });
   }
 });
 export type AiSettingsInput = z.infer<typeof AiSettingsInputSchema>;

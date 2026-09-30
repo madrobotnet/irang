@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { copyParityIssues } from "@/lib/i18n/copy";
+import { LOCALES } from "@/lib/i18n/locale";
 import type { NoteSummary } from "@/lib/types";
-import { dailyForDate, localDateKey, recentWithoutPinned, relativeTime } from "./home-model";
+import { HOME_COPY } from "./home-copy";
+import { dailyForDate, homeHeadline, localDateKey, recentWithoutPinned, relativeAge, relativeTime, splitCountPhrase } from "./home-model";
 
 function note(id: string, extra: Partial<NoteSummary> = {}): NoteSummary {
   return {
@@ -40,15 +43,56 @@ describe("recentWithoutPinned", () => {
   });
 });
 
-describe("relativeTime", () => {
+describe("relativeAge", () => {
   const now = Date.parse("2026-09-27T12:00:00.000Z");
   test("buckets by elapsed time and clamps future timestamps", () => {
-    expect(relativeTime("2026-09-27T12:00:30.000Z", now)).toBe("방금");
-    expect(relativeTime("2026-09-27T11:55:00.000Z", now)).toBe("5분 전");
-    expect(relativeTime("2026-09-27T09:00:00.000Z", now)).toBe("3시간 전");
-    expect(relativeTime("2026-09-26T11:00:00.000Z", now)).toBe("어제");
-    expect(relativeTime("2026-09-24T12:00:00.000Z", now)).toBe("3일 전");
-    expect(relativeTime("2026-09-13T12:00:00.000Z", now)).toBe("2주 전");
-    expect(relativeTime("not a date", now)).toBe("");
+    expect(relativeAge("2026-09-27T12:00:30.000Z", now)).toEqual({ unit: "now" });
+    expect(relativeAge("2026-09-27T11:55:00.000Z", now)).toEqual({ unit: "minute", value: 5 });
+    expect(relativeAge("2026-09-27T09:00:00.000Z", now)).toEqual({ unit: "hour", value: 3 });
+    expect(relativeAge("2026-09-26T11:00:00.000Z", now)).toEqual({ unit: "day", value: 1 });
+    expect(relativeAge("2026-09-24T12:00:00.000Z", now)).toEqual({ unit: "day", value: 3 });
+    expect(relativeAge("2026-09-13T12:00:00.000Z", now)).toEqual({ unit: "week", value: 2 });
+    expect(relativeAge("2026-07-01T12:00:00.000Z", now)).toEqual({ unit: "date", sameYear: true });
+    expect(relativeAge("2025-07-01T12:00:00.000Z", now)).toEqual({ unit: "date", sameYear: false });
+    expect(relativeAge("not a date", now)).toBeNull();
+  });
+});
+
+describe("relativeTime", () => {
+  const now = Date.parse("2026-09-27T12:00:00.000Z");
+  test("labels each bucket in the requested locale", () => {
+    for (const locale of LOCALES) {
+      expect(relativeTime("2026-09-27T12:00:30.000Z", now, locale)).toBe(HOME_COPY[locale].time.justNow);
+      expect(relativeTime("2026-09-26T11:00:00.000Z", now, locale)).toBe(HOME_COPY[locale].time.yesterday);
+      expect(relativeTime("not a date", now, locale)).toBe("");
+    }
+    for (const iso of ["2026-09-27T11:55:00.000Z", "2026-09-24T12:00:00.000Z", "2026-09-13T12:00:00.000Z", "2026-07-01T12:00:00.000Z"]) {
+      expect(relativeTime(iso, now, "en")).not.toBe(relativeTime(iso, now, "ko"));
+    }
+  });
+});
+
+describe("homeHeadline", () => {
+  test("returns a locale-neutral key for what needs attention first", () => {
+    const stats = { notes: 3, links: 0, tags: 0 };
+    expect(homeHeadline({ inboxCount: 2, stats }, true)).toBe("inbox");
+    expect(homeHeadline({ inboxCount: 0, stats: { ...stats, notes: 0 } }, false)).toBe("firstNote");
+    expect(homeHeadline({ inboxCount: 0, stats }, false)).toBe("startDaily");
+    expect(homeHeadline({ inboxCount: 0, stats }, true)).toBe("clear");
+  });
+});
+
+describe("home copy", () => {
+  test("has Korean and English parity", () => {
+    expect(copyParityIssues(HOME_COPY)).toEqual([]);
+  });
+
+  test("every count phrase places the number exactly once", () => {
+    for (const locale of LOCALES) {
+      for (const phrase of Object.values(HOME_COPY[locale].counts)) {
+        for (const count of [0, 1, 2]) expect(phrase(count, "\u0000").split("\u0000")).toHaveLength(2);
+      }
+    }
+    expect(splitCountPhrase((_count, value) => `a${value}b`, 1)).toEqual(["a", "b"]);
   });
 });

@@ -5,6 +5,7 @@ import path from "node:path";
 import type { QueryResultRow } from "pg";
 import { db } from "@/server/db";
 import { ApiError } from "@/server/http";
+import { attachmentCopy, notesCopy } from "@/server/i18n/copy";
 import { assertNoteId } from "./service";
 import { attachmentsDir, storagePath } from "./attachment-storage";
 
@@ -50,13 +51,13 @@ function mapAttachment(row: AttachmentRow): Attachment {
 }
 
 export async function saveAttachment(file: File, noteId?: string): Promise<Attachment> {
-  if (file.size > MAX_ATTACHMENT_BYTES) throw new ApiError("payload_too_large", "첨부 파일은 25MB 이하여야 합니다.");
-  if (file.size === 0) throw new ApiError("validation", "빈 파일은 첨부할 수 없습니다.");
+  if (file.size > MAX_ATTACHMENT_BYTES) throw new ApiError("payload_too_large", attachmentCopy.tooLarge);
+  if (file.size === 0) throw new ApiError("validation", attachmentCopy.empty);
   if (noteId) assertNoteId(noteId);
   const pool = await db();
   if (noteId) {
     const note = await pool.query("SELECT id FROM notes WHERE id=$1 AND deleted_at IS NULL", [noteId]);
-    if (note.rowCount === 0) throw new ApiError("not_found", "노트를 찾을 수 없습니다.");
+    if (note.rowCount === 0) throw new ApiError("not_found", notesCopy.notFound);
   }
   const key = randomUUID();
   const filename = safeFilename(file.name);
@@ -80,7 +81,7 @@ export async function loadAttachment(id: string): Promise<{ attachment: Attachme
   const pool = await db();
   const result = await pool.query<AttachmentRow>("SELECT * FROM attachments WHERE id=$1", [id]);
   const row = result.rows[0];
-  if (!row) throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
+  if (!row) throw new ApiError("not_found", attachmentCopy.notFound);
   try {
     const file = await open(storagePath(row.storage_key), constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
@@ -90,7 +91,7 @@ export async function loadAttachment(id: string): Promise<{ attachment: Attachme
     }
   } catch (error) {
     if (error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ELOOP")) {
-      throw new ApiError("not_found", "첨부 파일을 찾을 수 없습니다.");
+      throw new ApiError("not_found", attachmentCopy.notFound);
     }
     throw error;
   }

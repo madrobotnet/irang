@@ -3,6 +3,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useCopy, useLocale } from "@/components/i18n";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { inputClassName } from "@/components/ui/Input";
@@ -14,12 +15,14 @@ import {
   buildAiInput,
   emptyAiForm,
   setupFailure,
+  setupFailureText,
   validateSetupSecrets,
   type AiFormErrors,
   type AiFormState,
   type SetupFailure,
   type SetupSecretErrors,
 } from "./ai-form";
+import { SETUP_COPY } from "./setup-copy";
 
 type FormState =
   | { kind: "idle" }
@@ -29,6 +32,8 @@ type FormState =
 
 export function SetupForm() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const { form: copy, secretErrors: secretCopy } = useCopy(SETUP_COPY);
   const [setupToken, setSetupToken] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
@@ -79,15 +84,16 @@ export function SetupForm() {
     }
   }
 
-  const formError = state.kind === "error" && state.failure.group !== "token" ? state.failure.message : null;
+  // Failures and field errors stay as reasons; their text follows the current language.
+  const formError = state.kind === "error" && state.failure.group !== "token" ? setupFailureText(state.failure, locale) : null;
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
       <fieldset className="flex flex-col gap-4" disabled={busy}>
-        <legend className="mb-1 text-md font-semibold">설치 확인</legend>
+        <legend className="mb-1 text-md font-semibold">{copy.tokenLegend}</legend>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="setup-token" className="text-sm font-medium text-ink">
-            설치 확인 코드
+            {copy.tokenLabel}
           </label>
           <div className="relative">
             <input
@@ -129,7 +135,7 @@ export function SetupForm() {
             />
             <button
               type="button"
-              aria-label={tokenVisible ? "확인 코드 숨기기" : "확인 코드 보기"}
+              aria-label={tokenVisible ? copy.hideToken : copy.showToken}
               aria-pressed={tokenVisible}
               onClick={() => setTokenVisible((current) => !current)}
               className="absolute inset-y-0 right-0 my-auto flex size-11 items-center justify-center rounded-ctl text-mute hover:bg-line/60 hover:text-ink focus-ring sm:right-1 sm:size-9"
@@ -139,25 +145,25 @@ export function SetupForm() {
           </div>
           {secretErrors.setupToken ? (
             <p id="setup-token-error" role="alert" className="text-sm text-danger">
-              {secretErrors.setupToken}
+              {secretCopy[secretErrors.setupToken]}
             </p>
           ) : state.kind === "error" && state.failure.group === "token" ? (
             <p id="setup-token-server-error" role="alert" className="text-sm text-danger">
-              {state.failure.message}
+              {setupFailureText(state.failure, locale)}
             </p>
           ) : (
             <p id="setup-token-hint" className="text-sm text-mute">
-              설치자가 서버에서 만든 32자 이상의 코드예요. 공유 링크나 주소창에 넣지 마세요.
+              {copy.tokenHint}
             </p>
           )}
         </div>
       </fieldset>
 
       <fieldset className="flex flex-col gap-4" disabled={busy}>
-        <legend className="mb-1 text-md font-semibold">로그인 비밀번호</legend>
+        <legend className="mb-1 text-md font-semibold">{copy.passwordLegend}</legend>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="setup-password" className="text-sm font-medium text-ink">
-            새 비밀번호
+            {copy.passwordLabel}
           </label>
           <div className="relative">
             <input
@@ -176,7 +182,7 @@ export function SetupForm() {
             />
             <button
               type="button"
-              aria-label={passwordVisible ? "비밀번호 숨기기" : "비밀번호 보기"}
+              aria-label={passwordVisible ? copy.hidePassword : copy.showPassword}
               aria-pressed={passwordVisible}
               onClick={() => setPasswordVisible((current) => !current)}
               className="absolute inset-y-0 right-0 my-auto flex size-11 items-center justify-center rounded-ctl text-mute hover:bg-line/60 hover:text-ink focus-ring sm:right-1 sm:size-9"
@@ -186,17 +192,17 @@ export function SetupForm() {
           </div>
           {secretErrors.password ? (
             <p id="setup-password-error" role="alert" className="text-sm text-danger">
-              {secretErrors.password}
+              {secretCopy[secretErrors.password]}
             </p>
           ) : (
             <p id="setup-password-hint" className="text-sm text-mute">
-              12자 이상으로 정해 주세요. 이 비밀번호로 모든 기기에서 로그인해요.
+              {copy.passwordHint}
             </p>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="setup-password-confirm" className="text-sm font-medium text-ink">
-            비밀번호 확인
+            {copy.confirmLabel}
           </label>
           <input
             id="setup-password-confirm"
@@ -214,15 +220,15 @@ export function SetupForm() {
           />
           {secretErrors.passwordConfirmation ? (
             <p id="setup-password-confirm-error" role="alert" className="text-sm text-danger">
-              {secretErrors.passwordConfirmation}
+              {secretCopy[secretErrors.passwordConfirmation]}
             </p>
           ) : null}
         </div>
       </fieldset>
 
       <div>
-        <h3 className="mb-1 text-md font-semibold">AI 연결 (선택)</h3>
-        <p className="mb-3 text-sm text-mute">기본은 꺼져 있어요. 지금 정하지 않아도 설정 화면에서 언제든 바꿀 수 있어요.</p>
+        <h3 className="mb-1 text-md font-semibold">{copy.aiHeading}</h3>
+        <p className="mb-3 text-sm text-mute">{copy.aiLead}</p>
         <AiFields
           key={setupToken.trim()}
           idPrefix="setup-ai"
@@ -236,7 +242,7 @@ export function SetupForm() {
 
       <div className="flex flex-col gap-3">
         <Button type="submit" variant="primary" size="lg" loading={state.kind === "submitting"} disabled={busy} className="w-full sm:w-auto">
-          {state.kind === "submitting" ? "설정 저장 중…" : "설정 완료하고 시작하기"}
+          {state.kind === "submitting" ? copy.submitting : copy.submit}
         </Button>
         {formError ? (
           <p ref={formErrorRef} tabIndex={-1} role="alert" className="rounded-ctl bg-danger-soft px-3 py-2 text-sm text-danger">
@@ -245,7 +251,7 @@ export function SetupForm() {
         ) : null}
         {state.kind === "success" ? (
           <p role="status" className="text-sm text-ok">
-            설정을 저장했어요. 로그인 화면으로 이동합니다…
+            {copy.success}
           </p>
         ) : null}
       </div>

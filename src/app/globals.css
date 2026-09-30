@@ -22,10 +22,10 @@
   --desk: #f7f2ea;
   --card: #fffcf7;
   --ink: #1c1917;
-  --mute: #78716c;
+  --mute: #68615b;
   --line: #e4dccf;
   --line-strong: #d3c9b8;
-  --accent: #c45c26;
+  --accent: #a24518;
   --accent-ink: #fffcf7;
   --accent-soft: #f6e3d6;
   --rail: #2a2622;
@@ -33,9 +33,9 @@
   --rail-mute: #9c948a;
   --rail-line: #3a352f;
   --rail-hover: #37322c;
-  --ok: #3f7d4e;
+  --ok: #356d42;
   --ok-soft: #e1eee3;
-  --warn: #b7791f;
+  --warn: #885a0f;
   --warn-soft: #f7ebd2;
   --danger: #b42318;
   --danger-soft: #f8e0dd;
@@ -214,7 +214,7 @@
   input::placeholder,
   textarea::placeholder {
     color: var(--mute);
-    opacity: 0.85;
+    opacity: 1;
   }
 
   code,
@@ -291,6 +291,19 @@
 @utility bg-grain {
   background-image: radial-gradient(color-mix(in oklab, var(--ink) 4%, transparent) 0.5px, transparent 0.6px);
   background-size: 6px 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Brand mark defaults (BrandMark). Components layer, so size-* and text-*
+   utilities passed by callers win.
+--------------------------------------------------------------------------- */
+@layer components {
+  .brand-mark {
+    width: --spacing(5);
+    height: --spacing(5);
+    flex-shrink: 0;
+    color: var(--accent);
+  }
 }
 
 /* ---------------------------------------------------------------------------

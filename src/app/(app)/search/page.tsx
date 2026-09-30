@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
-import { SearchPage } from "@/features/search/SearchPage";
+import { SEARCH_COPY } from "@/features/search/search-copy";
+import { SearchPage, SearchPageFallback } from "@/features/search/SearchPage";
+import { getRequestLocale } from "@/lib/i18n/server";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: SEARCH_COPY[await getRequestLocale()].title };
+}
 
 export default function Page() {
-  return <Suspense fallback={<div className="mx-auto w-full max-w-3xl px-4 py-8 text-sm text-mute">검색 화면을 불러오는 중입니다.</div>}><SearchPage /></Suspense>;
+  return <Suspense fallback={<SearchPageFallback />}><SearchPage /></Suspense>;
 }

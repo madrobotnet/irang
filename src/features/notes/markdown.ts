@@ -1,5 +1,11 @@
 import { parseWikiLinks } from "@/lib/wikilinks";
 
+/** Do not glue an inserted link to an existing line-start heading, list, quote or fence. */
+export function attachmentMarkdownAt(document: string, position: number, markdown: string): string {
+  const startsLine = position === 0 || document[position - 1] === "\n";
+  return startsLine && position < document.length ? `${markdown}\n\n` : markdown;
+}
+
 /** Convert only parsed wikilinks (code is excluded by the parser) into safe local Markdown links. */
 export function expandWikiLinks(markdown: string): string {
   const links = parseWikiLinks(markdown);

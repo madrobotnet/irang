@@ -4,11 +4,13 @@ import { AI_PROVIDERS, AiProviderSchema } from "@/lib/ai-settings";
 import type { WebAuthProvider } from "@/lib/ai-auth";
 import { isCustomProvider } from "@/lib/ai-providers";
 import { chatAuthModels } from "@/lib/ai-model-catalog";
+import { useCopy } from "@/components/i18n";
 import { Badge } from "@/components/ui/Badge";
 import { inputClassName } from "@/components/ui/Input";
 import { cn } from "@/components/ui/cn";
+import { AI_COPY } from "./ai-copy";
 import { AiAuthPanel, abandonAuthAttempt } from "./AiAuthPanel";
-import { ConsentRow, FieldError } from "./AiFieldControls";
+import { ConsentRow, FieldError, useFieldErrorText } from "./AiFieldControls";
 import { ChatApiFields, ChatApiFormatField, ChatModelField } from "./ChatApiFields";
 import { modelForMode, modelForProvider, savedModelFor } from "./model-choice";
 import {
@@ -46,6 +48,8 @@ export function ChatAiFields({
   readonly setupToken?: string;
   readonly allowDisable?: boolean;
 }) {
+  const { common, chat: copy } = useCopy(AI_COPY);
+  const errorText = useFieldErrorText();
   const info = chatProviderInfo(chat.provider);
   const custom = isCustomProvider(chat.provider);
   const retained = saved?.chat?.mode === "api"
@@ -68,13 +72,13 @@ export function ChatAiFields({
 
   return (
     <fieldset className="rounded-card border border-line p-4 sm:p-5" disabled={disabled}>
-      <legend className="px-1 text-md font-semibold">노트 채팅 AI</legend>
+      <legend className="px-1 text-md font-semibold">{copy.legend}</legend>
       <p className="text-sm leading-relaxed text-mute">
-        질문과 최근 대화 기록, 관련 노트 일부가 선택한 제공자에게 전송돼요. 켜지 않아도 노트, 캡처, 검색과 그래프는 그대로 사용할 수 있어요.
+        {copy.lead}
       </p>
       {saved?.chatManagedByEnvironment ? (
         <p className="mt-2 rounded-ctl bg-warn-soft px-3 py-2 text-sm text-warn">
-          지금은 서버의 기존 Codex 연결을 사용 중이에요. 저장된 연결을 선택하거나 사용을 끄기 전까지 유지돼요.
+          {copy.environment}
         </p>
       ) : null}
       {allowDisable ? (
@@ -92,33 +96,33 @@ export function ChatAiFields({
             }}
             className="size-4 shrink-0 accent-accent"
           />
-          노트 채팅에 AI 사용
+          {copy.enable}
         </label>
       ) : null}
       {chat.enabled ? (
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label htmlFor={`${idPrefix}-chat-name`} className="text-sm font-medium">연결 이름</label>
+            <label htmlFor={`${idPrefix}-chat-name`} className="text-sm font-medium">{common.nameLabel}</label>
             <input
               id={`${idPrefix}-chat-name`}
               value={chat.name}
               maxLength={80}
-              placeholder="예: 개인 OpenAI"
+              placeholder={copy.namePlaceholder}
               onChange={(event) => setChat({ name: event.target.value })}
               aria-invalid={errors["chat.name"] ? true : undefined}
               aria-describedby={errors["chat.name"] ? `${idPrefix}-chat-name-error` : `${idPrefix}-chat-name-hint`}
               className={inputClassName}
             />
-            <FieldError id={`${idPrefix}-chat-name-error`} message={errors["chat.name"]} />
+            <FieldError id={`${idPrefix}-chat-name-error`} message={errorText(errors["chat.name"])} />
             {!errors["chat.name"] ? (
               <p id={`${idPrefix}-chat-name-hint`} className="text-sm text-mute">
-                {allowDisable ? "비워 두면 제공자 이름으로 저장해요." : "연결을 구분할 이름을 입력해 주세요."}
+                {allowDisable ? common.nameHintOptional : common.nameHintRequired}
               </p>
             ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor={`${idPrefix}-chat-provider`} className="text-sm font-medium">제공자</label>
+              <label htmlFor={`${idPrefix}-chat-provider`} className="text-sm font-medium">{copy.provider}</label>
               <select
                 id={`${idPrefix}-chat-provider`}
                 value={chat.provider}
@@ -152,10 +156,10 @@ export function ChatAiFields({
               >
                 {AI_PROVIDERS.map((provider) => <option key={provider.id} value={provider.id}>{provider.name}</option>)}
               </select>
-              <FieldError id={`${idPrefix}-chat-provider-error`} message={errors["chat.provider"]} />
+              <FieldError id={`${idPrefix}-chat-provider-error`} message={errorText(errors["chat.provider"])} />
             </div>
             <fieldset className="flex flex-col gap-1.5">
-              <legend className="text-sm font-medium">연결 방식</legend>
+              <legend className="text-sm font-medium">{common.modeLegend}</legend>
               <div className="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-1">
                 <label className="flex min-h-touch cursor-pointer items-center gap-2 text-md">
                   <input
@@ -169,7 +173,7 @@ export function ChatAiFields({
                     }}
                     className="size-4 accent-accent"
                   />
-                  API 키
+                  {common.modeApi}
                 </label>
                 {info.supportsAuth ? (
                   <label className="flex min-h-touch cursor-pointer items-center gap-2 text-md">
@@ -181,9 +185,9 @@ export function ChatAiFields({
                       onChange={() => setChat({ mode: "auth", apiKey: "", keyless: false, consent: false, ...switchMode("auth") })}
                       className="size-4 accent-accent"
                     />
-                    Auth
+                    {copy.modeAuth}
                   </label>
-                ) : <p className="text-sm text-mute">이 제공자는 API 키 연결만 지원해요.</p>}
+                ) : <p className="text-sm text-mute">{copy.apiKeyOnly}</p>}
               </div>
             </fieldset>
           </div>
@@ -201,12 +205,12 @@ export function ChatAiFields({
               {legacyFileAuth ? (
                 <div className="flex flex-col gap-1.5 text-sm">
                   <p className="text-pretty text-mute">
-                    서버의 기존 CLI 로그인을 계속 사용해요. 아래에서 다시 로그인하면 이 연결에 저장된 로그인으로 바뀌어요.
+                    {copy.legacyCli}
                   </p>
                   {status ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={status.available ? "ok" : "warn"}>{status.available ? "로그인 파일 확인됨" : "로그인 필요"}</Badge>
-                      <p className="text-pretty text-mute">{status.detail}</p>
+                      <Badge tone={status.available ? "ok" : "warn"}>{status.available ? copy.cliReady : copy.cliMissing}</Badge>
+                      <p className="text-pretty text-mute">{status.available ? copy.cliReadyDetail : copy.cliMissingDetail}</p>
                     </div>
                   ) : null}
                 </div>
@@ -216,7 +220,7 @@ export function ChatAiFields({
               ) : null}
               {webAuthProvider === "github-copilot" ? (
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor={`${idPrefix}-chat-domain`} className="text-sm font-medium">기업 도메인 (선택)</label>
+                  <label htmlFor={`${idPrefix}-chat-domain`} className="text-sm font-medium">{copy.enterpriseDomain}</label>
                   <input
                     id={`${idPrefix}-chat-domain`}
                     value={chat.enterpriseDomain}
@@ -229,7 +233,7 @@ export function ChatAiFields({
                     aria-describedby={errors["chat.enterpriseDomain"] ? `${idPrefix}-chat-domain-error` : undefined}
                     className={inputClassName}
                   />
-                  <FieldError id={`${idPrefix}-chat-domain-error`} message={errors["chat.enterpriseDomain"]} />
+                  <FieldError id={`${idPrefix}-chat-domain-error`} message={errorText(errors["chat.enterpriseDomain"])} />
                 </div>
               ) : null}
               <AiAuthPanel
@@ -247,7 +251,7 @@ export function ChatAiFields({
                 }
                 onReadyAction={(authAttemptId) => setChat({ authAttemptId })}
               />
-              <FieldError id={`${idPrefix}-chat-auth-error`} message={errors["chat.auth"]} />
+              <FieldError id={`${idPrefix}-chat-auth-error`} message={errorText(errors["chat.auth"])} />
             </>
           ) : null}
           <ConsentRow
@@ -255,9 +259,9 @@ export function ChatAiFields({
             checked={chat.consent}
             disabled={disabled}
             onChangeAction={(consent) => setChat({ consent })}
-            error={errors["chat.consent"]}
+            error={errorText(errors["chat.consent"])}
           >
-            질문, 최근 대화 기록, 관련 노트 일부를 선택한 제공자에게 보내는 데 동의합니다.
+            {copy.consent}
           </ConsentRow>
         </div>
       ) : null}

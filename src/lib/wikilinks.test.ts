@@ -27,4 +27,9 @@ describe("wikilinks", () => {
   test("excerpt strips markdown", () => {
     expect(excerpt("# Head\n**bold** [[T|label]] [x](http://a)")).toBe("Head bold label x");
   });
+
+  test("excerpt removes task-list syntax without stripping literal brackets", () => {
+    expect(excerpt("- [x] Done\n* [ ] Open\n+ [X] More\n\nA literal [x] stays."))
+      .toBe("Done Open More A literal [x] stays.");
+  });
 });
