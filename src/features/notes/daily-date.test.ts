@@ -5,7 +5,9 @@ import {
 
 const originalZone = process.env.TZ;
 afterEach(() => {
-  process.env.TZ = originalZone;
+  // Assigning undefined stores the string "undefined" and keeps the last zone for later test files.
+  if (originalZone === undefined) delete process.env.TZ;
+  else process.env.TZ = originalZone;
 });
 
 describe("day keys", () => {
