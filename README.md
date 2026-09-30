@@ -26,24 +26,30 @@ between notes build up over time. You won't need an AI account for any of this.
 - **Graphs.** Browse how your notes connect, either across the whole notebook
   or around one note.
 - **Search.** PostgreSQL full-text, trigram and character n-gram matching find
-  exact words and forgive typos. It matches text. It doesn't understand
-  meaning: its embeddings are local hashed character n-grams, not learned semantic vectors. No external embedding API is used.
+  exact words and forgive typos. Search compares text, not meaning: its
+  embeddings are local hashed character n-grams rather than learned semantic
+  vectors, and no external embedding API is involved.
 - **Attachments.** Files are stored on your server next to the notes that use
   them.
-- **Optional cited chat.** Ask questions about your notes. Answers grounded in matching notes show their sources. If no matching notes are found, an answer may have no note citations.
-- **Optional Jev.** A separate connection, independent of chat, that suggests
-  classifications, tags and possible duplicates for inbox items. Suggestions are stored with the inbox item. You choose which suggested tags to apply when turning it into a note.
+- **Optional cited chat.** Ask questions about your notes. Answers drawn from
+  matching notes list those notes as sources. When nothing matches, an answer
+  may come without note citations.
+- **Optional Jev.** A connection kept apart from chat. It suggests
+  classifications, tags and possible duplicates for inbox items. Suggestions
+  stay with the item, and you pick which tags to apply when you turn it into a
+  note.
 
-Irang is a single-owner web app. It isn't built for teams, and it doesn't have
+Irang is a web app for one owner, so it has no team features. It also has no
 native apps, offline editing, sync, end-to-end encryption, built-in
 import/export or automatic backups.
 
 ## Quick start
 
-You need Docker and **Docker Compose 5.1.0 or newer**. The commands below use a POSIX shell and were verified on Linux; macOS and Windows were not tested. Check
-with `docker compose version`. Older Compose releases have an interpolation
-bug that can reject a valid configuration. You don't need Bun or Node on the
-host.
+You need Docker and **Docker Compose 5.1.0 or newer**; check with
+`docker compose version`. Older Compose releases have an interpolation bug
+that can reject a valid configuration. You don't need Bun or Node on the host.
+The commands below use a POSIX shell and were tested on Linux, not on macOS or
+Windows.
 
 ```sh
 git clone https://github.com/madrobotnet/second-brain.git
@@ -74,8 +80,8 @@ Here's what each step does:
 3. The app listens on `127.0.0.1` only. `INSECURE_COOKIES=1` is for this local
    HTTP check only.
 
-The installation code only works for first-time setup. It's a different thing
-from the one-time codes an AI provider shows you when you connect an account.
+The installation code only works for first-time setup. It isn't the one-time
+code an AI provider shows you when you connect an account.
 
 ### Using a headless server
 
@@ -119,7 +125,7 @@ search index lives in the same database, and attachments sit in the
 is up to you.
 
 Irang doesn't send your notes out on its own. Data leaves the server only
-because of something you set up or do:
+through something you set up or do:
 
 - **Chat**, after you connect a provider and tick its data-transfer consent,
   sends your question, the last 12 messages, and matching note excerpts to that
@@ -157,14 +163,22 @@ You'll need Bun 1.4.2 and Docker.
 
 ```sh
 bun install --frozen-lockfile
+cp .env.example .env.local
+bun run hash-password    # prints an AUTH_PASSWORD_HASH=... line
+```
+
+Paste that line into `.env.local` as printed, backslashes included. Then start
+the development database and the app:
+
+```sh
 bun run db:up
 bun run dev    # http://localhost:3000
 ```
 
-For `.env.local`, commands and destructive test-database safeguards, see
+The development database is a separate `second-brain-dev` Compose project on
+port 55432. Other commands and the safeguards around destructive test-database
+operations are in
 [Development commands and test databases](docs/SETUP.md#12-development-commands-and-test-databases).
-Copy `.env.example` to `.env.local` and fill `AUTH_PASSWORD_HASH` with the output of `bun run hash-password`; keep its backslashes.
-The development database uses a separate `second-brain-dev` Compose project on port 55432.
 
 ## Docs
 
