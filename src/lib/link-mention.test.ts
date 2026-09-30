@@ -44,6 +44,18 @@ describe("linkFirstMention", () => {
     expect(linkFirstMention("````\n```\n바질", basil)).toBeNull();
   });
 
+  test("only a line holding just the fence closes it", () => {
+    expect(linkFirstMention('````\nconst x = "````";\n바질\n````\n바질', basil)).toBe('````\nconst x = "````";\n바질\n````\n[[바질]]');
+    expect(linkFirstMention("```\n    ```\n바질\n```\n바질", basil)).toBe("```\n    ```\n바질\n```\n[[바질]]");
+    expect(linkFirstMention("- 목록\n  ```\n  바질\n  ```\n> ~~~\n> 바질\n> ~~~\n바질", basil)).toBe("- 목록\n  ```\n  바질\n  ```\n> ~~~\n> 바질\n> ~~~\n[[바질]]");
+  });
+
+  test("a code span may continue onto the next line but not past a blank line", () => {
+    expect(linkFirstMention("보기 ```\n바질\n이어서 ``` 끝 바질", basil)).toBe("보기 ```\n바질\n이어서 ``` 끝 [[바질]]");
+    expect(linkFirstMention("`열림\n\n바질", basil)).toBe("`열림\n\n[[바질]]");
+    expect(linkFirstMention("`a``b` 바질", basil)).toBe("`a``b` [[바질]]");
+  });
+
   test("skips fenced code, inline code, and existing wikilinks", () => {
     const body = "```\n바질\n```\n`바질` [[바질]] [[허브|바질]] 바질";
     expect(linkFirstMention(body, basil)).toBe("```\n바질\n```\n`바질` [[바질]] [[허브|바질]] [[바질]]");

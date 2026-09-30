@@ -1,12 +1,42 @@
 export type MentionTarget = { readonly title: string; readonly aliases: readonly string[] };
 
 const MASK = "\u0000";
+const hide = (text: string): string => MASK.repeat(text.length);
+
+// Quote and list markers that may come before a fence on its line.
+const CONTAINER_PREFIX = String.raw`(?:[ \t]*(?:>[ \t]?|(?:[-+*]|\d{1,9}[.)])[ \t]+))*[ \t]*`;
+// A backtick fence's info string has no backtick; such a line is inline code instead.
+const FENCE_OPEN = new RegExp(String.raw`^(${CONTAINER_PREFIX})(\`{3,}(?=[^\`]*$)|~{3,})`);
+const FENCE_CLOSE = /^([ \t>]*)(`+|~+)[ \t]*\r?$/;
+
+/**
+ * Fenced code as CommonMark reads it: a fence opens on a line that starts, after quote and list
+ * markers, with three or more backticks or tildes, and closes only on a line holding just a run
+ * of the same character at least as long, indented at most three columns further. An unclosed
+ * fence runs to the end of the note.
+ */
+function maskFences(body: string): string {
+  let open: { char: string; length: number; column: number } | null = null;
+  return body
+    .split("\n")
+    .map((line) => {
+      if (!open) {
+        const match = FENCE_OPEN.exec(line);
+        if (!match) return line;
+        open = { char: match[2]![0]!, length: match[2]!.length, column: match[1]!.length };
+        return hide(line);
+      }
+      const close = FENCE_CLOSE.exec(line);
+      if (close && close[2]![0] === open.char && close[2]!.length >= open.length && close[1]!.length <= open.column + 3) open = null;
+      return hide(line);
+    })
+    .join("\n");
+}
+
 // Regions where inserting [[...]] would change code, an existing link, a URL, markup, or a tag.
 const PROTECTED: readonly RegExp[] = [
-  // A fence closes only on a run at least as long as the one that opened it.
-  /(`{3,})[\s\S]*?(?:\1|$)/g,
-  /(~{3,})[\s\S]*?(?:\1|$)/g,
-  /(`+)[^\n]*?\1/g,
+  // Code spans: a backtick run closes at the next run of exactly its length, within the paragraph.
+  /(?<!`)(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?(?<!`)\1(?!`)/g,
   /<!--[\s\S]*?(?:-->|$)/g,
   /\[\[[^\]\n]*\]\]/g,
   /!?\[[^\]\n]*\]\([^)\n]*\)/g,
@@ -23,8 +53,7 @@ const WORD_CHAR = /[\p{L}\p{M}\p{N}_]/u;
 const UNSPACED_SCRIPT = /[\p{sc=Hangul}\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Thai}]/u;
 
 function maskProtected(body: string): string {
-  const hide = (text: string): string => MASK.repeat(text.length);
-  let masked = body;
+  let masked = maskFences(body);
   for (const pattern of PROTECTED) masked = masked.replace(pattern, hide);
   return masked.replace(TAG_RE, (_match, lead: string, tag: string) => lead + hide(tag));
 }
