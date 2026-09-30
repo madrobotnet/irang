@@ -462,6 +462,7 @@ credentials).
 Both files are private (0600), and the app is stopped while the database and files
 are copied together. The app is restarted even if the backup command fails.
 The archive includes CLI credentials; protect it like a password.
+Settings > Export (Markdown zip of active and archived notes plus attachments) is not a backup: settings, sessions, chat and trash are not included.
 
 Restore into a **separate, empty installation**, not a running server with data
 you want to keep. Generate its `.env` first, set a different `APP_PORT`/Compose

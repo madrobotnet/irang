@@ -141,7 +141,7 @@ Tailwind names: `bg-canvas bg-desk bg-card text-ink text-mute border-line bg-acc
 
 Shell: desktop (≥ 1024px) = 64px charcoal icon rail (expands to 220px with labels) + content; mobile = top bar + bottom nav (홈 · 노트 · [캡처 FAB] · 검색 · 더보기). Nav: 홈 `/`, 인박스 `/inbox` (badge = open count), 노트 `/notes`, 오늘 `/daily`, 검색 `/search`, 그래프 `/graph`, 채팅 `/chat`, 설정 `/settings`.
 
-Keyboard: `Ctrl/⌘+K` command palette (notes by title + actions), `Ctrl/⌘+P` quick switcher (same palette in note mode), `c` or `Ctrl/⌘+Shift+Space`… capture dialog, `g h/i/n/s/g/c` go-to, `/` focus search. Shortcuts are ignored while typing in inputs/editors.
+Keyboard: `Ctrl/⌘+K` command palette (notes by title + actions), `Ctrl/⌘+P` quick switcher (same palette in note mode), `c` or `Ctrl/⌘+Shift+Space`… capture dialog, `g h/i/n/t/s/g/c` go-to, `/` focus search. Shortcuts are ignored while typing in inputs/editors.
 
 ## State and retrieval boundaries
 

@@ -11,7 +11,7 @@
 
 **Pronunciation:** /i.ɾaŋ/, said *EE-rahng*. It's not "eye-rang."
 
-![Irang home with inbox captures, pinned notes and recent notes](docs/images/irang-workbench.png)
+![Irang home with today's note, the inbox, recently edited notes and pinned notes](docs/images/irang-workbench.png)
 
 Irang runs on your own server and has a single owner. Drop links and quick
 thoughts into an inbox, turn them into Markdown notes, and let the connections
@@ -20,9 +20,20 @@ between notes build up over time. You won't need an AI account for any of this.
 ## What it does
 
 - **Capture and inbox.** Save a URL or a quick note first and sort it out later.
-  Inbox items become notes when you're ready.
+  Inbox items become notes when you're ready. Triage them with single keys,
+  snooze one until later or merge it into a note you already have.
 - **Linked Markdown notes.** Link notes with `[[wiki links]]`, add tags and
-  aliases, and see backlinks and unlinked mentions on every note.
+  aliases, and see backlinks and unlinked mentions on every note. Typing `[[`
+  suggests titles and aliases and can create a missing note, and an unlinked
+  mention becomes a link with one click.
+- **Daily notes and templates.** Open today's note, or any other day's from a
+  small calendar. Templates, including a default for new daily notes, fill in
+  `{{date}}` and `{{title}}`.
+- **Tasks.** Every `- [ ]` checkbox in your notes appears on one Tasks page.
+  Tick them off there or in a note's preview.
+- **Version history and trash.** Notes keep recent versions that you can
+  compare and restore. Deleted notes stay in the trash for 30 days, and you
+  can undo a delete right away.
 - **Graphs.** Browse how your notes connect, either across the whole notebook
   or around one note.
 - **Search.** PostgreSQL full-text, trigram and character n-gram matching find
@@ -31,6 +42,10 @@ between notes build up over time. You won't need an AI account for any of this.
   vectors, and no external embedding API is involved.
 - **Attachments.** Files are stored on your server next to the notes that use
   them.
+- **Markdown export.** Download every note outside the trash, archived ones
+  included, as one zip from Settings. Each note becomes a Markdown file with
+  YAML front matter, `[[wiki links]]` stay as written and attachments get their
+  own folder, so the files also open in tools like Obsidian.
 - **Optional cited chat.** Ask questions about your notes. Answers drawn from
   matching notes list those notes as sources. When nothing matches, an answer
   may come without note citations.
@@ -40,8 +55,8 @@ between notes build up over time. You won't need an AI account for any of this.
   note.
 
 Irang is a web app for one owner, so it has no team features. It also has no
-native apps, offline editing, sync, end-to-end encryption, built-in
-import/export or automatic backups.
+native apps, offline editing, sync, end-to-end encryption, built-in import or
+automatic backups.
 
 ## Quick start
 
