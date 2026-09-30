@@ -258,7 +258,7 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 | `TYPESAFE_JEV_MODEL` | Jev (legacy fallback) | `jev-latest` | Jev model for the env-key fallback |
 | `TYPESAFE_BASE_URL` | Jev (legacy fallback) | `https://api.typesafe.ai` | Legacy SDK endpoint; the UI can retain keys only for `https://api.typesafe.ai` or `https://openrouter.ai/api` |
 | `CODEX_HOME` | Codex ChatGPT auth | `~/.codex` locally; `/app/.data/auth/codex` in Docker | Directory holding Codex `auth.json` |
-| `CODEX_MODEL` | chat (env fallback / default) | `gpt-6-sol` | Chat model when using the Codex ChatGPT login |
+| `CODEX_MODEL` | chat (env fallback / default) | `gpt-6.1-sol` | Chat model when using the Codex ChatGPT login |
 | `CODEX_CHATGPT_BASE_URL` | Codex ChatGPT transport | `https://chatgpt.com/backend-api/codex` | Operator-controlled Codex backend endpoint |
 | `GEMINI_CLI_HOME` | Gemini CLI auth | unset locally (Google CLI login unavailable); `/app/.data/auth/google` in Docker | Directory the Gemini CLI keeps its OAuth credentials in; must be an absolute path |
 
@@ -276,11 +276,11 @@ stored credentials and disables it if it was active.
 
 | Provider | API-key mode | Account-login mode | Recommended new model |
 | --- | --- | --- | --- |
-| ChatGPT / OpenAI | yes | in-app ChatGPT device authorization | `gpt-6-sol` |
+| ChatGPT / OpenAI | yes | in-app ChatGPT device authorization | `gpt-6.1-sol` |
 | Claude (Anthropic) | yes | **no** — API key only | `claude-sonnet-5-5` |
 | Gemini | yes | in-app Google browser authorization code | API: `gemini-3.8-flash`; Auth: `gemini-3.5-flash` |
 | GitHub Copilot | Copilot API token | GitHub device authorization | `gpt-6-luna` |
-| OpenRouter | yes | browser PKCE authorization | `openai/gpt-6-sol` |
+| OpenRouter | yes | browser PKCE authorization | `openai/gpt-6.1-sol` |
 | xAI / Grok | yes | xAI device authorization | `grok-4.7` |
 | OpenAI Compatible | custom key or explicitly keyless | no | enter the endpoint's model ID |
 | Anthropic Compatible | custom key or explicitly keyless | no | enter the endpoint's model ID |

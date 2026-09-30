@@ -17,12 +17,13 @@ export type AuthModelCatalog = {
 export type ChatAuthProvider = Extract<(typeof AI_PROVIDERS)[number], { readonly supportsAuth: true }>["id"];
 export type JevAuthProvider = Extract<(typeof JEV_PROVIDERS)[number], { readonly supportsAuth: true }>["id"];
 
-// IDs from .omo/evidence/device-auth-models/model-sources.md (verified 2026-09-29), newest
+// IDs from .omo/evidence/device-auth-models/model-sources.md (verified 2026-09-30), newest
 // first by known release date, or by version where no date is published. Saved IDs that
 // later leave these lists stay selectable for their own connection (see model-choice.ts).
 export const CHAT_AUTH_MODELS = {
   openai: {
     models: [
+      { id: "gpt-6.1-sol" },
       { id: "gpt-6-sol" },
       { id: "gpt-6-luna" },
       { id: "gpt-6-astra" },
@@ -30,7 +31,7 @@ export const CHAT_AUTH_MODELS = {
       { id: "gpt-5.6-terra" },
       { id: "gpt-5.6-luna" },
     ],
-    defaultId: "gpt-6-sol",
+    defaultId: "gpt-6.1-sol",
   },
   google: {
     models: [
@@ -53,6 +54,7 @@ export const CHAT_AUTH_MODELS = {
   },
   openrouter: {
     models: [
+      { id: "openai/gpt-6.1-sol" },
       { id: "anthropic/claude-sonnet-5.5" },
       { id: "openai/gpt-6-luna" },
       { id: "openai/gpt-6-sol" },
@@ -60,7 +62,7 @@ export const CHAT_AUTH_MODELS = {
       { id: "x-ai/grok-4.7" },
       { id: "google/gemini-3.8-flash" },
     ],
-    defaultId: "openai/gpt-6-sol",
+    defaultId: "openai/gpt-6.1-sol",
   },
   xai: {
     models: [{ id: "grok-4.7" }, { id: "grok-4.6" }, { id: "grok-4.5" }, { id: "grok-4.3" }],

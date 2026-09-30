@@ -5,11 +5,11 @@ import { z } from "zod";
  * connection name, so it is never translated; localized option labels live in feature copy.
  */
 export const AI_PROVIDERS = [
-  { id: "openai", name: "ChatGPT / OpenAI", model: "gpt-6-sol", supportsAuth: true },
+  { id: "openai", name: "ChatGPT / OpenAI", model: "gpt-6.1-sol", supportsAuth: true },
   { id: "anthropic", name: "Claude", model: "claude-sonnet-5-5", supportsAuth: false },
   { id: "google", name: "Gemini", model: "gemini-3.8-flash", supportsAuth: true },
   { id: "github-copilot", name: "GitHub Copilot", model: "gpt-6-luna", supportsAuth: true },
-  { id: "openrouter", name: "OpenRouter", model: "openai/gpt-6-sol", supportsAuth: true },
+  { id: "openrouter", name: "OpenRouter", model: "openai/gpt-6.1-sol", supportsAuth: true },
   { id: "xai", name: "xAI / Grok", model: "grok-4.7", supportsAuth: true },
   { id: "openai-compatible", name: "OpenAI Compatible", model: "", supportsAuth: false },
   { id: "anthropic-compatible", name: "Anthropic Compatible", model: "", supportsAuth: false },
