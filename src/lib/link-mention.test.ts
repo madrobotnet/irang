@@ -38,6 +38,12 @@ describe("linkFirstMention", () => {
     expect(linkFirstMention("AI는 도구다", { title: "AI", aliases: [] })).toBe("[[AI]]는 도구다");
   });
 
+  test("a shorter run inside a longer fence does not close it", () => {
+    expect(linkFirstMention("````md\n```\n바질\n````\n바질", basil)).toBe("````md\n```\n바질\n````\n[[바질]]");
+    expect(linkFirstMention("~~~~\n~~~\n바질\n~~~~\n바질", basil)).toBe("~~~~\n~~~\n바질\n~~~~\n[[바질]]");
+    expect(linkFirstMention("````\n```\n바질", basil)).toBeNull();
+  });
+
   test("skips fenced code, inline code, and existing wikilinks", () => {
     const body = "```\n바질\n```\n`바질` [[바질]] [[허브|바질]] 바질";
     expect(linkFirstMention(body, basil)).toBe("```\n바질\n```\n`바질` [[바질]] [[허브|바질]] [[바질]]");

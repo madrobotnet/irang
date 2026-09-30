@@ -3,8 +3,9 @@ export type MentionTarget = { readonly title: string; readonly aliases: readonly
 const MASK = "\u0000";
 // Regions where inserting [[...]] would change code, an existing link, a URL, markup, or a tag.
 const PROTECTED: readonly RegExp[] = [
-  /```[\s\S]*?(?:```|$)/g,
-  /~~~[\s\S]*?(?:~~~|$)/g,
+  // A fence closes only on a run at least as long as the one that opened it.
+  /(`{3,})[\s\S]*?(?:\1|$)/g,
+  /(~{3,})[\s\S]*?(?:\1|$)/g,
   /(`+)[^\n]*?\1/g,
   /<!--[\s\S]*?(?:-->|$)/g,
   /\[\[[^\]\n]*\]\]/g,
