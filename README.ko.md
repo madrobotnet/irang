@@ -44,8 +44,8 @@ Docker와 **Docker Compose 5.1.0 이상**이 필요합니다. 버전은
 macOS와 Windows에서는 아직 확인하지 않았습니다.
 
 ```sh
-git clone https://github.com/madrobotnet/second-brain.git
-cd second-brain
+git clone https://github.com/madrobotnet/irang.git
+cd irang
 
 # 일회성 Bun 컨테이너: ./.env를 만들고 설치 확인 코드를 출력
 docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \

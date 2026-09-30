@@ -52,8 +52,8 @@ The commands below use a POSIX shell and were tested on Linux, not on macOS or
 Windows.
 
 ```sh
-git clone https://github.com/madrobotnet/second-brain.git
-cd second-brain
+git clone https://github.com/madrobotnet/irang.git
+cd irang
 
 # One-shot Bun container: writes ./.env and prints your installation code
 docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \

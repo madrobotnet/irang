@@ -17,7 +17,8 @@ Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
 | `db` | `pgvector/pgvector:0.8.6-pg18` | Internal only (no host port). Healthcheck `pg_isready -U postgres`; the app waits for it. On a **fresh** data volume the Postgres entrypoint runs `docker/postgres/production/01-app-role.sql` — it precreates the `pgcrypto`, `vector`, and `pg_trgm` extensions and the restricted application role (section 4). |
 
 Named volumes (Compose prefixes them with the project name — the directory name by
-default, e.g. `second-brain_app-data`):
+default, e.g. `irang_app-data` for a fresh clone, or `second-brain_app-data` for an
+install cloned before the repository was renamed):
 
 | Volume | Mounted at | Contents |
 | --- | --- | --- |
