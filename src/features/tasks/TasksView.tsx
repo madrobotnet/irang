@@ -3,7 +3,7 @@
 import { CalendarDays, FileText, ListChecks, RefreshCw, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useCopy, useLocale } from "@/components/i18n";
 import { DocumentTitle } from "@/components/i18n/DocumentTitle";
@@ -15,12 +15,18 @@ import { textInEveryLocale } from "@/lib/i18n/copy";
 import type { TaskEntry, TaskItem, TaskList, TaskState } from "@/lib/tasks";
 import type { Note } from "@/lib/types";
 import {
-  dailyLabel, groupTasksByNote, isStaleTaskError, parseTaskState, TASK_STATES, taskDisplayText, taskKey, tasksApiUrl,
-  tasksPageHref, withTaskDone, type TaskGroup,
+  dailyLabel, fitsTaskFilter, groupTasksByNote, isStaleTaskError, neighbourTaskKey, parseTaskState, TASK_STATES, taskDisplayText, taskKey,
+  tasksApiUrl, tasksPageHref, withTaskToggled, type TaskGroup,
 } from "./task-model";
 import { TASKS_COPY } from "./tasks-copy";
 
 const PAGE = "mx-auto w-full max-w-6xl px-4 pb-12 pt-5 sm:px-6 lg:px-10 lg:pt-10";
+
+/** Focus a task's checkbox, or the active filter when no task is left to take it. */
+function focusTask(key: string | null) {
+  const checkbox = key === null ? null : document.querySelector<HTMLElement>(`[data-task-key="${CSS.escape(key)}"]`);
+  (checkbox ?? document.querySelector<HTMLElement>('[data-task-filter][aria-pressed="true"]'))?.focus();
+}
 
 /** Suspense fallback for the tasks route; a client component so it follows a language switch. */
 export function TasksLoading() {
@@ -49,6 +55,13 @@ export function TasksView() {
   const groups = useMemo(() => groupTasksByNote(list.data?.tasks ?? []), [list.data]);
   // Requested state of each in-flight toggle; removing the entry rolls the checkbox back to the list value.
   const [pending, setPending] = useState<ReadonlyMap<string, boolean>>(() => new Map());
+  // A focused task that leaves the filter would drop focus to the page; its neighbour takes it once the list re-renders.
+  const focusAfter = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (focusAfter.current === undefined) return;
+    focusTask(focusAfter.current);
+    focusAfter.current = undefined;
+  }, [list.data]);
 
   const toggle = async (task: TaskEntry, done: boolean) => {
     const key = taskKey(task);
@@ -59,7 +72,10 @@ export function TasksView() {
         method: "POST",
         json: { noteId: task.noteId, line: task.line, expectedText: task.text, done },
       });
-      await list.mutate((current) => (current ? withTaskDone(current, task, done) : current), { revalidate: false });
+      if (!fitsTaskFilter(done, state) && document.activeElement?.getAttribute("data-task-key") === key) {
+        focusAfter.current = neighbourTaskKey(groups.flatMap((group) => group.tasks), task);
+      }
+      await list.mutate((current) => (current ? withTaskToggled(current, task, done, state) : current), { revalidate: false });
       void mutate(`/api/notes/${task.noteId}`, { note: result.note }, { revalidate: false });
       void refreshNoteViews({ cache, mutate });
     } catch (error) {
@@ -87,7 +103,7 @@ export function TasksView() {
         </div>
         <div role="group" className="flex shrink-0 rounded-ctl bg-line/50 p-1 sm:w-72" aria-label={copy.filterLabel}>
           {TASK_STATES.map((value) => (
-            <button key={value} type="button" aria-pressed={state === value} onClick={() => setState(value)} className={`flex-1 rounded-ctl px-3 py-1.5 text-sm max-lg:min-h-touch ${state === value ? "bg-card font-medium text-ink shadow-card" : "text-mute hover:text-ink"}`}>{copy.filters[value]}</button>
+            <button key={value} type="button" data-task-filter aria-pressed={state === value} onClick={() => setState(value)} className={`flex-1 rounded-ctl px-3 py-1.5 text-sm max-lg:min-h-touch ${state === value ? "bg-card font-medium text-ink shadow-card" : "text-mute hover:text-ink"}`}>{copy.filters[value]}</button>
           ))}
         </div>
       </header>
@@ -167,6 +183,7 @@ function TaskGroupCard({ group, pending, onToggle }: {
               <label className="flex min-h-touch cursor-pointer items-start gap-3 px-4 py-2.5 transition-colors hover:bg-desk">
                 <input
                   type="checkbox"
+                  data-task-key={key}
                   checked={checked}
                   onChange={(event) => {
                     if (!busy) onToggle(task, event.target.checked);

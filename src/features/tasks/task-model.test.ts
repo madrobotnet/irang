@@ -3,8 +3,8 @@ import { ApiClientError } from "@/lib/api-client";
 import { formatDate } from "@/lib/i18n/format-date";
 import type { TaskEntry, TaskList } from "@/lib/tasks";
 import {
-  dailyLabel, groupTasksByNote, isStaleTaskError, parseTaskState, TASK_STATES, taskDisplayText, taskKey, tasksApiUrl,
-  tasksPageHref, withTaskDone,
+  dailyLabel, fitsTaskFilter, groupTasksByNote, isStaleTaskError, neighbourTaskKey, parseTaskState, TASK_STATES, taskDisplayText,
+  taskKey, tasksApiUrl, tasksPageHref, withTaskDone, withTaskToggled,
 } from "./task-model";
 
 const entry = (noteId: string, line: number, extra: Partial<TaskEntry> = {}): TaskEntry => ({
@@ -47,6 +47,26 @@ describe("groupTasksByNote", () => {
       ["a", "2026-09-30", [1]],
     ]);
     expect(groupTasksByNote([])).toEqual([]);
+  });
+});
+
+describe("withTaskToggled", () => {
+  const list: TaskList = { tasks: [entry("a", 1), entry("a", 2), entry("b", 1, { done: true })], truncated: false };
+
+  test("a task that no longer fits the filter leaves it; in all it only changes state", () => {
+    expect(withTaskToggled(list, { noteId: "a", line: 2 }, true, "open").tasks.map(taskKey)).toEqual(["a:1", "b:1"]);
+    expect(withTaskToggled(list, { noteId: "b", line: 1 }, false, "done").tasks.map(taskKey)).toEqual(["a:1", "a:2"]);
+    expect(withTaskToggled(list, { noteId: "a", line: 2 }, true, "all").tasks.map((task) => [taskKey(task), task.done]))
+      .toEqual([["a:1", false], ["a:2", true], ["b:1", true]]);
+    expect([fitsTaskFilter(true, "open"), fitsTaskFilter(false, "open"), fitsTaskFilter(true, "done"), fitsTaskFilter(false, "all")])
+      .toEqual([false, true, true, true]);
+  });
+
+  test("the next task takes focus, else the previous, else none", () => {
+    expect(neighbourTaskKey(list.tasks, { noteId: "a", line: 2 })).toBe("b:1");
+    expect(neighbourTaskKey(list.tasks, { noteId: "b", line: 1 })).toBe("a:2");
+    expect(neighbourTaskKey([entry("a", 1)], { noteId: "a", line: 1 })).toBeNull();
+    expect(neighbourTaskKey(list.tasks, { noteId: "z", line: 1 })).toBeNull();
   });
 });
 

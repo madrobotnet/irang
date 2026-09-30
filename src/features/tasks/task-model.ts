@@ -47,6 +47,24 @@ export function withTaskDone(list: TaskList, target: Pick<TaskEntry, "noteId" | 
   return { ...list, tasks: list.tasks.map((task) => (taskKey(task) === key ? { ...task, done } : task)) };
 }
 
+/** Whether a task in this state belongs in the list for `state`. */
+export const fitsTaskFilter = (done: boolean, state: TaskState): boolean => state === "all" || done === (state === "done");
+
+/** The filtered list after a toggle: a task that no longer fits the filter leaves it; otherwise it only changes state. */
+export function withTaskToggled(list: TaskList, target: Pick<TaskEntry, "noteId" | "line">, done: boolean, state: TaskState): TaskList {
+  if (fitsTaskFilter(done, state)) return withTaskDone(list, target, done);
+  const key = taskKey(target);
+  return { ...list, tasks: list.tasks.filter((task) => taskKey(task) !== key) };
+}
+
+/** The task to focus once `target` leaves the list: the next one, else the previous, else none. */
+export function neighbourTaskKey(tasks: readonly TaskEntry[], target: Pick<TaskEntry, "noteId" | "line">): string | null {
+  const index = tasks.findIndex((task) => taskKey(task) === taskKey(target));
+  if (index === -1) return null;
+  const neighbour = tasks[index + 1] ?? tasks[index - 1];
+  return neighbour ? taskKey(neighbour) : null;
+}
+
 /** 404 and 409 (`mismatch`, `trashed`, `archived`) mean the list no longer matches the note, so it is refetched. */
 export function isStaleTaskError(error: unknown): boolean {
   return error instanceof ApiClientError && (error.status === 404 || error.status === 409);
