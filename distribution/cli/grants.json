@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "semanticsURL": "https://docs.npmjs.com/cli/v11/configuring-npm/package-json#license",
+  "interpretation": "Exact publisher SPDX declarations specify permission terms. Supplementary canonical texts below are verbatim standards, not historical package LICENSE files. Preserve placeholder copyright fields unchanged; actual package author/credit bytes are retained separately, with no invented year or holder.",
+  "terms": [
+    {
+      "name": "ISC-canonical-supplement",
+      "version": "31ba1a50e5397e00a304dbadc76531740e89ee48",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/ISC.txt",
+      "sha256": "521c6f0ed8e64736684f89843d16a4df6b4b7449acbcfc6ca6630a3037ca8c53",
+      "relation": "Verbatim canonical ISC terms referenced by @npmcli/agent 3.0.0 publisher license field; supplemental, not historical copyright grant"
+    },
+    {
+      "name": "MIT-canonical-supplement",
+      "version": "31ba1a50e5397e00a304dbadc76531740e89ee48",
+      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
+      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5",
+      "relation": "Verbatim canonical MIT terms for err-code 2.0.3 exact README/field and eastasianwidth 0.2.0 publisher declaration only; no grant inferred for takenspc"
+    },
+    {
+      "name": "Unicode-current-scoped-permission",
+      "version": "2026-10-01",
+      "url": "https://www.unicode.org/license.txt",
+      "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96",
+      "relation": "Current Unicode License v3, expressly covering Public data under terms_of_use.html sections 2.2 and 3.3; not claimed as historical 2011 license"
+    }
+  ],
+  "sourceInputs": [
+    {
+      "name": "Unicode-EastAsianWidth-original-data",
+      "version": "6.0.0",
+      "url": "https://www.unicode.org/Public/6.0.0/ucd/EastAsianWidth.txt",
+      "sha256": "e947a0ea387e62c0797600406055703d859236113cd7b82c96625141a8294592",
+      "relation": "Actual data linked by takenspc; original Copyright (c) 1991-2010 Unicode, Inc. retained verbatim"
+    },
+    {
+      "name": "Unicode-scope-evidence",
+      "version": "2026-10-01",
+      "url": "https://www.unicode.org/terms_of_use.html",
+      "sha256": "9f83fb0a046180c87d22c2678e79300475125611ac8dfc2da303db6c6b347251",
+      "relation": "Actual referenced current terms explicitly include all Public computer data files unless specifically otherwise restricted; not historical terms"
+    }
+  ],
+  "packages": [
+    {
+      "name": "@npmcli/agent",
+      "version": "3.0.0",
+      "index": 69,
+      "license": "ISC",
+      "author": "GitHub Inc.",
+      "gitHead": "94f346d882458ac9481d015c55057d15f5899bf1",
+      "archiveSHA256": "fc9996041d3760e5cff0a5121d4cf0fc853898ceebd5d854e622e52ec11a5cb9",
+      "metadataSHA256": "d67f4edf03680423c43434e3b28902feec2a136da2e85355034b174ba286828b",
+      "readmeSHA256": "838746c5f90e2560312ec35c4a83928027d94fe5bcdf8a80451eb9d73ed95ebe",
+      "status": "publisher-grant-and-canonical-terms",
+      "basis": "Published package.json ISC declaration, exact author attribution, matching exact registry metadata/gitHead and archive integrity. No inconsistent original grant found in eight published members. Author attribution retained as attribution, not manufactured copyright."
+    },
+    {
+      "name": "err-code",
+      "version": "2.0.3",
+      "index": 73,
+      "license": "MIT",
+      "author": "IndigoUnited <hello@indigounited.com> (http://indigounited.com)",
+      "gitHead": "92511d41a6a926c94c9d11493404867b1e92a77a",
+      "archiveSHA256": "a5664f4a04152f1dcfa51035879284895c5e104aa13d9e0627567ead2eb248e2",
+      "metadataSHA256": "ff5360c17c3e197fc4a4a4fa0d07640292556d585a49c8651fd198e926d47bcc",
+      "readmeSHA256": "2d89bcf41bb06b2eddbe129a75abd418ef92a5f633accec609fd22a4843a5a93",
+      "status": "publisher-grant-and-canonical-terms",
+      "basis": "Exact published README Released under the MIT License references http://www.opensource.org/licenses/mit-license.php, which redirects to OSI canonical MIT. Published package.json and bower.json agree and preserve IndigoUnited attribution verbatim. No separate copyright/year supplied."
+    },
+    {
+      "name": "eastasianwidth",
+      "version": "0.2.0",
+      "index": 72,
+      "license": "MIT",
+      "author": "Masaki Komagata",
+      "gitHead": "b89f04d44dc786885615e94cd6e2ba1ef7866fa4",
+      "archiveSHA256": "eccfa12bbda71f9f8e09de7ad1a4e554369a6b4d43d7f86085e85055a8694c27",
+      "metadataSHA256": "51db62f97656d02d4bc9670393cae42930dbd1ed89f5837056851807e602867a",
+      "readmeSHA256": "5a20e0a3c5f1a6b449dd3fee8e3f0c7dc0a6e508c93fa5703d7c8823d35aed54",
+      "status": "publisher-grant-prepared-original-code-unresolved",
+      "basis": "Exact publisher MIT grant and Masaki Komagata attribution retained. Original README takenspc credit retained. Recovered actual linked article/source and exact Unicode6.0 data/notice/current scoped permission.",
+      "remainingBlock": "Recovered takenspc article at https://takenspc.hatenadiary.org/entry/20111126/1322252878 contains the same surrogate-decoding code block as the published package (whitespace-normalized equality), beyond generated Unicode ranges. Article, blog about and linked author profile provide no redistribution/sublicensing terms. Komagata's declaration does not itself establish permission from this credited upstream author; no contrary grant or assumption of noncopyrightability is substituted. Need takenspc grant applicable to that code or evidence of publisher authority.",
+      "articleSnapshotSHA256": "fbecf6f8022d48a3cfd1f3882eb676589f7aa4dff3b267310425eeb27f512d9e"
+    }
+  ]
+}

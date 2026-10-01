@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "independently-authored-compatible-replacement",
+  "original": {
+    "name": "eastasianwidth",
+    "version": "0.2.0",
+    "implementationSHA256": "2672ae17e3d91c246546bf3d56e78c95570eec79381ec143f41d45ec498bccab",
+    "permissionCleared": false,
+    "observationIndex": 72
+  },
+  "package": {
+    "name": "@irang/eastasianwidth-compat",
+    "version": "0.2.0-irang.1",
+    "private": true,
+    "main": "index.cjs",
+    "license": "MIT AND Unicode-3.0",
+    "irangReplaces": "eastasianwidth@0.2.0; new independent software, not relicensed upstream"
+  },
+  "files": [
+    {"path":"index.cjs","sha256":"7cbe7b67c7c3f8608b200f6dfdddaeb3cfbc2528d60c8340e8745f17445ecc07"},
+    {"path":"ranges.json","sha256":"0e8a6564a9bae1f35ae3065b8c9e4c0b879720d1ad1547151035d09367efe609"},
+    {"path":"generate.mjs","sha256":"3ff6c49f0df6aa3b3bb603c018460f514c394d95fbe359559013d88ea4c7bc8d"},
+    {"path":"generation.json","sha256":"18304382647942c7d75f68981b3efc47b335a262453a8cc3a8a9c4c02217d86f"},
+    {"path":"README.md","sha256":"1f863e7db81551681a6b840afaad2aa753223a70aea920622f21844aedfd140f"},
+    {"path":"sources/EastAsianWidth-6.0.0.txt","sha256":"e947a0ea387e62c0797600406055703d859236113cd7b82c96625141a8294592"},
+    {"path":"licenses/Unicode.txt","sha256":"e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"},
+    {"path":"licenses/Project-MIT.txt","sha256":"871ce00adfbea9bd300dd83df08fefb888832e8cfb7e76395ea67873b24c908b"}
+  ],
+  "generatorAdaptation": {
+    "from": "const out = \"/home/ubuntu/project/second-brain/.omo/evidence/packaging-resume-20261001/repair/eastasianwidth-licensed\";",
+    "to": "const out = resolve(process.env.IRANG_WIDTH_OUTPUT ?? \".\");",
+    "reason": "Portable output directory in a copied new generator only; never edit original candidate or old implementation"
+  },
+  "integrationQueue": [
+    {
+      "id": "replace-runtime-npm-module",
+      "action": "In a new owned image build, replace the entire eastasianwidth module directory wherever npm/Gemini/cache resolutions find it with this distinct private package. Preserve npm/Node/Bun versions and all Auth/API choices; retain original inventory warning objects and old/new hashes separately.",
+      "pass": "Final image and actual npm/module entry resolve new index/ranges/data/notices; no old implementation bytes anywhere in delivered runtime trees; npm behavior and original native hashes unchanged",
+      "proofCommand": "node -e 'const e=require(process.argv[1]);console.log(JSON.stringify({width:e.eastAsianWidth(\"①\"),length:e.length(\"①a\"),slice:e.slice(\"abc\",0,2)}))' <actual-installed-module-directory>",
+      "expected": "{\"width\":\"A\",\"length\":3,\"slice\":\"ab\"}"
+    },
+    {
+      "id": "transform-delivered-source-assets",
+      "action": "Transform/remove old eastasianwidth in every delivered source tree before archiving, including Node22 deps/npm/node_modules/eastasianwidth and npm sources. Do not deliver unchanged original eastasianwidth source/published tarballs or unchanged Node/npm upstream archives that contain it. Preserve originals only as private historical evidence. Include this new package, full Unicode6.0 preferred data/headers, generator and both actual notices. Record input/output archive hashes, paths and replacement hashes. Never distribute a unified diff containing the deleted old body.",
+      "pass": "Enumerated final archive members and extracted payload hashes prove absence of old implementation and presence of new source/data/notices; no original archive with old code in release allowlist; portable new generator reproduces ranges",
+      "gate": "Final source-archive validator and image integration are parent-owned next-graph work, not material acceptance"
+    }
+  ],
+  "nativeBuildRelinkRequired": true,
+  "originalNativeIncorporationProven": false,
+  "imageVerified": false,
+  "releaseApproved": false
+}

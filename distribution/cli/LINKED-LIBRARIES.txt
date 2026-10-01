@@ -1,0 +1,29 @@
+Bundled native libraries and linked hosts
+
+Codex 0.158.0 uses separately shipped GLib 2.88.3, GStreamer 1.28.6,
+gst-plugins-base 1.28.6 and gst-plugins-good 1.28.6 under LGPL-2.1,
+and proxy-libintl 0.5 under the GNU Library GPL version 2.
+Their complete upstream license notices are retained without alteration.
+
+Irang imposes no restriction on modification for personal use or reverse
+engineering of the linked hosts for debugging modifications to these libraries.
+You may replace compatible dynamic libraries in codex-resources/voice/lib
+and compatible plugins in codex-resources/voice/lib/gstreamer-1.0.
+Keep the loader names and ABI compatible with the original library.
+The upstream build, packaging and projection scripts are retained in the
+matching Codex source archive identified by manifest.json.
+
+Gemini CLI 0.61.0 uses keytar 7.10.6, which loads libsecret and its
+GLib/GIO/GObject dependencies dynamically on supported Linux targets.
+Irang imposes no restriction on modification for personal use or reverse
+engineering of Gemini, keytar or Node for debugging modifications to these
+libraries. You may supply ABI-compatible replacements through the dynamic
+loader's library search path, including LD_LIBRARY_PATH. Preserve the
+library names and exported interfaces required by the linked addon.
+The matching library sources, upstream notices and build instructions must
+be available alongside the target-specific image and its source materials.
+
+This notice grants no exception to the upstream licenses. The release must
+provide equivalent access to complete matching sources and build inputs.
+Successful replacement/relinking verification is a separate release condition;
+this preparation does not assert that a released image passed that check.

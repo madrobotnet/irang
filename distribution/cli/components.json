@@ -1,0 +1,3561 @@
+{
+  "schemaVersion": 1,
+  "supplementalSources": [
+    {
+      "name": "libcap",
+      "version": "2.75",
+      "url": "https://mirrors.edge.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.75.tar.xz",
+      "sha256": "de4e7e064c9ba451d5234dd46e897d7c71c96a9ebf9a0c445bc04f4742d83632",
+      "relation": "Exact musl recipe pin; cached libcap.a/override and original incorporation remain unproven"
+    },
+    {
+      "name": "node-addon-api",
+      "version": "8.3.0",
+      "url": "https://registry.npmjs.org/node-addon-api/-/node-addon-api-8.3.0.tgz",
+      "integrity": "sha512-8VOpLHFrOQlAH+qA0ZzuGRlALRA6/LVh8QJldbrC4DY0hXoMP0l4Acq8TzFC018HztWiRqyCEj2aTWY2UvnJUg==",
+      "relation": "Exact keytar tag 3c73ccbc6c03c3db05fc3ed492d8923df3fb5f54 lock candidate; compiled header incorporation unproven"
+    }
+  ],
+  "warnings": [
+    {
+      "index": 0,
+      "warning": {
+        "path": "install/cache/@isaacs/fs-minipass/4.0.1@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "@isaacs/fs-minipass",
+        "version": "4.0.1",
+        "path": "install/cache/@isaacs/fs-minipass/4.0.1@@@1",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/npm/fs-minipass.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@isaacs/fs-minipass/4.0.1@@@1/LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+          "bytes": 765
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 1,
+      "warning": {
+        "path": "install/cache/@isaacs/fs-minipass/4.0.1@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "@isaacs/fs-minipass",
+        "version": "4.0.1",
+        "path": "install/cache/@isaacs/fs-minipass/4.0.1@@@1",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/npm/fs-minipass.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@isaacs/fs-minipass/4.0.1@@@1/LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+          "bytes": 765
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 2,
+      "warning": {
+        "path": "install/cache/chownr/3.0.0@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "install/cache/chownr/3.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/chownr.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/chownr/3.0.0@@@1/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 3,
+      "warning": {
+        "path": "install/cache/chownr/3.0.0@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "install/cache/chownr/3.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/chownr.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/chownr/3.0.0@@@1/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 4,
+      "warning": {
+        "path": "install/cache/isexe/4.0.0@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "isexe",
+        "version": "4.0.0",
+        "path": "install/cache/isexe/4.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/isexe/4.0.0@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 5,
+      "warning": {
+        "path": "install/cache/isexe/4.0.0@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "isexe",
+        "version": "4.0.0",
+        "path": "install/cache/isexe/4.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/isexe/4.0.0@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 6,
+      "warning": {
+        "path": "install/cache/minipass/7.1.3@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "install/cache/minipass/7.1.3@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/minipass/7.1.3@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 7,
+      "warning": {
+        "path": "install/cache/minipass/7.1.3@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "install/cache/minipass/7.1.3@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/minipass/7.1.3@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 8,
+      "warning": {
+        "path": "install/cache/minizlib/3.1.0@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "minizlib",
+        "version": "3.1.0",
+        "path": "install/cache/minizlib/3.1.0@@@1",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/minizlib.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/minizlib/3.1.0@@@1/LICENSE",
+          "sha256": "df05697a04b8997c79d423930534e59cc18828f6e22d0c8c2d62fcbea1c4f50b",
+          "bytes": 1339
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 9,
+      "warning": {
+        "path": "install/cache/minizlib/3.1.0@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "minizlib",
+        "version": "3.1.0",
+        "path": "install/cache/minizlib/3.1.0@@@1",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/minizlib.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/minizlib/3.1.0@@@1/LICENSE",
+          "sha256": "df05697a04b8997c79d423930534e59cc18828f6e22d0c8c2d62fcbea1c4f50b",
+          "bytes": 1339
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 10,
+      "warning": {
+        "path": "install/cache/tar/7.5.22@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "install/cache/tar/7.5.22@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/isaacs/node-tar.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/tar/7.5.22@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 11,
+      "warning": {
+        "path": "install/cache/tar/7.5.22@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "install/cache/tar/7.5.22@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/isaacs/node-tar.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/tar/7.5.22@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 12,
+      "warning": {
+        "path": "install/cache/yallist/5.0.0@@@1/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "install/cache/yallist/5.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/yallist.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/yallist/5.0.0@@@1/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 13,
+      "warning": {
+        "path": "install/cache/yallist/5.0.0@@@1/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "install/cache/yallist/5.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/yallist.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/yallist/5.0.0@@@1/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 14,
+      "warning": {
+        "path": "install/global",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "7aadf09ef6529590f378a86c01c34c29bfda22a7aff3deef72bec66f11b0325d",
+      "owner": null,
+      "assessment": "Bun installation dependency manifest; pins Codex 0.158.0 and Gemini 0.61.0, not an independent package.",
+      "retainedEvidence": [],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 15,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/@isaacs/fs-minipass/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "@isaacs/fs-minipass",
+        "version": "4.0.1",
+        "path": "lib/node_modules/npm/node_modules/@isaacs/fs-minipass",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/npm/fs-minipass.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/@isaacs/fs-minipass/LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+          "bytes": 765
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 16,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/@isaacs/fs-minipass/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "@isaacs/fs-minipass",
+        "version": "4.0.1",
+        "path": "lib/node_modules/npm/node_modules/@isaacs/fs-minipass",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/npm/fs-minipass.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/@isaacs/fs-minipass/LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+          "bytes": 765
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 17,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/chownr/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "lib/node_modules/npm/node_modules/chownr",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/chownr.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/chownr/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 18,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/chownr/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "lib/node_modules/npm/node_modules/chownr",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/chownr.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/chownr/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 19,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/foreground-child/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "foreground-child",
+        "version": "3.3.1",
+        "path": "lib/node_modules/npm/node_modules/foreground-child",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/tapjs/foreground-child.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/foreground-child/LICENSE",
+          "sha256": "93f5d82a8d59442fe3275383453a255fef761647fb28265644010ba799806148",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 20,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/foreground-child/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "foreground-child",
+        "version": "3.3.1",
+        "path": "lib/node_modules/npm/node_modules/foreground-child",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/tapjs/foreground-child.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/foreground-child/LICENSE",
+          "sha256": "93f5d82a8d59442fe3275383453a255fef761647fb28265644010ba799806148",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 21,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/glob/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "glob",
+        "version": "10.5.0",
+        "path": "lib/node_modules/npm/node_modules/glob",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/node-glob.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/glob/LICENSE",
+          "sha256": "cdbc258d13806538e727964c2436a8806e6e2496ccd616224aace6f7bf98dbc1",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 22,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/glob/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "glob",
+        "version": "10.5.0",
+        "path": "lib/node_modules/npm/node_modules/glob",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/node-glob.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/glob/LICENSE",
+          "sha256": "cdbc258d13806538e727964c2436a8806e6e2496ccd616224aace6f7bf98dbc1",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 23,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/jackspeak/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "jackspeak",
+        "version": "3.4.3",
+        "path": "lib/node_modules/npm/node_modules/jackspeak",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/jackspeak.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/jackspeak/LICENSE.md",
+          "sha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901",
+          "bytes": 1550
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 24,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/jackspeak/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "jackspeak",
+        "version": "3.4.3",
+        "path": "lib/node_modules/npm/node_modules/jackspeak",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/jackspeak.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/jackspeak/LICENSE.md",
+          "sha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901",
+          "bytes": 1550
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 25,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/lru-cache/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "lru-cache",
+        "version": "10.4.3",
+        "path": "lib/node_modules/npm/node_modules/lru-cache",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/node-lru-cache.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/lru-cache/LICENSE",
+          "sha256": "451ec07eeb9c4e1b86de9abdaa426462a8be48f887ec7421cf0bbb9c769555ab",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 26,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/lru-cache/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "lru-cache",
+        "version": "10.4.3",
+        "path": "lib/node_modules/npm/node_modules/lru-cache",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/node-lru-cache.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/lru-cache/LICENSE",
+          "sha256": "451ec07eeb9c4e1b86de9abdaa426462a8be48f887ec7421cf0bbb9c769555ab",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 27,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/minimatch/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "minimatch",
+        "version": "9.0.9",
+        "path": "lib/node_modules/npm/node_modules/minimatch",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/minimatch.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minimatch/LICENSE",
+          "sha256": "d11323827fa4edeaafc437cc5b91b6971b335f0127efeeb42bf5122fe8657e8f",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 28,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/minimatch/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "minimatch",
+        "version": "9.0.9",
+        "path": "lib/node_modules/npm/node_modules/minimatch",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/minimatch.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minimatch/LICENSE",
+          "sha256": "d11323827fa4edeaafc437cc5b91b6971b335f0127efeeb42bf5122fe8657e8f",
+          "bytes": 775
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 29,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/minipass/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "lib/node_modules/npm/node_modules/minipass",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minipass/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 30,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/minipass/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "lib/node_modules/npm/node_modules/minipass",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minipass/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 31,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/minizlib/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "minizlib",
+        "version": "3.1.0",
+        "path": "lib/node_modules/npm/node_modules/minizlib",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/minizlib.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minizlib/LICENSE",
+          "sha256": "df05697a04b8997c79d423930534e59cc18828f6e22d0c8c2d62fcbea1c4f50b",
+          "bytes": 1339
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 32,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/minizlib/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "minizlib",
+        "version": "3.1.0",
+        "path": "lib/node_modules/npm/node_modules/minizlib",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/minizlib.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minizlib/LICENSE",
+          "sha256": "df05697a04b8997c79d423930534e59cc18828f6e22d0c8c2d62fcbea1c4f50b",
+          "bytes": 1339
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 33,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/package-json-from-dist/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "package-json-from-dist",
+        "version": "1.0.1",
+        "path": "lib/node_modules/npm/node_modules/package-json-from-dist",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/package-json-from-dist.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/package-json-from-dist/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 34,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/package-json-from-dist/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "package-json-from-dist",
+        "version": "1.0.1",
+        "path": "lib/node_modules/npm/node_modules/package-json-from-dist",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/package-json-from-dist.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/package-json-from-dist/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 35,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/path-scurry/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "path-scurry",
+        "version": "1.11.1",
+        "path": "lib/node_modules/npm/node_modules/path-scurry",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/path-scurry"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/path-scurry/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 36,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/path-scurry/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "path-scurry",
+        "version": "1.11.1",
+        "path": "lib/node_modules/npm/node_modules/path-scurry",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/path-scurry"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/path-scurry/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 37,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/promise-call-limit/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "promise-call-limit",
+        "version": "3.0.2",
+        "path": "lib/node_modules/npm/node_modules/promise-call-limit",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/promise-call-limit"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/promise-call-limit/LICENSE",
+          "sha256": "05dc4d785ac3a488676d3ed10e901b75ad89dafcc63f8e66610fd4a39cc5c7e8",
+          "bytes": 748
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 38,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/promise-call-limit/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "promise-call-limit",
+        "version": "3.0.2",
+        "path": "lib/node_modules/npm/node_modules/promise-call-limit",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/promise-call-limit"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/promise-call-limit/LICENSE",
+          "sha256": "05dc4d785ac3a488676d3ed10e901b75ad89dafcc63f8e66610fd4a39cc5c7e8",
+          "bytes": 748
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 39,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/read/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "read",
+        "version": "4.1.0",
+        "path": "lib/node_modules/npm/node_modules/read",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/npm/read.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/read/LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+          "bytes": 765
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 40,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/read/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "read",
+        "version": "4.1.0",
+        "path": "lib/node_modules/npm/node_modules/read",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/npm/read.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/read/LICENSE",
+          "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+          "bytes": 765
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 41,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/signal-exit/dist/cjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "signal-exit",
+        "version": "4.1.0",
+        "path": "lib/node_modules/npm/node_modules/signal-exit",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/tapjs/signal-exit.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/signal-exit/LICENSE.txt",
+          "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7",
+          "bytes": 790
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 42,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/signal-exit/dist/mjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "signal-exit",
+        "version": "4.1.0",
+        "path": "lib/node_modules/npm/node_modules/signal-exit",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/tapjs/signal-exit.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/signal-exit/LICENSE.txt",
+          "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7",
+          "bytes": 790
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 43,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/tar/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "lib/node_modules/npm/node_modules/tar",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/isaacs/node-tar.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/tar/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 44,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/tar/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "lib/node_modules/npm/node_modules/tar",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/isaacs/node-tar.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/tar/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 45,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/walk-up-path/dist/cjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "walk-up-path",
+        "version": "3.0.1",
+        "path": "lib/node_modules/npm/node_modules/walk-up-path",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/walk-up-path"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/walk-up-path/LICENSE",
+          "sha256": "05dc4d785ac3a488676d3ed10e901b75ad89dafcc63f8e66610fd4a39cc5c7e8",
+          "bytes": 748
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 46,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/walk-up-path/dist/mjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "walk-up-path",
+        "version": "3.0.1",
+        "path": "lib/node_modules/npm/node_modules/walk-up-path",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/walk-up-path"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/walk-up-path/LICENSE",
+          "sha256": "05dc4d785ac3a488676d3ed10e901b75ad89dafcc63f8e66610fd4a39cc5c7e8",
+          "bytes": 748
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 47,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/which/node_modules/isexe/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "isexe",
+        "version": "3.1.5",
+        "path": "lib/node_modules/npm/node_modules/which/node_modules/isexe",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/which/node_modules/isexe/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 48,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/which/node_modules/isexe/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "isexe",
+        "version": "3.1.5",
+        "path": "lib/node_modules/npm/node_modules/which/node_modules/isexe",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe"
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/which/node_modules/isexe/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 49,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/yallist/dist/commonjs",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "owner": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "lib/node_modules/npm/node_modules/yallist",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/yallist.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/yallist/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 50,
+      "warning": {
+        "path": "lib/node_modules/npm/node_modules/yallist/dist/esm",
+        "reason": "package.json has no name/version identity"
+      },
+      "metadataSHA256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "owner": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "lib/node_modules/npm/node_modules/yallist",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/yallist.git"
+        }
+      },
+      "assessment": "Module-type marker owned by identified parent; exact metadata contains only type commonjs or module.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/yallist/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped parent notices and preserve raw warning; do not assign Irang MIT."
+    },
+    {
+      "index": 51,
+      "warning": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/cache/@google/gemini-cli/0.61.0@@@1/bundle/examples/mcp-server",
+        "reason": "No declared license metadata"
+      },
+      "metadataSHA256": "e5e4758e8ef340708273150e152b295cd93ba323beed08919c79d3578f28395b",
+      "owner": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/cache/@google/gemini-cli/0.61.0@@@1/bundle/examples/mcp-server",
+        "license": null,
+        "repository": null
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@google/gemini-cli/0.61.0@@@1/LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream @google/gemini-cli version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 52,
+      "warning": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/cache/@google/gemini-cli/0.61.0@@@1/bundle/examples/mcp-server",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "e5e4758e8ef340708273150e152b295cd93ba323beed08919c79d3578f28395b",
+      "owner": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/cache/@google/gemini-cli/0.61.0@@@1/bundle/examples/mcp-server",
+        "license": null,
+        "repository": null
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@google/gemini-cli/0.61.0@@@1/LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream @google/gemini-cli version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 53,
+      "warning": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/cache/@google/gemini-cli/0.61.0@@@1/bundle/examples/mcp-server",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": null
+      },
+      "metadataSHA256": "e5e4758e8ef340708273150e152b295cd93ba323beed08919c79d3578f28395b",
+      "owner": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/cache/@google/gemini-cli/0.61.0@@@1/bundle/examples/mcp-server",
+        "license": null,
+        "repository": null
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@google/gemini-cli/0.61.0@@@1/LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream @google/gemini-cli version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 54,
+      "warning": {
+        "name": "@lydell/node-pty-linux-arm64",
+        "version": "1.1.0",
+        "path": "install/cache/@lydell/node-pty-linux-arm64/1.1.0@@@1",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "a667c645fc4d28368c71c3a5ef893ba3fc77f414e852246625e28dbc765be6b5",
+      "owner": {
+        "name": "@lydell/node-pty-linux-arm64",
+        "version": "1.1.0",
+        "path": "install/cache/@lydell/node-pty-linux-arm64/1.1.0@@@1",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/lydell/node-pty.git"
+        }
+      },
+      "assessment": "Exact v1.1.0 license raw SHA a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f matches shipped wrapper; native published gitHead 0407346d07b22729198c26d564011d96fca33297 has matching copyright text.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@lydell/node-pty/1.1.0@@@1/LICENSE",
+          "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+          "bytes": 3326
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Explicitly map native cache/global 1.1.0 distributions to wrapper LICENSE; retain Jeffrey, Imms and Microsoft copyright bytes."
+    },
+    {
+      "index": 55,
+      "warning": {
+        "name": "@openai/codex",
+        "version": "0.158.0",
+        "path": "install/cache/@openai/codex/0.158.0@@@1",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "75ab2e403fb8501c82f1f50c6948773944eacea85ff93dcfc29e9cb6674cee5d",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0",
+        "path": "install/cache/@openai/codex/0.158.0@@@1",
+        "license": "Apache-2.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/openai/codex.git",
+          "directory": "codex-cli"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Retain rust-v0.158.0/LICENSE raw SHA d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc including Copyright 2025 OpenAI; resolve native binary obligations separately."
+    },
+    {
+      "index": 56,
+      "warning": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "install/cache/chownr/3.0.0@@@1",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "4300e90fdd91ec7035047473c60f880251a9801bd786302729d4277751d3b948",
+      "owner": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "install/cache/chownr/3.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/chownr.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/chownr/3.0.0@@@1/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 57,
+      "warning": {
+        "name": "isexe",
+        "version": "4.0.0",
+        "path": "install/cache/isexe/4.0.0@@@1",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "1889746f84d1e2a524353a2e31464995b808f24457f0dd55d6fd9da638f978ed",
+      "owner": {
+        "name": "isexe",
+        "version": "4.0.0",
+        "path": "install/cache/isexe/4.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe"
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/isexe/4.0.0@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 58,
+      "warning": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "install/cache/minipass/7.1.3@@@1",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "b8ab116187d5e9375d494f17437eb862cbee4b329c21f15412c6a5170ec2f55c",
+      "owner": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "install/cache/minipass/7.1.3@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass"
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/minipass/7.1.3@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 59,
+      "warning": {
+        "name": "1to2",
+        "version": "1.0.0",
+        "path": "install/cache/nan/2.29.0@@@1/tools",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "26c59824a231aa81659c1d72c0a359e271889881218212ececcd4b393dfe13aa",
+      "owner": {
+        "name": "1to2",
+        "version": "1.0.0",
+        "path": "install/cache/nan/2.29.0@@@1/tools",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/nodejs/nan.git"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/nan/2.29.0@@@1/LICENSE.md",
+          "sha256": "95d152af7a776fba93bd795d3235d478cca4a207f8e1475fc9a3d71d28964c39",
+          "bytes": 1144
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream nan version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 60,
+      "warning": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "install/cache/tar/7.5.22@@@1",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "31b18f4fb83ba7183f54fa9e2cdca610897108c37ba80570c2c6fa7ccf112d97",
+      "owner": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "install/cache/tar/7.5.22@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/isaacs/node-tar.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/tar/7.5.22@@@1/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 61,
+      "warning": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "install/cache/yallist/5.0.0@@@1",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "1b9d47057ce39814531ff93f668823b4fa03e7d23945449c274a1ff6d4cc297f",
+      "owner": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "install/cache/yallist/5.0.0@@@1",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/yallist.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/yallist/5.0.0@@@1/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 62,
+      "warning": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/@google/gemini-cli/bundle/examples/mcp-server",
+        "reason": "No declared license metadata"
+      },
+      "metadataSHA256": "e5e4758e8ef340708273150e152b295cd93ba323beed08919c79d3578f28395b",
+      "owner": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/@google/gemini-cli/bundle/examples/mcp-server",
+        "license": null,
+        "repository": null
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/global/node_modules/@google/gemini-cli/LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream @google/gemini-cli version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 63,
+      "warning": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/@google/gemini-cli/bundle/examples/mcp-server",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "e5e4758e8ef340708273150e152b295cd93ba323beed08919c79d3578f28395b",
+      "owner": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/@google/gemini-cli/bundle/examples/mcp-server",
+        "license": null,
+        "repository": null
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/global/node_modules/@google/gemini-cli/LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream @google/gemini-cli version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 64,
+      "warning": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/@google/gemini-cli/bundle/examples/mcp-server",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": null
+      },
+      "metadataSHA256": "e5e4758e8ef340708273150e152b295cd93ba323beed08919c79d3578f28395b",
+      "owner": {
+        "name": "mcp-server-example",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/@google/gemini-cli/bundle/examples/mcp-server",
+        "license": null,
+        "repository": null
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/global/node_modules/@google/gemini-cli/LICENSE",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "bytes": 11357
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream @google/gemini-cli version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 65,
+      "warning": {
+        "name": "@lydell/node-pty-linux-arm64",
+        "version": "1.1.0",
+        "path": "install/global/node_modules/@lydell/node-pty-linux-arm64",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "a667c645fc4d28368c71c3a5ef893ba3fc77f414e852246625e28dbc765be6b5",
+      "owner": {
+        "name": "@lydell/node-pty-linux-arm64",
+        "version": "1.1.0",
+        "path": "install/global/node_modules/@lydell/node-pty-linux-arm64",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/lydell/node-pty.git"
+        }
+      },
+      "assessment": "Exact v1.1.0 license raw SHA a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f matches shipped wrapper; native published gitHead 0407346d07b22729198c26d564011d96fca33297 has matching copyright text.",
+      "retainedEvidence": [
+        {
+          "source": "install/cache/@lydell/node-pty/1.1.0@@@1/LICENSE",
+          "sha256": "a3d60eaf32d2fb09c9d82ef39f14bd6e2c0f3ca7de30daa827486c0d6f8b6e9f",
+          "bytes": 3326
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Explicitly map native cache/global 1.1.0 distributions to wrapper LICENSE; retain Jeffrey, Imms and Microsoft copyright bytes."
+    },
+    {
+      "index": 66,
+      "warning": {
+        "name": "@openai/codex",
+        "version": "0.158.0",
+        "path": "install/global/node_modules/@openai/codex",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "75ab2e403fb8501c82f1f50c6948773944eacea85ff93dcfc29e9cb6674cee5d",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0",
+        "path": "install/global/node_modules/@openai/codex",
+        "license": "Apache-2.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/openai/codex.git",
+          "directory": "codex-cli"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Retain rust-v0.158.0/LICENSE raw SHA d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc including Copyright 2025 OpenAI; resolve native binary obligations separately."
+    },
+    {
+      "index": 67,
+      "warning": {
+        "name": "1to2",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/nan/tools",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "26c59824a231aa81659c1d72c0a359e271889881218212ececcd4b393dfe13aa",
+      "owner": {
+        "name": "1to2",
+        "version": "1.0.0",
+        "path": "install/global/node_modules/nan/tools",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/nodejs/nan.git"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [
+        {
+          "source": "install/global/node_modules/nan/LICENSE.md",
+          "sha256": "95d152af7a776fba93bd795d3235d478cca4a207f8e1475fc9a3d71d28964c39",
+          "bytes": 1144
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify nested source grant against exact parent upstream nan version; map parent license and source copyright headers explicitly. Parent proximity alone is not approval."
+    },
+    {
+      "index": 68,
+      "warning": {
+        "name": "npm",
+        "version": "10.9.9",
+        "path": "lib/node_modules/npm",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "Artistic-2.0"
+      },
+      "metadataSHA256": "7c04bf69824d17a1db64defd3a9a86d538781bf2d6ca2764e3f1143fa5b71166",
+      "owner": {
+        "name": "npm",
+        "version": "10.9.9",
+        "path": "lib/node_modules/npm",
+        "license": "Artistic-2.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/npm/cli.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/LICENSE",
+          "sha256": "7610d223851f421d315df5e77974f1c68a04b97e02060e5bbbcf13d95e3ca257",
+          "bytes": 9742
+        }
+      ],
+      "status": "unresolved",
+      "minimalRepair": "Verify npm 10.9.9 Standard Version source completeness or retain valid https://github.com/npm/cli/tree/v10.9.9 source instructions; document modifications per Artistic sections 4-6."
+    },
+    {
+      "index": 69,
+      "warning": {
+        "name": "@npmcli/agent",
+        "version": "3.0.0",
+        "path": "lib/node_modules/npm/node_modules/@npmcli/agent",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "d67f4edf03680423c43434e3b28902feec2a136da2e85355034b174ba286828b",
+      "owner": {
+        "name": "@npmcli/agent",
+        "version": "3.0.0",
+        "path": "lib/node_modules/npm/node_modules/@npmcli/agent",
+        "license": "ISC",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/npm/agent.git"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 70,
+      "warning": {
+        "name": "@sigstore/verify",
+        "version": "2.1.1",
+        "path": "lib/node_modules/npm/node_modules/@sigstore/verify",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "68d7387e84118be7099407749b057035dd631ba354ede2e945548fd2cf762b53",
+      "owner": {
+        "name": "@sigstore/verify",
+        "version": "2.1.1",
+        "path": "lib/node_modules/npm/node_modules/@sigstore/verify",
+        "license": "Apache-2.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/sigstore/sigstore-js.git"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 71,
+      "warning": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "lib/node_modules/npm/node_modules/chownr",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "4300e90fdd91ec7035047473c60f880251a9801bd786302729d4277751d3b948",
+      "owner": {
+        "name": "chownr",
+        "version": "3.0.0",
+        "path": "lib/node_modules/npm/node_modules/chownr",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/isaacs/chownr.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/chownr/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 72,
+      "warning": {
+        "name": "eastasianwidth",
+        "version": "0.2.0",
+        "path": "lib/node_modules/npm/node_modules/eastasianwidth",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "51db62f97656d02d4bc9670393cae42930dbd1ed89f5837056851807e602867a",
+      "owner": {
+        "name": "eastasianwidth",
+        "version": "0.2.0",
+        "path": "lib/node_modules/npm/node_modules/eastasianwidth",
+        "license": "MIT",
+        "repository": "git://github.com/komagata/eastasianwidth.git"
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 73,
+      "warning": {
+        "name": "err-code",
+        "version": "2.0.3",
+        "path": "lib/node_modules/npm/node_modules/err-code",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "ff5360c17c3e197fc4a4a4fa0d07640292556d585a49c8651fd198e926d47bcc",
+      "owner": {
+        "name": "err-code",
+        "version": "2.0.3",
+        "path": "lib/node_modules/npm/node_modules/err-code",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "git://github.com/IndigoUnited/js-err-code.git"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 74,
+      "warning": {
+        "name": "imurmurhash",
+        "version": "0.1.4",
+        "path": "lib/node_modules/npm/node_modules/imurmurhash",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "aa3b07e7fa3d63aa96e401c3842b8cca1dd3247954baf92377094766e903c185",
+      "owner": {
+        "name": "imurmurhash",
+        "version": "0.1.4",
+        "path": "lib/node_modules/npm/node_modules/imurmurhash",
+        "license": "MIT",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/jensyt/imurmurhash-js"
+        }
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 75,
+      "warning": {
+        "name": "jackspeak",
+        "version": "3.4.3",
+        "path": "lib/node_modules/npm/node_modules/jackspeak",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "3379e9c1be25729a6c7fc160e840108e15895c368e8060e42f68598f9f3065cd",
+      "owner": {
+        "name": "jackspeak",
+        "version": "3.4.3",
+        "path": "lib/node_modules/npm/node_modules/jackspeak",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/jackspeak.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/jackspeak/LICENSE.md",
+          "sha256": "2c7c5d22ed5a8ee968c64757710979afcd77438c48b4a265b94e615babd8a901",
+          "bytes": 1550
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 76,
+      "warning": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "lib/node_modules/npm/node_modules/minipass",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "b8ab116187d5e9375d494f17437eb862cbee4b329c21f15412c6a5170ec2f55c",
+      "owner": {
+        "name": "minipass",
+        "version": "7.1.3",
+        "path": "lib/node_modules/npm/node_modules/minipass",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/minipass"
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/minipass/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 77,
+      "warning": {
+        "name": "package-json-from-dist",
+        "version": "1.0.1",
+        "path": "lib/node_modules/npm/node_modules/package-json-from-dist",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "38fdaf168bc63a6422a7dbe7e41a7b52b02326edef8b14019e0333ef60b37b47",
+      "owner": {
+        "name": "package-json-from-dist",
+        "version": "1.0.1",
+        "path": "lib/node_modules/npm/node_modules/package-json-from-dist",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/package-json-from-dist.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/package-json-from-dist/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 78,
+      "warning": {
+        "name": "path-scurry",
+        "version": "1.11.1",
+        "path": "lib/node_modules/npm/node_modules/path-scurry",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "eda5ff683c26f88a134198fa2700b371abc9092c61a81474226bdfc6f9348c14",
+      "owner": {
+        "name": "path-scurry",
+        "version": "1.11.1",
+        "path": "lib/node_modules/npm/node_modules/path-scurry",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/path-scurry"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/path-scurry/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 79,
+      "warning": {
+        "name": "qrcode-terminal",
+        "version": "0.12.0",
+        "path": "lib/node_modules/npm/node_modules/qrcode-terminal",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": [
+          {
+            "type": "Apache 2.0"
+          }
+        ]
+      },
+      "metadataSHA256": "25c89a03126b144a0080c0200a25037d0f2fb0a49177506776cfb492210955cd",
+      "owner": {
+        "name": "qrcode-terminal",
+        "version": "0.12.0",
+        "path": "lib/node_modules/npm/node_modules/qrcode-terminal",
+        "license": [
+          {
+            "type": "Apache 2.0"
+          }
+        ],
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/gtanner/qrcode-terminal"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/qrcode-terminal/LICENSE",
+          "sha256": "b3c7a2fadb2515b8106eae58439a4b9c0581a4eaa88d6a265701f8d4dd7dadb8",
+          "bytes": 11962
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 80,
+      "warning": {
+        "name": "spdx-exceptions",
+        "version": "2.5.0",
+        "path": "lib/node_modules/npm/node_modules/spdx-exceptions",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "0af9bd4b68c9e3d1bc7a9208881cbde84da140d564a3bb42cf53184c6e83f2e3",
+      "owner": {
+        "name": "spdx-exceptions",
+        "version": "2.5.0",
+        "path": "lib/node_modules/npm/node_modules/spdx-exceptions",
+        "license": "CC-BY-3.0",
+        "repository": "kemitchell/spdx-exceptions.json"
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 81,
+      "warning": {
+        "name": "spdx-exceptions",
+        "version": "2.5.0",
+        "path": "lib/node_modules/npm/node_modules/spdx-exceptions",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "CC-BY-3.0"
+      },
+      "metadataSHA256": "0af9bd4b68c9e3d1bc7a9208881cbde84da140d564a3bb42cf53184c6e83f2e3",
+      "owner": {
+        "name": "spdx-exceptions",
+        "version": "2.5.0",
+        "path": "lib/node_modules/npm/node_modules/spdx-exceptions",
+        "license": "CC-BY-3.0",
+        "repository": "kemitchell/spdx-exceptions.json"
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 82,
+      "warning": {
+        "name": "spdx-license-ids",
+        "version": "3.0.23",
+        "path": "lib/node_modules/npm/node_modules/spdx-license-ids",
+        "reason": "No retained license/notice text; review upstream distribution requirements"
+      },
+      "metadataSHA256": "669d0ba75505d331031cf79b0d208393601307f41cd4ae4355ce99e6eaef4c8c",
+      "owner": {
+        "name": "spdx-license-ids",
+        "version": "3.0.23",
+        "path": "lib/node_modules/npm/node_modules/spdx-license-ids",
+        "license": "CC0-1.0",
+        "repository": "jslicense/spdx-license-ids"
+      },
+      "assessment": "No exact independent attribution established; not approval.",
+      "retainedEvidence": [],
+      "status": "unresolved",
+      "minimalRepair": "Obtain exact-version copyright, complete license and applicable NOTICE; retain and map into both notice trees."
+    },
+    {
+      "index": 83,
+      "warning": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "lib/node_modules/npm/node_modules/tar",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "31b18f4fb83ba7183f54fa9e2cdca610897108c37ba80570c2c6fa7ccf112d97",
+      "owner": {
+        "name": "tar",
+        "version": "7.5.22",
+        "path": "lib/node_modules/npm/node_modules/tar",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/isaacs/node-tar.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/tar/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 84,
+      "warning": {
+        "name": "isexe",
+        "version": "3.1.5",
+        "path": "lib/node_modules/npm/node_modules/which/node_modules/isexe",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "668c167be26edf600ee1c4fab262d7afa5afa66f3fd389b3c4c942bab249f0c4",
+      "owner": {
+        "name": "isexe",
+        "version": "3.1.5",
+        "path": "lib/node_modules/npm/node_modules/which/node_modules/isexe",
+        "license": "BlueOak-1.0.0",
+        "repository": "https://github.com/isaacs/isexe"
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/which/node_modules/isexe/LICENSE.md",
+          "sha256": "8a1af140fdfbf5afd3df27f7e662f989c5b963a300020dfafce42033cae9e004",
+          "bytes": 1552
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 85,
+      "warning": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "lib/node_modules/npm/node_modules/yallist",
+        "reason": "License declaration requires review (unknown, compound, custom or potential source/redistribution obligations)",
+        "declaration": "BlueOak-1.0.0"
+      },
+      "metadataSHA256": "1b9d47057ce39814531ff93f668823b4fa03e7d23945449c274a1ff6d4cc297f",
+      "owner": {
+        "name": "yallist",
+        "version": "5.0.0",
+        "path": "lib/node_modules/npm/node_modules/yallist",
+        "license": "BlueOak-1.0.0",
+        "repository": {
+          "type": "git",
+          "url": "git+https://github.com/isaacs/yallist.git"
+        }
+      },
+      "assessment": "Exact retained full text reviewed; declaration warning is not automatically a distribution failure.",
+      "retainedEvidence": [
+        {
+          "source": "lib/node_modules/npm/node_modules/yallist/LICENSE.md",
+          "sha256": "a49c9ba464796f65b59fca3f1e6ca40912df1e859f575383223f7ec6c5baae09",
+          "bytes": 1764
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain mapped text and copyrights, including embedded clauses; no warning suppression."
+    },
+    {
+      "index": 86,
+      "warning": {
+        "path": ".",
+        "reason": "Texts without package identity require attribution review"
+      },
+      "metadataSHA256": null,
+      "owner": null,
+      "assessment": "Node.js 22.23.3 compound license at /usr/local/LICENSE; copyright Node.js contributors, not Irang.",
+      "retainedEvidence": [
+        {
+          "source": "LICENSE",
+          "sha256": "c738ae413cf561f174e34f6961f8ca458aae2369a73640dda6234c629b98bcc4",
+          "bytes": 145485
+        }
+      ],
+      "status": "attributed",
+      "minimalRepair": "Retain complete compound notices, not only Node MIT header."
+    }
+  ],
+  "native": [
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/darwin-arm64/keytar.node",
+      "bytes": 99464,
+      "sha256": "855c21e1e702967230bd87f600d04c311b77f29150f3372d547e72882c58de6a",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/darwin-x64/keytar.node",
+      "bytes": 63328,
+      "sha256": "5ce10f1f83f917fb555ff2ba43a80cab0f215d266cfdbd9bce5d6affa61c8aa1",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linux-arm/keytar.node",
+      "bytes": 134032,
+      "sha256": "8f0f32c5d576a0987e294b8dc9f1909133504f4fe20b65888bca0dd3bfaec29c",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linux-arm64/keytar.node",
+      "bytes": 134032,
+      "sha256": "8f0f32c5d576a0987e294b8dc9f1909133504f4fe20b65888bca0dd3bfaec29c",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linux-armv7l/keytar.node",
+      "bytes": 55212,
+      "sha256": "7370285fd2b5e2efbd6c0bcbb4719e9f1ab0e34dccf736df152dab46342f3952",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linux-ia32/keytar.node",
+      "bytes": 75128,
+      "sha256": "10a9e328a704082931141210732cd1647eb5d4cf963f7e8b58aac9a9cb808959",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linux-x64/keytar.node",
+      "bytes": 109664,
+      "sha256": "e7894a1e1001764de29ff08d3dae418ccbaaf78889c5673d367e05df1682fc7c",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linuxmusl-arm/keytar.node",
+      "bytes": 104544,
+      "sha256": "821019ec1f1cfe4eefe1e487af411e8fae7e953ff3cfe7bf48dd04fcf0766114",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linuxmusl-arm64/keytar.node",
+      "bytes": 104544,
+      "sha256": "821019ec1f1cfe4eefe1e487af411e8fae7e953ff3cfe7bf48dd04fcf0766114",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/linuxmusl-x64/keytar.node",
+      "bytes": 104544,
+      "sha256": "821019ec1f1cfe4eefe1e487af411e8fae7e953ff3cfe7bf48dd04fcf0766114",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/win32-arm64/keytar.node",
+      "bytes": 159232,
+      "sha256": "b9cd3c6658b1bed712e28f19ef777971ba46fc81a6004923dd15faa6e5bb01b8",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/win32-ia32/keytar.node",
+      "bytes": 126976,
+      "sha256": "79b8b6339adb937b9dc97f7f7cbddda1fea75881be828a4faf038a77e5581c93",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@github/keytar@7.10.6@@@1/prebuilds/win32-x64/keytar.node",
+      "bytes": 162816,
+      "sha256": "b82625e7c713fd20b5cb57993e073076c87660652202893fad39d874d77169fc",
+      "owner": null,
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/cache/@lydell/node-pty-linux-arm64@1.1.0@@@1/pty.node",
+      "bytes": 69064,
+      "sha256": "c192e560428e778842fdbbe72f14032824b03373ed49ad3efcdbcf9eb249b75b",
+      "owner": null,
+      "minimalRepair": "Map both cache/global pty SHA c192e560428e778842fdbbe72f14032824b03373ed49ad3efcdbcf9eb249b75b to exact upstream native 1.1.0 gitHead license and retained wrapper."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/bin/codex",
+      "bytes": 247446792,
+      "sha256": "0059c73b149a1433b634e26ad8a715e02717a9920665a9cc5676941db03c45cd",
+      "owner": null,
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/bin/codex-code-mode-host",
+      "bytes": 66921472,
+      "sha256": "68237b34d0bc182e99c43ca2197a25120339c154dd3fc29f908c2a1b022efa5b",
+      "owner": null,
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-path/rg",
+      "bytes": 4506992,
+      "sha256": "e36d0eb52e70696bdf1781392722e05a21bb91d3b7b762ef5ec20e5df2ec687b",
+      "owner": null,
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/bwrap",
+      "bytes": 529168,
+      "sha256": "c547cbdc762a70ed216789ffaa4c6c0e7d2beabe32245a498f8e365a9fc8dab4",
+      "owner": null,
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/bin/codex-voice-host",
+      "bytes": 67057272,
+      "sha256": "081261bc72f52051e51d7b00f77c951336b5b340812fcff36f5e09c949f83cbc",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstapp.so",
+      "bytes": 7264,
+      "sha256": "da840870078be465292abc2ae1c6796288c720abef9eb0c52097c07c9af72456",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstaudioconvert.so",
+      "bytes": 42600,
+      "sha256": "80505dbee90a745d228e1f489b7588f0174623e06532dc87d090f300b9e0e4f2",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstaudioresample.so",
+      "bytes": 36136,
+      "sha256": "63c28a6cb2bf7e084c8bda4ae758594b46b95ad5eaa612c6d77129cb9c2fab71",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstcoreelements.so",
+      "bytes": 477024,
+      "sha256": "a0cbb0d9aa338aa24e5bdf11156db895b9f09a10b06ea3a82b589c79ea5bdae6",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstopus.so",
+      "bytes": 72120,
+      "sha256": "88798a71c7edcff735e234099abb98f1a63ddf9e478dfa1d27eb352f232eab14",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstrtp.so",
+      "bytes": 771240,
+      "sha256": "e43f59093d573f0663e9ee5879cf7bfc56408ef6d69b8888b0400715b4a8c748",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstrtpmanager.so",
+      "bytes": 571648,
+      "sha256": "1a14ee63ff2deafdf818789400a319dcb8850ed891fa23536f722a4f35e50f21",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libffi.so.8",
+      "bytes": 97368,
+      "sha256": "51cb79b1866970f577b87dca19bf8e77bb28d3dd3bed27b7ace57780cb86ef49",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgio-2.0.so.0",
+      "bytes": 2590176,
+      "sha256": "e534b43fe43e6570cdc7323df95a02a146fc64ffd667465a46c270d34d811115",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libglib-2.0.so.0",
+      "bytes": 1565504,
+      "sha256": "db643193a38ec1479d1cc121cbb0f4d1d3ee7b8fea84dc94ff484f37f58e83b0",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgmodule-2.0.so.0",
+      "bytes": 16584,
+      "sha256": "351f626ad3a39796afd58d6e6632a039e9ecf57a0ee0227edd4c6304286710f3",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgobject-2.0.so.0",
+      "bytes": 492608,
+      "sha256": "a6820835865e8c319fa154e50fac299b179751ebe45d837cb8eeffd8376d2395",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstallocators-1.0.so.0",
+      "bytes": 33520,
+      "sha256": "d3cf08f9bbd7e971653f4ddf081daa86bbef733aa755d3516e5d238d30e7c25f",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstapp-1.0.so.0",
+      "bytes": 111856,
+      "sha256": "eb88b51eb833a63f9529556f0316254abf912017fd127a1ede81709f850d5cab",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstaudio-1.0.so.0",
+      "bytes": 594072,
+      "sha256": "e9440c617d78b29e1d52df1b7a492ccae2569ab194aa47b408b524412970dde9",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstbase-1.0.so.0",
+      "bytes": 570192,
+      "sha256": "6d530fe639e093882da411876451a19955afe4158a15e29a22193961b156ddfa",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstnet-1.0.so.0",
+      "bytes": 78152,
+      "sha256": "2c34b112a557842250ee157351c59be593395b4b1e3ad36bba36bcc1b243a230",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstpbutils-1.0.so.0",
+      "bytes": 341720,
+      "sha256": "ad19bedf41b0b18437056adcfbfc7c1c6ed97b3ede5b7138347d343a49240151",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstreamer-1.0.so.0",
+      "bytes": 1682744,
+      "sha256": "352138954cca0830cc2ecddfaa03b2fa353cdf12e76ac1431099af82b4b08e13",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstrtp-1.0.so.0",
+      "bytes": 222344,
+      "sha256": "7f8690676b340eb4fda03929dc0f810f8d4beec0016803f5a694e17b48b2c9b4",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgsttag-1.0.so.0",
+      "bytes": 274480,
+      "sha256": "1c04ffd68326cfa01efbccb748b6cde97687b350205f8a749ad7a18a56958612",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstvideo-1.0.so.0",
+      "bytes": 1049992,
+      "sha256": "01e16c75f3dfdc3442d4aa53e6497e727c37e3df908749d7348540efd370ebf5",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libintl.so.8",
+      "bytes": 6904,
+      "sha256": "b5c96edabcd6f9a9e444c325b0fd191ad480555cea7cc799970507303d413fa6",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libopus.so.0",
+      "bytes": 499096,
+      "sha256": "0aac7e03d04e0d23ed156daa1f11a8c0ee1ef7027080381846a6dbabc0c9f289",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libpcre2-8.so.0",
+      "bytes": 412576,
+      "sha256": "ed12ebb1003748d284f98c4f90f060a80e25f085b0251c8d8ebcc7fa8ba58f35",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libz.so.1",
+      "bytes": 112752,
+      "sha256": "284a7e1475cccabdda7fb91d9917a95a1abfbe73688033acc7ac27241d97ceca",
+      "owner": null,
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/cache/@openai/codex@0.158.0-df7cddc2737f1154@@@1/vendor/aarch64-unknown-linux-musl/codex-resources/zsh/bin/zsh",
+      "bytes": 878056,
+      "sha256": "7feeacd883e1dc749847936948c378653c80a69ec4a9542f0f126b411882c179",
+      "owner": null,
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/darwin-arm64/keytar.node",
+      "bytes": 99464,
+      "sha256": "855c21e1e702967230bd87f600d04c311b77f29150f3372d547e72882c58de6a",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/darwin-x64/keytar.node",
+      "bytes": 63328,
+      "sha256": "5ce10f1f83f917fb555ff2ba43a80cab0f215d266cfdbd9bce5d6affa61c8aa1",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linux-arm/keytar.node",
+      "bytes": 134032,
+      "sha256": "8f0f32c5d576a0987e294b8dc9f1909133504f4fe20b65888bca0dd3bfaec29c",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linux-arm64/keytar.node",
+      "bytes": 134032,
+      "sha256": "8f0f32c5d576a0987e294b8dc9f1909133504f4fe20b65888bca0dd3bfaec29c",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linux-armv7l/keytar.node",
+      "bytes": 55212,
+      "sha256": "7370285fd2b5e2efbd6c0bcbb4719e9f1ab0e34dccf736df152dab46342f3952",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linux-ia32/keytar.node",
+      "bytes": 75128,
+      "sha256": "10a9e328a704082931141210732cd1647eb5d4cf963f7e8b58aac9a9cb808959",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linux-x64/keytar.node",
+      "bytes": 109664,
+      "sha256": "e7894a1e1001764de29ff08d3dae418ccbaaf78889c5673d367e05df1682fc7c",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linuxmusl-arm/keytar.node",
+      "bytes": 104544,
+      "sha256": "821019ec1f1cfe4eefe1e487af411e8fae7e953ff3cfe7bf48dd04fcf0766114",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linuxmusl-arm64/keytar.node",
+      "bytes": 104544,
+      "sha256": "821019ec1f1cfe4eefe1e487af411e8fae7e953ff3cfe7bf48dd04fcf0766114",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/linuxmusl-x64/keytar.node",
+      "bytes": 104544,
+      "sha256": "821019ec1f1cfe4eefe1e487af411e8fae7e953ff3cfe7bf48dd04fcf0766114",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/win32-arm64/keytar.node",
+      "bytes": 159232,
+      "sha256": "b9cd3c6658b1bed712e28f19ef777971ba46fc81a6004923dd15faa6e5bb01b8",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/win32-ia32/keytar.node",
+      "bytes": 126976,
+      "sha256": "79b8b6339adb937b9dc97f7f7cbddda1fea75881be828a4faf038a77e5581c93",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@github/keytar/prebuilds/win32-x64/keytar.node",
+      "bytes": 162816,
+      "sha256": "b82625e7c713fd20b5cb57993e073076c87660652202893fad39d874d77169fc",
+      "owner": {
+        "name": "@github/keytar",
+        "version": "7.10.6",
+        "path": "install/global/node_modules/@github/keytar"
+      },
+      "minimalRepair": "Match @github/keytar 7.10.6 source and each platform prebuild to LICENSE.md plus embedded component notices; preserve all shipped foreign-platform copies too."
+    },
+    {
+      "path": "install/global/node_modules/@lydell/node-pty-linux-arm64/pty.node",
+      "bytes": 69064,
+      "sha256": "c192e560428e778842fdbbe72f14032824b03373ed49ad3efcdbcf9eb249b75b",
+      "owner": {
+        "name": "@lydell/node-pty-linux-arm64",
+        "version": "1.1.0",
+        "path": "install/global/node_modules/@lydell/node-pty-linux-arm64"
+      },
+      "minimalRepair": "Map both cache/global pty SHA c192e560428e778842fdbbe72f14032824b03373ed49ad3efcdbcf9eb249b75b to exact upstream native 1.1.0 gitHead license and retained wrapper."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex",
+      "bytes": 247446792,
+      "sha256": "0059c73b149a1433b634e26ad8a715e02717a9920665a9cc5676941db03c45cd",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/bin/codex-code-mode-host",
+      "bytes": 66921472,
+      "sha256": "68237b34d0bc182e99c43ca2197a25120339c154dd3fc29f908c2a1b022efa5b",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-path/rg",
+      "bytes": 4506992,
+      "sha256": "e36d0eb52e70696bdf1781392722e05a21bb91d3b7b762ef5ec20e5df2ec687b",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/bwrap",
+      "bytes": 529168,
+      "sha256": "c547cbdc762a70ed216789ffaa4c6c0e7d2beabe32245a498f8e365a9fc8dab4",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/bin/codex-voice-host",
+      "bytes": 67057272,
+      "sha256": "081261bc72f52051e51d7b00f77c951336b5b340812fcff36f5e09c949f83cbc",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstapp.so",
+      "bytes": 7264,
+      "sha256": "da840870078be465292abc2ae1c6796288c720abef9eb0c52097c07c9af72456",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstaudioconvert.so",
+      "bytes": 42600,
+      "sha256": "80505dbee90a745d228e1f489b7588f0174623e06532dc87d090f300b9e0e4f2",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstaudioresample.so",
+      "bytes": 36136,
+      "sha256": "63c28a6cb2bf7e084c8bda4ae758594b46b95ad5eaa612c6d77129cb9c2fab71",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstcoreelements.so",
+      "bytes": 477024,
+      "sha256": "a0cbb0d9aa338aa24e5bdf11156db895b9f09a10b06ea3a82b589c79ea5bdae6",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstopus.so",
+      "bytes": 72120,
+      "sha256": "88798a71c7edcff735e234099abb98f1a63ddf9e478dfa1d27eb352f232eab14",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstrtp.so",
+      "bytes": 771240,
+      "sha256": "e43f59093d573f0663e9ee5879cf7bfc56408ef6d69b8888b0400715b4a8c748",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/gstreamer-1.0/libgstrtpmanager.so",
+      "bytes": 571648,
+      "sha256": "1a14ee63ff2deafdf818789400a319dcb8850ed891fa23536f722a4f35e50f21",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libffi.so.8",
+      "bytes": 97368,
+      "sha256": "51cb79b1866970f577b87dca19bf8e77bb28d3dd3bed27b7ace57780cb86ef49",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgio-2.0.so.0",
+      "bytes": 2590176,
+      "sha256": "e534b43fe43e6570cdc7323df95a02a146fc64ffd667465a46c270d34d811115",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libglib-2.0.so.0",
+      "bytes": 1565504,
+      "sha256": "db643193a38ec1479d1cc121cbb0f4d1d3ee7b8fea84dc94ff484f37f58e83b0",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgmodule-2.0.so.0",
+      "bytes": 16584,
+      "sha256": "351f626ad3a39796afd58d6e6632a039e9ecf57a0ee0227edd4c6304286710f3",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgobject-2.0.so.0",
+      "bytes": 492608,
+      "sha256": "a6820835865e8c319fa154e50fac299b179751ebe45d837cb8eeffd8376d2395",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstallocators-1.0.so.0",
+      "bytes": 33520,
+      "sha256": "d3cf08f9bbd7e971653f4ddf081daa86bbef733aa755d3516e5d238d30e7c25f",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstapp-1.0.so.0",
+      "bytes": 111856,
+      "sha256": "eb88b51eb833a63f9529556f0316254abf912017fd127a1ede81709f850d5cab",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstaudio-1.0.so.0",
+      "bytes": 594072,
+      "sha256": "e9440c617d78b29e1d52df1b7a492ccae2569ab194aa47b408b524412970dde9",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstbase-1.0.so.0",
+      "bytes": 570192,
+      "sha256": "6d530fe639e093882da411876451a19955afe4158a15e29a22193961b156ddfa",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstnet-1.0.so.0",
+      "bytes": 78152,
+      "sha256": "2c34b112a557842250ee157351c59be593395b4b1e3ad36bba36bcc1b243a230",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstpbutils-1.0.so.0",
+      "bytes": 341720,
+      "sha256": "ad19bedf41b0b18437056adcfbfc7c1c6ed97b3ede5b7138347d343a49240151",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstreamer-1.0.so.0",
+      "bytes": 1682744,
+      "sha256": "352138954cca0830cc2ecddfaa03b2fa353cdf12e76ac1431099af82b4b08e13",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstrtp-1.0.so.0",
+      "bytes": 222344,
+      "sha256": "7f8690676b340eb4fda03929dc0f810f8d4beec0016803f5a694e17b48b2c9b4",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgsttag-1.0.so.0",
+      "bytes": 274480,
+      "sha256": "1c04ffd68326cfa01efbccb748b6cde97687b350205f8a749ad7a18a56958612",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libgstvideo-1.0.so.0",
+      "bytes": 1049992,
+      "sha256": "01e16c75f3dfdc3442d4aa53e6497e727c37e3df908749d7348540efd370ebf5",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libintl.so.8",
+      "bytes": 6904,
+      "sha256": "b5c96edabcd6f9a9e444c325b0fd191ad480555cea7cc799970507303d413fa6",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libopus.so.0",
+      "bytes": 499096,
+      "sha256": "0aac7e03d04e0d23ed156daa1f11a8c0ee1ef7027080381846a6dbabc0c9f289",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libpcre2-8.so.0",
+      "bytes": 412576,
+      "sha256": "ed12ebb1003748d284f98c4f90f060a80e25f085b0251c8d8ebcc7fa8ba58f35",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/lib/libz.so.1",
+      "bytes": 112752,
+      "sha256": "284a7e1475cccabdda7fb91d9917a95a1abfbe73688033acc7ac27241d97ceca",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Retain all seven actual voice/licenses files and manifests; provide matching source archives and build scripts from buildCommit 064c6b8c737f5b41d171fdda80bd9ef10ad06eb3 with equivalent release access; verify replaceable-library mechanism and source availability. Manifest URLs alone are not proof of fulfillment."
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/zsh/bin/zsh",
+      "bytes": 878056,
+      "sha256": "7feeacd883e1dc749847936948c378653c80a69ec4a9542f0f126b411882c179",
+      "owner": {
+        "name": "@openai/codex",
+        "version": "0.158.0-linux-arm64",
+        "path": "install/global/node_modules/@openai/codex-linux-arm64"
+      },
+      "minimalRepair": "Match binary SHA to Codex rust-v0.158.0 build inputs; obtain exact rg/bwrap/zsh licenses and versions and compiled dependency notices/source obligations. Top-level Apache text is missing; retain OpenAI license independently."
+    }
+  ],
+  "voiceTexts": [
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/NOTICE.md",
+      "sha256": "40097a1799441051aa0b6645cdc819cceb19be73cdd265eb602aa2b15e0b1f48"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/LGPL-2.1.txt",
+      "sha256": "ad2eec519ebd4b5df86ea84dff24ae3bfa2edea846a703b58902dd221ae375db"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/Opus.txt",
+      "sha256": "01e1167d54a096d123cf6dfbbeb19587278845c6481d2d66d545669846079551"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/PCRE2.md",
+      "sha256": "197d8a73ffee0d6b09adba2f9c677b5f5aede24edf89258a68e48248d010d811"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/libffi.txt",
+      "sha256": "17b64dc60f3b6897a60f971e288b973f655c2edcdf08b25f3c3dd5549857881c"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/proxy-libintl.txt",
+      "sha256": "d245807f90032872d1438d741ed21e2490e1175dc8aa3afa5ddb6c8e529b58e5"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/sljit.txt",
+      "sha256": "5f216505c0f6ea3273caec89e766eef93cdeb7bbb0c429f9360116d7c938feeb"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/licenses/zlib.txt",
+      "sha256": "e32ff4e00d9d94930537635291da39e7e612703334bf6fde8c7f1686fe8a45a2"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/manifest.json",
+      "sha256": "480bb82cf7630a3af87f7f64fd8f1a04d7dd6a32ac2b2628f1c278e021bd3d4a"
+    },
+    {
+      "path": "install/global/node_modules/@openai/codex-linux-arm64/vendor/aarch64-unknown-linux-musl/codex-resources/voice/sources.json",
+      "sha256": "e2f6b124f6277e7c3c4f5c7cc8830c66190f671ad65e972bb2cc9507dbfcb937"
+    }
+  ],
+  "sources": [
+    {
+      "name": "meson",
+      "version": "1.12.0",
+      "role": "build-tool",
+      "archive": "meson-1.12.0.tar",
+      "root": "meson-1.12.0",
+      "url": "https://github.com/mesonbuild/meson/releases/download/1.12.0/meson-1.12.0.tar.gz",
+      "sha256": "88afe0c20e52030218924ac37d0c81c59b4b5f3ae3752c8c6d7470c7d365886c",
+      "provenance": "GitHub release asset digest",
+      "relation": "Codex 0.158.0 voice runtime build inputs; build-tool"
+    },
+    {
+      "name": "ninja",
+      "version": "1.13.2",
+      "role": "build-tool",
+      "archive": "ninja-1.13.2.tar",
+      "root": "ninja-3441b633c2fe2c494e958780ba0f4227b1327634",
+      "url": "https://codeload.github.com/ninja-build/ninja/tar.gz/3441b633c2fe2c494e958780ba0f4227b1327634",
+      "sha256": "bccc6197cd8c3ac2a439e26d6bf41506fe49c430cf3d593269a15379f24266ee",
+      "provenance": "GitHub v1.13.2 tag -> commit3441b633c2fe2c494e958780ba0f4227b1327634; archive SHA recorded after fetch",
+      "relation": "Codex 0.158.0 voice runtime build inputs; build-tool"
+    },
+    {
+      "name": "libffi",
+      "version": "3.8.0",
+      "role": "native-library",
+      "archive": "libffi-3.8.0.tar",
+      "root": "libffi-3.8.0",
+      "url": "https://github.com/libffi/libffi/releases/download/v3.8.0/libffi-3.8.0.tar.gz",
+      "sha256": "7da3e2d9a171eb0a038f592ecad3ff2bb2550f3496d87b3b29ad0cf4430c0db4",
+      "provenance": "GitHub release asset digest",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "pcre2",
+      "version": "10.47",
+      "role": "native-library",
+      "archive": "pcre2-10.47.tar",
+      "root": "pcre2-10.47",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.47/pcre2-10.47.tar.gz",
+      "sha256": "c08ae2388ef333e8403e670ad70c0a11f1eed021fd88308d7e02f596fcd9dc16",
+      "provenance": "GitHub release asset digest",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "zlib",
+      "version": "1.3.2",
+      "role": "native-library",
+      "archive": "zlib-1.3.2.tar",
+      "root": "zlib-1.3.2",
+      "url": "https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz",
+      "sha256": "bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16",
+      "provenance": "GitHub release asset digest",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "opus",
+      "version": "1.6.1",
+      "role": "native-library",
+      "archive": "opus-1.6.1.tar",
+      "root": "opus-1.6.1",
+      "url": "https://downloads.xiph.org/releases/opus/opus-1.6.1.tar.gz",
+      "sha256": "6ffcb593207be92584df15b32466ed64bbec99109f007c82205f0194572411a1",
+      "provenance": "https://downloads.xiph.org/releases/opus/SHA256SUMS.txt",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "glib",
+      "version": "2.88.3",
+      "role": "native-library",
+      "archive": "glib-2.88.3.tar",
+      "root": "glib-2.88.3",
+      "url": "https://download.gnome.org/sources/glib/2.88/glib-2.88.3.tar.xz",
+      "sha256": "ab24d24e698dfa1e408b7bcdb508f4aafc906185a8b8ce72fdf79bbbdc9b383b",
+      "provenance": "https://download.gnome.org/sources/glib/2.88/glib-2.88.3.sha256sum",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "proxy-libintl",
+      "version": "0.5",
+      "role": "native-library",
+      "archive": "proxy-libintl-0.5.tar",
+      "root": "proxy-libintl-0.5",
+      "url": "https://github.com/frida/proxy-libintl/archive/refs/tags/0.5.tar.gz",
+      "sha256": "f7a1cbd7579baaf575c66f9d99fb6295e9b0684a28b095967cfda17857595303",
+      "provenance": "GStreamer1.28.6 upstream wrap SHA; upstream tag commit33934de09af6a6627eb44e310a8079df009abdbb",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "gstreamer",
+      "version": "1.28.6",
+      "role": "native-library",
+      "archive": "gstreamer-1.28.6.tar",
+      "root": "gstreamer-1.28.6",
+      "url": "https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-1.28.6.tar.xz",
+      "sha256": "62b6b9f0ad3147a6dd6420ac64a91180b14e990695bddd353b96041611d052ca",
+      "provenance": "Official adjacent .sha256sum",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "gst-plugins-base",
+      "version": "1.28.6",
+      "role": "native-library",
+      "archive": "gst-plugins-base-1.28.6.tar",
+      "root": "gst-plugins-base-1.28.6",
+      "url": "https://gstreamer.freedesktop.org/src/gst-plugins-base/gst-plugins-base-1.28.6.tar.xz",
+      "sha256": "0ba699c7c6c66f4ba640be78cb38a24715add9683f3e3a199f5369dc5a4f04ac",
+      "provenance": "Official adjacent .sha256sum",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "gst-plugins-good",
+      "version": "1.28.6",
+      "role": "native-library",
+      "archive": "gst-plugins-good-1.28.6.tar",
+      "root": "gst-plugins-good-1.28.6",
+      "url": "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.28.6.tar.xz",
+      "sha256": "b0c620a4b18b6ee931b4c43bbf1760d308666dc37f730a7e7f1ad327e59ce2df",
+      "provenance": "Official adjacent .sha256sum",
+      "relation": "Codex 0.158.0 voice runtime build inputs; native-library"
+    },
+    {
+      "name": "@lydell/node-pty-linux-arm64",
+      "version": "1.1.0",
+      "url": "https://codeload.github.com/lydell/node-pty/tar.gz/0407346d07b22729198c26d564011d96fca33297",
+      "relation": "install/cache/@lydell/node-pty-linux-arm64/1.1.0@@@1",
+      "revision": "0407346d07b22729198c26d564011d96fca33297",
+      "sha256": "486ec981fda5145437bb64f244741f1706da44620bbbaabb4b319dae957512bb"
+    },
+    {
+      "name": "@npmcli/agent",
+      "version": "3.0.0",
+      "url": "https://codeload.github.com/npm/agent/tar.gz/94f346d882458ac9481d015c55057d15f5899bf1",
+      "relation": "lib/node_modules/npm/node_modules/@npmcli/agent",
+      "revision": "94f346d882458ac9481d015c55057d15f5899bf1",
+      "sha256": "2c4ce645c8c8f8e0762b319984ad7b863ad9d7d0c6c74af8eaab2ef1e52b4fc3"
+    },
+    {
+      "name": "@sigstore/verify",
+      "version": "2.1.1",
+      "url": "https://codeload.github.com/sigstore/sigstore-js/tar.gz/b5af5ac566fd569b3585fd5133acee2eb2083dba",
+      "relation": "lib/node_modules/npm/node_modules/@sigstore/verify",
+      "revision": "b5af5ac566fd569b3585fd5133acee2eb2083dba",
+      "sha256": "be44867adc6ab6b32320b632402e22cc5a0756baef7a04030a584436614d7bc4"
+    },
+    {
+      "name": "eastasianwidth",
+      "version": "0.2.0",
+      "url": "https://codeload.github.com/komagata/eastasianwidth/tar.gz/b89f04d44dc786885615e94cd6e2ba1ef7866fa4",
+      "relation": "lib/node_modules/npm/node_modules/eastasianwidth",
+      "revision": "b89f04d44dc786885615e94cd6e2ba1ef7866fa4",
+      "sha256": "6a0dbff2dbb2411bfc265746f532b4fe0e58e6818b57de5419d704b03e519ff1"
+    },
+    {
+      "name": "err-code",
+      "version": "2.0.3",
+      "url": "https://codeload.github.com/IndigoUnited/js-err-code/tar.gz/92511d41a6a926c94c9d11493404867b1e92a77a",
+      "relation": "lib/node_modules/npm/node_modules/err-code",
+      "revision": "92511d41a6a926c94c9d11493404867b1e92a77a",
+      "sha256": "be37b86e0e29f3bd3d32b41e28ca9e83e246fc4c983c94ebce34d61e1ff65f82"
+    },
+    {
+      "name": "spdx-exceptions",
+      "version": "2.5.0",
+      "url": "https://codeload.github.com/kemitchell/spdx-exceptions.json/tar.gz/3aa64bec339abc6a3eca00c3436aaa7e154b8799",
+      "relation": "lib/node_modules/npm/node_modules/spdx-exceptions",
+      "revision": "3aa64bec339abc6a3eca00c3436aaa7e154b8799",
+      "sha256": "b3b3099026441e9c3895a85f34092c63154a55aadf1b70faf3cb14f53e5d0227"
+    },
+    {
+      "name": "spdx-license-ids",
+      "version": "3.0.23",
+      "url": "https://codeload.github.com/jslicense/spdx-license-ids/tar.gz/a2a975daf48bbc2afdc8e7c304405b44c656fd53",
+      "relation": "lib/node_modules/npm/node_modules/spdx-license-ids",
+      "revision": "a2a975daf48bbc2afdc8e7c304405b44c656fd53",
+      "sha256": "497e2f3abeef8f2a909cf1102059c249513830bc15468f788210b6c24fbd9e1a"
+    },
+    {
+      "name": "codex",
+      "version": "0.158.0",
+      "revision": "064c6b8c737f5b41d171fdda80bd9ef10ad06eb3",
+      "url": "https://codeload.github.com/openai/codex/tar.gz/064c6b8c737f5b41d171fdda80bd9ef10ad06eb3",
+      "relation": "Codex native hosts, voice build/patch/package recipes and platform release definitions",
+      "sha256": "4c86381985c8636b6e39137cced1d20684fba4aa518b196c41b643e1f5dae617"
+    },
+    {
+      "name": "gemini-cli",
+      "version": "0.61.0",
+      "url": "https://codeload.github.com/google-gemini/gemini-cli/tar.gz/refs/tags/v0.61.0",
+      "relation": "Gemini bundled example source grant",
+      "sha256": "917e0ac08eb3ef2048910ecc84d4da672ad0c58d82bb2eaa1d6f9e18af80241d"
+    },
+    {
+      "name": "nan",
+      "version": "2.29.0",
+      "url": "https://codeload.github.com/nodejs/nan/tar.gz/refs/tags/v2.29.0",
+      "relation": "NAN tools/1to2 grant",
+      "sha256": "b9f0759ecb0fb440640abb01ffab6061c1bb9afa54f28584001bdbce3e19b6ae"
+    },
+    {
+      "name": "npm",
+      "version": "10.9.9",
+      "url": "https://codeload.github.com/npm/cli/tar.gz/refs/tags/v10.9.9",
+      "relation": "Artistic Standard Version complete upstream source",
+      "sha256": "ffd026554712cc9229c80086d58daea0b590b2bae4cedd5c970c83071abc572f"
+    },
+    {
+      "name": "keytar",
+      "version": "7.10.6",
+      "url": "https://registry.npmjs.org/@github/keytar/-/keytar-7.10.6.tgz",
+      "relation": "Exact published keytar sources and platform prebuilds",
+      "sha256": "6581f2c5a79c77ff0edd9f143d50e03c7ae2ec5b2d0781a8704b67fabeed55cf"
+    },
+    {
+      "name": "imurmurhash",
+      "version": "0.1.4",
+      "url": "https://registry.npmjs.org/imurmurhash/-/imurmurhash-0.1.4.tgz",
+      "relation": "Exact published source with full MIT grant in README",
+      "sha256": "ac23a031966a7371d192e35c7852ab31c772b7d4e468ddd886ad3c014372cb60"
+    },
+    {
+      "name": "ripgrep",
+      "version": "15.2.0",
+      "url": "https://codeload.github.com/BurntSushi/ripgrep/tar.gz/refs/tags/15.2.0",
+      "relation": "Shipped rg --version: 15.2.0 e89fff89ac; release dotslash identifies separate arm64 and amd64 payload archives",
+      "sha256": "7605249d3eb0d5f170e3414498e3344e26b1e7a147aec518b57090b80036a562"
+    },
+    {
+      "name": "ripgrep-pcre2",
+      "version": "10.45",
+      "url": "https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.45/pcre2-10.45.tar.gz",
+      "relation": "Shipped rg reports statically available PCRE2 10.45, distinct from voice PCRE2 10.47",
+      "sha256": "0e138387df7835d7403b8351e2226c1377da804e0737db0e071b48f07c9d12ee"
+    },
+    {
+      "name": "zsh",
+      "revision": "77045ef899e53b9598bebc5a41db93a548a40ca6",
+      "url": "https://codeload.github.com/zsh-users/zsh/tar.gz/77045ef899e53b9598bebc5a41db93a548a40ca6",
+      "relation": "Exact zsh source commit in Codex zsh release workflow; matching patch and build script in Codex source archive",
+      "sha256": "4dbbd45e64b4afa03d7cb363c2b1583619187f3d1508707fc532e4a77d5e6597"
+    },
+    {
+      "name": "codex-amd64-payload",
+      "version": "0.158.0-linux-x64",
+      "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.158.0-linux-x64.tgz",
+      "integrity": "sha512-mY12GZPM8TuOWVGxCyNV2NSA8t1uIupm9Nhu9VeQVEvvxBKN08U8bLH+vn7oISUHZPC8bwhROIbo/ZUxqV6XMg==",
+      "relation": "Independent exact linux/amd64 release payload manifest and hashes, not current arm64 image provenance",
+      "sha256": "3fe84106aaf2fbfc13299068510d34b3d0157eeb9af4b37be8cf5416f485a6bb"
+    },
+    {
+      "name": "@npmcli/agent-published",
+      "version": "3.0.0",
+      "url": "https://registry.npmjs.org/@npmcli/agent/-/agent-3.0.0.tgz",
+      "sha256": "fc9996041d3760e5cff0a5121d4cf0fc853898ceebd5d854e622e52ec11a5cb9",
+      "integrity": "sha512-S79NdEgDQd/NGCay6TCoVzXSj74skRZIKJcpJjC5lOq34SZzyI6MqtiiWoiVWoVrTcGjNeC4ipbh1VIHlpfF5Q==",
+      "relation": "Exact published @npmcli/agent corresponding source; alternate missing-licensor-text probe"
+    },
+    {
+      "name": "eastasianwidth-published",
+      "version": "0.2.0",
+      "url": "https://registry.npmjs.org/eastasianwidth/-/eastasianwidth-0.2.0.tgz",
+      "sha256": "eccfa12bbda71f9f8e09de7ad1a4e554369a6b4d43d7f86085e85055a8694c27",
+      "integrity": "sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==",
+      "relation": "Exact published eastasianwidth corresponding source; alternate missing-licensor-text probe"
+    },
+    {
+      "name": "err-code-published",
+      "version": "2.0.3",
+      "url": "https://registry.npmjs.org/err-code/-/err-code-2.0.3.tgz",
+      "sha256": "a5664f4a04152f1dcfa51035879284895c5e104aa13d9e0627567ead2eb248e2",
+      "integrity": "sha512-2bmlRpNKBxT/CRmPOlyISQpNj+qSeYvcym/uT0Jx2bMOlKLtSy1ZmLuVxSEKKyor/N5yhvp/ZiG1oE3DEYMSFA==",
+      "relation": "Exact published err-code corresponding source; alternate missing-licensor-text probe"
+    }
+  ],
+  "bundledSources": [
+    {
+      "name": "gvdb",
+      "included_by": "glib",
+      "revision": "2b42fc75f09dbe1cd1057580b5782b08f2dcb400",
+      "path": "subprojects/gvdb",
+      "provenance": "Included in the pinned GLib release archive; no separate fetch"
+    }
+  ]
+}

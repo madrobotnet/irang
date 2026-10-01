@@ -1,0 +1,55 @@
+{
+  "version": "Unicode 6.0.0",
+  "inputSha256": "e947a0ea387e62c0797600406055703d859236113cd7b82c96625141a8294592",
+  "explicitRecords": 23695,
+  "repeatedPoints": 16384,
+  "defaultWideRanges": [
+    [
+      13312,
+      19903
+    ],
+    [
+      19968,
+      40959
+    ],
+    [
+      63744,
+      64255
+    ],
+    [
+      131072,
+      173791
+    ],
+    [
+      173824,
+      177983
+    ],
+    [
+      177984,
+      178207
+    ],
+    [
+      194560,
+      195103
+    ],
+    [
+      131072,
+      196605
+    ],
+    [
+      196608,
+      262141
+    ]
+  ],
+  "generatedRanges": 442,
+  "labels": [
+    "N",
+    "F",
+    "H",
+    "W",
+    "Na",
+    "A"
+  ],
+  "sourceCopyright": "Copyright (c) 1991-2010 Unicode, Inc.",
+  "sourceLicenseReference": "http://www.unicode.org/terms_of_use.html"
+}
