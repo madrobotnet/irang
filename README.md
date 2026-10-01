@@ -13,9 +13,9 @@
 
 ![Irang home with today's note, the inbox, recently edited notes and pinned notes](docs/images/irang-workbench.png)
 
-Irang runs on your own server and has a single owner. Drop links and quick
-thoughts into an inbox, turn them into Markdown notes, and let the connections
-between notes build up over time. You won't need an AI account for any of this.
+Irang runs on your own server for one owner. Save links and quick thoughts in
+the inbox, turn them into Markdown notes, and build connections between notes
+over time. None of these features needs an AI account.
 
 ## What it does
 
@@ -26,8 +26,8 @@ between notes build up over time. You won't need an AI account for any of this.
   aliases, and see backlinks and unlinked mentions on every note. Type `[[`
   to get title and alias suggestions or create a missing note. Turn an
   unlinked mention into a link with one click.
-- **Daily notes and templates.** Open today's note, or any other day's from a
-  small calendar. Templates, including a default for new daily notes, fill in
+- **Daily notes and templates.** Open today's note or choose another day from
+  a small calendar. Templates, including a default for new daily notes, fill in
   `{{date}}` and `{{title}}`.
 - **Tasks.** Every `- [ ]` checkbox in your notes appears on one Tasks page.
   Tick them off there or in a note's preview.
@@ -63,40 +63,88 @@ automatic backups.
 You need Docker and **Docker Compose 5.1.0 or newer**; check with
 `docker compose version`. Older Compose releases have an interpolation bug
 that can reject a valid configuration. You don't need Bun or Node on the host.
-The commands below use a POSIX shell and were tested on Linux, not on macOS or
-Windows.
+The supported image platforms are **linux/amd64** and **linux/arm64**. Check the
+selected release's workflow receipts for native image, private-pull, and
+persistence verification on both platforms; see the [release guide](docs/RELEASING.md).
+The commands use a POSIX shell; macOS and Windows haven't been tested.
+
+### Released installation archive
+
+The installation bundle is `irang-2.2.0-install.tar.gz`. It includes
+`compose.yml`, its required `docker/postgres/production/01-app-role.sql` mount,
+the documentation, notices, and `release.json`. The archived Compose file pins
+the image by digest. Keep the bundle's directory structure intact.
+
+**Private release access:** while the repository and GHCR package are private,
+downloads and pulls require access permission. The commands below require a
+completed `v2.2.0` release with the checks in the [release guide](docs/RELEASING.md).
+Use the GitHub CLI to download its assets and `jq` to read the image reference:
+
+```sh
+mkdir irang-release-2.2.0
+cd irang-release-2.2.0
+gh release download v2.2.0 --repo madrobotnet/irang
+sha256sum --check SHA256SUMS
+tar -xzf irang-2.2.0-install.tar.gz
+cd irang
+
+IRANG_IMAGE=$(jq -r .image release.json)
+export IRANG_IMAGE
+docker pull "$IRANG_IMAGE"
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/install \
+  "$IRANG_IMAGE" bun --no-env-file /app/scripts/setup-env.mjs /install/.env
+
+# Edit .env: set INSECURE_COOKIES=1 for loopback HTTP, or keep 0 for HTTPS.
+docker compose up -d --wait --wait-timeout 180
+curl -i http://127.0.0.1:3000/api/health
+```
+
+Private GHCR pulls require separate package read access. GitHub CLI repository
+authentication alone isn't a Docker registry credential. Anonymous downloads
+and pulls aren't available until the owner publishes the repository and,
+separately, the GHCR package. If you don't have registry access, build from
+source instead.
+
+### Build from source
+
+While the repository is private, cloning requires authorized repository access.
+This path doesn't require GHCR access. Compose has no build configuration, so
+build the image explicitly:
 
 ```sh
 git clone https://github.com/madrobotnet/irang.git
 cd irang
+docker build --build-arg VERSION=2.2.0 \
+  --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
+IRANG_IMAGE=irang:local
+export IRANG_IMAGE
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/install \
+  irang:local bun --no-env-file /app/scripts/setup-env.mjs /install/.env
 
-# One-shot Bun container: writes ./.env and prints your installation code
-docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \
-  oven/bun:1.4.2-slim bun --no-env-file scripts/setup-env.mjs
-
-# Build the app image from source and start it (loopback HTTP)
-INSECURE_COOKIES=1 docker compose up -d --build
+# Edit .env: add IRANG_IMAGE=irang:local.
+# Set INSECURE_COOKIES=1 for loopback HTTP, or keep 0 for HTTPS.
+docker compose pull db
+docker compose up -d --no-build --pull never --wait --wait-timeout 180
+curl -i http://127.0.0.1:3000/api/health
 ```
 
 Then open `http://127.0.0.1:3000/setup`, enter the installation code, and
 choose your owner password (at least 12 characters).
 
-The command above sets `INSECURE_COOKIES=1` for that invocation only. To keep
-using loopback HTTP, change the existing `INSECURE_COOKIES=0` line in `.env` to
-`INSECURE_COOKIES=1` before recreating the app container or upgrading. For
-HTTPS, set that line back to `0` before recreating the container.
+Keep `INSECURE_COOKIES=1` in `.env` for loopback HTTP across container
+recreation and upgrades. For HTTPS, set it to `0` before recreating the app.
 
-Here's what each step does:
+What happens during setup:
 
-1. `setup-env` runs in a throwaway Bun container. It creates a private `.env`
-   (mode 0600) with three random secrets: the app database password, the
+1. `setup-env` runs inside the selected application image. It creates a private
+   `.env` (mode 0600) with three random secrets: the app database password, the
    database admin password, and the installation code (`SETUP_TOKEN`). It
    prints the code once. If a `.env` already exists, it stops without changing
    anything. Running `bun install` on your machine won't create this file or
    the code.
-2. `docker compose up -d --build` builds the app image from this repository's
-   `Dockerfile`. There's no prebuilt image to pull. The app starts after the
-   database passes its health check.
+2. Compose starts the selected image after the database passes its health check.
+   Source Compose defaults to `ghcr.io/madrobotnet/irang:2.2.0`; the release
+   archive uses its verified digest, and a source build uses `IRANG_IMAGE=irang:local`.
 3. The app listens on `127.0.0.1` only. Use `INSECURE_COOKIES=1` only for
    loopback HTTP; HTTPS requires `INSECURE_COOKIES=0`.
 
@@ -133,10 +181,15 @@ Put a TLS-terminating reverse proxy in front of the loopback port, keep
 > copy attachments out of the old container **before** recreating it. The old
 > Compose file didn't persist attachments.
 
-For installs on 2.1 or later using the same Compose project, back up first,
-then run `git pull` and `docker compose up -d --build`. Before recreating the
-app, check that `.env` keeps `INSECURE_COOKIES=1` for loopback HTTP or `0` for HTTPS.
-The backup and restore steps are in
+For installs on 2.1 or later, back up first. Keep the existing installation
+directory, Compose project name, `.env`, and physical data volumes. Replace only
+the distribution files from the next archive, select its `release.json` image,
+pull it, and run `docker compose up -d --wait --wait-timeout 180`. Source
+installs rebuild with `docker build`, keep `IRANG_IMAGE=irang:local`, and
+recreate with `--no-build --pull never`. Don't move an existing `second-brain`
+project into a new `irang` directory and accidentally select empty volumes.
+Keep `INSECURE_COOKIES=1` for loopback HTTP or `0` for HTTPS in `.env`.
+The full upgrade, backup, and restore procedures are in
 [Data, backup and upgrades](docs/SETUP.md#9-data-backup-and-upgrades).
 
 ## Your data and the network
@@ -162,9 +215,9 @@ through something you set up or do:
   involve outside traffic.
 
 Both AI features are off by default. API keys and account credentials stay
-on the server and are never sent back to the browser. This isn't a
-zero-network or fully offline app. AI consent controls chat and Jev, not every
-network request.
+on the server and are never sent back to the browser. Irang still makes the
+network requests described above, so it isn't fully offline. AI consent
+controls chat and Jev, not every network request.
 
 ## AI providers (optional)
 
@@ -184,7 +237,8 @@ instead.
 
 ## Development
 
-You'll need Bun 1.4.2 and Docker.
+You'll need Bun 1.4.2 and Docker. Node 22 is needed only for the upstream
+account-login CLI subprocess fixtures, not to run the application.
 
 ```sh
 bun install --frozen-lockfile
@@ -192,8 +246,9 @@ cp .env.example .env.local
 bun run hash-password    # prints an AUTH_PASSWORD_HASH=... line
 ```
 
-Paste that line into `.env.local` as printed, backslashes included. Then start
-the development database and the app:
+Paste that double-quoted line into `.env.local` exactly as printed. Keep its
+existing `\$` escapes. Don't add escapes or double the dollar signs.
+Then start the development database and the app:
 
 ```sh
 bun run db:up
@@ -208,9 +263,21 @@ operations are in
 ## Docs
 
 - [docs/SETUP.md](docs/SETUP.md): installation, HTTPS, upgrades, backup, recovery
+- [docs/RELEASING.md](docs/RELEASING.md): native image releases, asset verification, owner publication steps
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): structure and API contracts
 - [docs/REBUILD-AUDIT.md](docs/REBUILD-AUDIT.md): historical v2 rebuild defects and verification results
 
+## Support the project
+
+If Irang is useful to you, you can support its development on Ko-fi.
+
+[![Support on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/madrobot)
+
 ## License
 
-[MIT](LICENSE).
+Irang's application code is [MIT](LICENSE). Dependencies, runtimes, official
+account-login CLIs, fonts, and the container's operating system keep their own
+licenses and service terms. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md);
+the image retains notices and inventories under `/app/licenses` and
+`/usr/share/irang/licenses`. The application license doesn't relicense the
+whole image.

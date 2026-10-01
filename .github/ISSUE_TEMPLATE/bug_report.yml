@@ -1,0 +1,101 @@
+name: Bug report
+description: Report a reproducible Irang bug with non-sensitive examples.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for software bugs. For deployment questions, read [Support](https://github.com/madrobotnet/irang/blob/main/SUPPORT.md).
+        For a suspected vulnerability, don't submit this form. Follow [Security](https://github.com/madrobotnet/irang/blob/main/SECURITY.md) and email hello@madrobot.net privately.
+
+        Reports may become public. Never include passwords or hashes, installation codes, full env files or logs, rendered Compose config, cookies, authorization headers, provider auth files, AI keys or tokens, database backups, or private notes.
+        Use invented notes and attachments. Review screenshots and browser URLs for account details and authorization codes.
+  - type: checkboxes
+    id: safe-report
+    attributes:
+      label: Before submitting
+      options:
+        - label: I've searched existing issues for this problem.
+          required: true
+        - label: This is a software bug, not a private vulnerability report or a provider billing or entitlement question.
+          required: true
+        - label: I've reviewed every field and attachment and removed secrets, auth files, full env files or logs, and private notes.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Irang version or source commit
+      description: Give the version, commit, or image digest if known. Don't attach a complete image inspection.
+      placeholder: "2.2.0 or a source commit"
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Prebuilt container image
+        - Locally built container image
+        - Local Bun development
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Non-sensitive environment facts
+      description: Host OS, CPU architecture, browser version, and relevant Bun, Node, or Compose versions. No hostnames, IPs, usernames, or file dumps.
+      placeholder: "Linux ARM64, Compose 5.5.1, Firefox; loopback HTTP"
+    validations:
+      required: true
+  - type: dropdown
+    id: access
+    attributes:
+      label: Access path
+      options:
+        - Loopback HTTP
+        - SSH tunnel to loopback HTTP
+        - HTTPS reverse proxy
+        - Other or not relevant
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Give numbered steps using an invented note or attachment. Leave out live URLs, credentials, private content, and database exports.
+      placeholder: |
+        1. Create a note titled Example with the body Example text.
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe what happened and any sanitized status or error code. Don't paste full logs or network exports.
+    validations:
+      required: true
+  - type: input
+    id: ai-context
+    attributes:
+      label: AI connection details, only if relevant
+      description: Give only the provider name, API or Auth mode, model ID, and protocol. Leave out keys, auth files, codes, account IDs, and private endpoint addresses. Don't make paid requests to prepare this report.
+      placeholder: "OpenAI Compatible, API, example-model, Chat Completions"
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Optional sanitized evidence
+      description: A small invented example, a reviewed error excerpt, or a cropped screenshot. Remove personal paths and note text. Don't attach full env files, logs, auth files, cookies, or tokens.
+    validations:
+      required: false

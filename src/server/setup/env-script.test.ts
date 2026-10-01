@@ -85,3 +85,31 @@ test("exports a password hash that survives Compose dotenv parsing", async () =>
   expect(hash.slice(0, 10)).toBe("$argon2id$");
   expect(await Bun.password.verify(password, hash)).toBe(true);
 });
+
+test("exports a password hash that survives the local Next environment loader", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "second-brain-local-password-env-"));
+  directories.push(directory);
+  const root = path.resolve(path.dirname(script), "..");
+  const password = "fixture-local-Next-literal-hash";
+  const child = Bun.spawn([Bun.which("bun") ?? "bun", "--no-env-file", path.join(root, "scripts/hash-password.mjs"), "--env"], {
+    stdin: new Blob([`${password}\n`]), stdout: "pipe", stderr: "pipe",
+  });
+  const [exportExit, exported, exportErrors] = await Promise.all([
+    child.exited, new Response(child.stdout).text(), new Response(child.stderr).text(),
+  ]);
+  expect(exportExit, exportErrors).toBe(0);
+  await writeFile(path.join(directory, ".env.local"), exported, { mode: 0o600 });
+  const local = Bun.spawn([
+    Bun.which("bun") ?? "bun", "--no-env-file", "-e",
+    'import { loadEnvConfig } from "@next/env"; loadEnvConfig(process.argv[1], true); process.stdout.write(process.env.AUTH_PASSWORD_HASH ?? "");',
+    directory,
+  ], {
+    cwd: root, env: { PATH: process.env.PATH, NODE_ENV: "development" }, stdout: "pipe", stderr: "pipe",
+  });
+  const [localExit, hash, localErrors] = await Promise.all([
+    local.exited, new Response(local.stdout).text(), new Response(local.stderr).text(),
+  ]);
+  expect(localExit, localErrors).toBe(0);
+  expect(hash.slice(0, 10)).toBe("$argon2id$");
+  expect(await Bun.password.verify(password, hash)).toBe(true);
+});

@@ -13,7 +13,7 @@ if (!password) {
 }
 const hash = await argon2.hash(password, { type: argon2.argon2id });
 if (process.argv.includes("--env")) {
-  process.stdout.write(`AUTH_PASSWORD_HASH='${hash}'\n`);
+  process.stdout.write(`AUTH_PASSWORD_HASH="${hash.replaceAll("$", "\\$")}"\n`);
 } else {
   process.stdout.write(`${hash}\n`);
 }

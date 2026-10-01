@@ -1,11 +1,12 @@
-# Irang — Installation & Configuration
+# Irang: Installation & Configuration
 
-Deployment guide for a single-owner, self-hosted Irang instance. Everything
-ships as two Docker Compose services (the Next.js app and a Postgres database) plus
-two named data volumes. Host Bun is **not** required: the few one-shot scripts run
-through the same `oven/bun:1.4.2-slim` image the app is built from.
+This guide covers a self-hosted Irang instance for one owner. The deployment
+has two Docker Compose services (the Next.js app and a Postgres database) and
+two active named data volumes. You **don't need** Bun or Node on the host:
+the operator scripts run inside the selected application image.
 
-Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
+Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md). Maintainer release
+process and publication status: [RELEASING.md](RELEASING.md).
 
 ## 1. What you deploy
 
@@ -13,28 +14,44 @@ Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Service | Image | Notes |
 | --- | --- | --- |
-| `app` | built from `Dockerfile` (Bun standalone Next.js server) | Runs as user `nextjs` (UID/GID 1001). Publishes `127.0.0.1:${APP_PORT:-3000}:3000` — loopback only. Docker healthcheck polls `/api/health`. |
-| `db` | `pgvector/pgvector:0.8.6-pg18` | Internal only (no host port). Healthcheck `pg_isready -U postgres`; the app waits for it. On a **fresh** data volume the Postgres entrypoint runs `docker/postgres/production/01-app-role.sql` — it precreates the `pgcrypto`, `vector`, and `pg_trgm` extensions and the restricted application role (section 4). |
+| `app` | `${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.2.0}` | Image-only Compose service, running the Bun standalone Next.js server as `nextjs` (UID/GID 1001). Publishes `127.0.0.1:${APP_PORT:-3000}:3000`, loopback only. Docker healthcheck uses `/api/health`. |
+| `db` | `pgvector/pgvector:0.8.6-pg18` | Internal only (no host port). Healthcheck `pg_isready -U postgres -d second_brain`; the app waits for it. On a **fresh** data volume the Postgres entrypoint runs `docker/postgres/production/01-app-role.sql`. It precreates the `pgcrypto`, `vector`, and `pg_trgm` extensions and the restricted application role (section 4). |
 
-Named volumes (Compose prefixes them with the project name — the directory name by
-default, e.g. `irang_app-data` for a fresh clone, or `second-brain_app-data` for an
-install cloned before the repository was renamed):
+Compose prefixes named volumes with the project name, which defaults to the
+directory name. For example, `irang_app-data` belongs to a fresh clone, while
+`second-brain_app-data` may belong to an install cloned before the repository
+was renamed:
 
 | Volume | Mounted at | Contents |
 | --- | --- | --- |
 | `app-data` | `/app/.data` (app container) | Attachments (`.data/attachments`) and the account-login CLI credential stores (`auth/codex`, `auth/google`), owned by UID 1001, `auth` mode 0700 |
-| `postgres-data` | `/var/lib/postgresql` (db container) | All application data: notes, inbox, chat threads, attachments metadata, sessions, and the saved AI settings |
+| `postgres-data` | `/var/lib/postgresql` (db container) | All application data: notes, inbox, chat threads, attachment metadata, sessions, and saved AI settings |
+
+Compose also declares the legacy key `second_brain_pg18`; only the selected
+database volume is mounted. These are project-scoped logical keys, not fixed
+global volume names. Section 10 explains how to keep an existing physical volume.
+
+The release archive pins `app.image` to
+`ghcr.io/madrobotnet/irang:2.2.0@sha256:...`, recorded in `release.json`.
+Its other parsed Compose fields match source. Keep the relative
+`docker/postgres/production` directory beside Compose; downloading only
+`compose.yml` omits the required database initialization script.
 
 ## 2. Prerequisites
 
 - Docker Engine + Docker Compose **5.1.0 or newer**. CI pins Compose 5.5.1;
   this guide was verified with Docker 29 / Compose 5.5.1 on Linux arm64.
+- Image targets are **linux/amd64** and **linux/arm64**. Check the selected
+  release's workflow receipts for native image, private-pull, API, persistence,
+  and cleanup verification on both platforms (see [RELEASING.md](RELEASING.md)).
 - The POSIX shell commands were verified on Linux. macOS and Windows are
-  untested. For anything reachable beyond `127.0.0.1`, a TLS-terminating
-  reverse proxy you control (section 6).
-- No host Node or Bun: one-shot scripts run via `docker run` with the mounted
-  repository (section 3). You only need them once, before the first
-  `docker compose up`.
+  untested. For access beyond `127.0.0.1`, you need a TLS-terminating reverse
+  proxy that you control (section 6).
+- The archive path uses `tar`, `sha256sum`, and `jq`. Authorized maintainers
+  also use `gh release download` while the repository is private.
+- No host Node or Bun: operator scripts are bundled under `/app/scripts`
+  in the application image (section 3). Bun 1.4.2 is required for development;
+  Node 22 is only for upstream CLI subprocess fixtures.
 
 Check `docker compose version` before installing or upgrading. Older Compose
 clients, including 2.38.2, eagerly evaluate required variables inside unused
@@ -44,43 +61,97 @@ Compose 5.1.0 includes the
 Update the Compose plugin before proceeding; do not work around those errors
 by regenerating existing passwords or selecting a different data volume.
 
-## 3. Step 1 — generate the operator `.env`
+## 3. Step 1: select the image and generate the operator `.env`
 
-Run from the repository root. This creates the file Compose reads (`./.env`) with
-fresh random secrets, mode `0600`, and prints the installation code once:
+### Installation archive
+
+These archive commands require a completed `v2.2.0` release with the checks
+described in [RELEASING.md](RELEASING.md). While the repository and GHCR package
+are private, download and pull access is limited to authorized users. Download
+all release assets into an empty directory, verify their checksums, then extract:
 
 ```sh
-docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \
-  oven/bun:1.4.2-slim bun --no-env-file scripts/setup-env.mjs
+mkdir irang-release-2.2.0
+cd irang-release-2.2.0
+gh release download v2.2.0 --repo madrobotnet/irang
+sha256sum --check SHA256SUMS
+tar -xzf irang-2.2.0-install.tar.gz
+cd irang
+IRANG_IMAGE=$(jq -r .image release.json)
+export IRANG_IMAGE
+docker pull "$IRANG_IMAGE"
+```
+
+Use this same digest reference for bootstrap and the app. Archived Compose
+already uses it by default; remove or update any old `IRANG_IMAGE` override in
+`.env`. Source Compose uses the readable version tag
+`ghcr.io/madrobotnet/irang:2.2.0`, which release policy treats as immutable.
+
+Private pulls need a Docker registry credential with package read access.
+GitHub CLI access to a private repository doesn't itself provide that
+credential. Native release jobs prove private pulls with their own job tokens;
+don't export those tokens to your host. Anonymous package access is pending
+the owner's separate repository and package visibility changes.
+
+### Explicit source build
+
+If GHCR access isn't available, build locally. Cloning still requires repository
+access while it's private. There is no fallback Compose file or build layer:
+
+```sh
+git clone https://github.com/madrobotnet/irang.git
+cd irang
+docker build --build-arg VERSION=2.2.0 \
+  --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
+IRANG_IMAGE=irang:local
+export IRANG_IMAGE
+```
+
+### Generate the installation file
+
+From the extracted `irang/` directory or source checkout, run the selected image.
+The script creates the file Compose reads (`./.env`) with fresh random secrets
+and mode `0600`. It prints the installation code once:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/install \
+  "$IRANG_IMAGE" bun --no-env-file /app/scripts/setup-env.mjs /install/.env
 ```
 
 Output:
 
 ```
-Created /repo/.env
+Created /install/.env
 Installation code: <64 hex chars>
 Keep this code private. Enter it on /setup after starting the server.
 ```
+
+For a source build, add `IRANG_IMAGE=irang:local` to the generated `.env`;
+the shell export above won't survive a new session. For loopback HTTP, change
+the existing `INSECURE_COOKIES=0` line to `INSECURE_COOKIES=1` in `.env`.
+For HTTPS, keep `0`. Set these before starting the app, not just for one command.
+
+Before the first Compose command for a new installation, check for inherited
+development overrides as described in section 7.
 
 The generated file contains:
 
 | Variable | Value | Purpose |
 | --- | --- | --- |
 | `POSTGRES_PASSWORD` | 64 random hex chars, distinct | Application DB role password; Compose interpolates it into `DATABASE_URL`, and the db init script uses it to create the role |
-| `POSTGRES_ADMIN_PASSWORD` | 64 random hex chars, distinct | Password of the db container's `postgres` superuser account; operator maintenance only — never given to the app |
+| `POSTGRES_ADMIN_PASSWORD` | 64 random hex chars, distinct | Password of the db container's `postgres` superuser account; operator maintenance only, never given to the app |
 | `SETUP_TOKEN` | 64 random hex chars, distinct | The "installation code" that guards the first-run wizard |
 | `APP_PORT` | `3000` | Loopback port published by the app service |
 | `INSECURE_COOKIES` | `0` | Session cookie `Secure` flag (see section 6) |
 | `TRUSTED_PROXY_HOPS` | `1` | Reverse-proxy trust depth for client IPs (see section 6) |
 
-The script refuses to overwrite an existing `.env` (it uses an exclusive-create
-write). If `.env` already exists, nothing is changed.
+The script uses an exclusive-create write: if `.env` already exists, it stops
+without changing the file.
 
 If you maintain your own env file instead, generate only the code and paste it in:
 
 ```sh
-docker run --rm -v "$PWD":/repo -w /repo --user "$(id -u):$(id -g)" \
-  oven/bun:1.4.2-slim bun run setup-token
+docker run --rm "$IRANG_IMAGE" bun --no-env-file /app/scripts/setup-token.mjs
 # prints: SETUP_TOKEN=<64 hex chars>
 ```
 
@@ -90,26 +161,38 @@ stored passwords, but require an explicit data-volume choice (section 10).
 Do not run `setup-env` over an existing installation or generate replacement
 database passwords during an upgrade.
 
-**Windows note (untested):** the equivalent in PowerShell is
+**Windows note (untested):** after extracting the archive, the metadata and
+bootstrap commands translate to PowerShell as follows:
 
 ```powershell
-docker run --rm -v "${PWD}:/repo" -w /repo oven/bun:1.4.2-slim bun --no-env-file scripts/setup-env.mjs
+$env:IRANG_IMAGE = (Get-Content ./release.json -Raw | ConvertFrom-Json).image
+docker pull $env:IRANG_IMAGE
+docker run --rm -v "${PWD}:/install" $env:IRANG_IMAGE bun --no-env-file /app/scripts/setup-env.mjs /install/.env
 ```
 
-Docker Desktop's file sharing maps bind-mount file ownership to your Windows user,
-so the explicit `--user "$(id -u):$(id -g)"` uid mapping used on Linux/macOS has no
-direct equivalent and is omitted. This PowerShell invocation has not been executed
-on Windows; treat it as a translation, not a tested path.
+The POSIX `--user "$(id -u):$(id -g)"` mapping has no direct PowerShell
+equivalent and is omitted. Check Docker Desktop's file sharing and the resulting
+file permissions. These commands haven't been executed on Windows; they are a
+translation, not a tested installation path.
 
-## 4. Step 2 — build and start
+## 4. Step 2: start the selected image
+
+For the pulled release image:
 
 ```sh
-INSECURE_COOKIES=1 docker compose up -d --build
+docker compose up -d --wait --wait-timeout 180
 ```
 
-This command is for loopback HTTP. For public HTTPS keep
-`INSECURE_COOKIES=0` instead (section 6). To keep using local HTTP across
-later recreations, set `INSECURE_COOKIES=1` in `.env`.
+For the source-built `irang:local` image, generate `.env` in section 3 and add
+`IRANG_IMAGE=irang:local` before running:
+
+```sh
+docker compose pull db
+docker compose up -d --no-build --pull never --wait --wait-timeout 180
+```
+
+Compose only selects an image; it doesn't build one. Keep
+`INSECURE_COOKIES=1` in `.env` for loopback HTTP, or `0` for HTTPS (section 6).
 The db service becomes healthy first, then the app starts. Verify:
 
 ```sh
@@ -119,7 +202,7 @@ curl -i http://127.0.0.1:3000/api/health     # expect 200 {"ok":true}
 On the **first** start with an empty `postgres-data` volume, the db entrypoint runs
 `docker/postgres/production/01-app-role.sql` before accepting connections: it
 precreates the `pgcrypto`, `vector`, and `pg_trgm` extensions and creates the
-application role `second_brain` — login authorized with `POSTGRES_PASSWORD`,
+application role `second_brain`, login authorized with `POSTGRES_PASSWORD`,
 `NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION`, allowed to use and create in
 the `public` schema but nothing beyond. Entrypoint init scripts run only when the
 data volume is empty; they never re-run on an existing volume.
@@ -137,22 +220,22 @@ inside the db container (for example an interactive `psql` session). Never put
 `POSTGRES_ADMIN_PASSWORD` into `DATABASE_URL`, the app environment, or any
 application configuration.
 
-## 5. Step 3 — first-run wizard at `/setup`
+## 5. Step 3: first-run wizard at `/setup`
 
 Open `http://127.0.0.1:<APP_PORT>/setup`. The wizard asks for:
 
-1. **Installation code** — the `SETUP_TOKEN` value from the operator `.env`.
+1. **Installation code**: the `SETUP_TOKEN` value from the operator `.env`.
    It is compared server-side (constant-time digest compare) and is never sent
    back by the server or stored in the browser. Do not put it in links or URLs.
-2. **Login password** — 12–512 characters, entered twice. This becomes the
+2. **Login password**: 12-512 characters, entered twice. This becomes the
    application password used on every device.
-3. **AI connections (optional)** — both chat AI and Jev default to *off*; you can
+3. **AI connections (optional)**: both chat AI and Jev default to *off*; you can
    configure or change them later in Settings (section 8).
 
 Server behavior worth knowing:
 
 - The wizard is public only while the installation is genuinely empty. It is
-  disabled — and `/setup` redirects to `/login` — if `AUTH_PASSWORD_HASH` is set
+  disabled, and `/setup` redirects to `/login`, if `AUTH_PASSWORD_HASH` is set
   in the environment, or if any users, installation settings, notes, inbox items,
   chat threads, or attachments already exist.
 - The first owner account and the AI settings are written in a single database
@@ -172,7 +255,7 @@ flag is enabled in production builds unless `INSECURE_COOKIES=1`:
 
 - **Local loopback HTTP test:** set `INSECURE_COOKIES=1` in the operator `.env`,
   then `docker compose up -d` to recreate the app container. Use this only for a
-  loopback HTTP check — the cookie is sent over plain HTTP and the app is bound to
+  loopback HTTP check: the cookie is sent over plain HTTP and the app is bound to
   `127.0.0.1`, so it is not reachable from other machines.
 - **Public HTTPS:** leave `INSECURE_COOKIES=0` (the default). Put a TLS-terminating
   reverse proxy in front of the loopback-bound app on the same host. The proxy must
@@ -180,16 +263,18 @@ flag is enabled in production builds unless `INSECURE_COOKIES=1`:
   the request `Origin`, and a rewritten `Host` makes that check fail.
 
 `TRUSTED_PROXY_HOPS` (default `1`) controls which entry of the inbound
-`X-Forwarded-For` chain is treated as the real client IP: with hops = 1 the *last*
-entry is used, with hops = 2 the second-to-last, and so on. If the chain is shorter
-than the configured hops, the first entry is used, and only when the chain is empty
-does the app fall back to `X-Real-IP`. Non-IP entries are discarded. The deployment
-must restrict app ingress to the proxies it configures here.
+`X-Forwarded-For` chain is treated as the real client IP. Blank entries are removed
+before selection: with hops = 1 the *last* remaining entry is used, with hops = 2
+the second-to-last, and so on. If the chain is shorter than the configured hops,
+the first entry is used; only an empty chain falls back to `X-Real-IP`. If the
+selected value is not an IP address, no client IP is returned; the app does not
+try another entry or header. The deployment must restrict app ingress to the
+proxies it configures here.
 
 **Cloudflare topology warning:** with Cloudflare in front of your own reverse
 proxy, the chain reaching the app is typically `visitor, cloudflare-edge` (your
 proxy appends the Cloudflare edge address). The default `TRUSTED_PROXY_HOPS=1`
-then yields the edge address — *not* the real visitor IP — so login rate limiting
+then yields the edge address rather than the real visitor IP, so login rate limiting
 buckets all visitors together. Set `TRUSTED_PROXY_HOPS` to the number of proxies
 that append to `X-Forwarded-For` between the visitor and the app (typically `2`
 for Cloudflare + your proxy), and make sure your proxy appends (e.g. nginx
@@ -197,60 +282,100 @@ for Cloudflare + your proxy), and make sure your proxy appends (e.g. nginx
 
 ## 7. Environment files: what goes where
 
-There are two different env files and two hash-escaping dialects:
+There are two environment files. In `--env` mode, the hash tool prints a
+double-quoted Argon2 assignment with each `$` escaped as `\$`.
+Copy it into either dotenv file exactly as printed:
 
 | File | Created by | Used by | Dollar escaping |
 | --- | --- | --- | --- |
-| `.env` (repo root) | `bun run setup-env` | Docker Compose (variable interpolation + app environment) | Compose interpolates `.env` values: a literal `$` in a value must be written as `$$` |
-| `.env.local` | you: `cp .env.example .env.local` | local development (`bun run dev`, loaded by Next) | Next.js env expansion: use the escaped output of `bun run hash-password` as-is |
+| `.env` (installation directory) | image's `/app/scripts/setup-env.mjs` | Docker Compose (variable interpolation + app environment) | Keep the output's double quotes and `\$` escapes; no dollar doubling |
+| `.env.local` | you: `cp .env.example .env.local` | local development (`bun run dev`, loaded by Next) | Keep the output's double quotes and `\$` escapes; no added escapes or dollar doubling |
 
 `.env.example` is the template for the **local development** `.env.local`; it is
 not the Docker deployment file. The Docker `setup-env` flow creates a different
 `.env` and never overwrites it.
 
-Password hashes for `AUTH_PASSWORD_HASH` (recovery and pre-wizard deployments —
+**Exported shell variables override the operator file.** Compose uses exported
+values before `.env` or an explicitly selected `--env-file`. Selecting a file
+doesn't isolate its configuration from the invoking shell. In particular, an
+inherited development `DATABASE_URL` pointing to `127.0.0.1:55432` makes the app
+connect to its own container's loopback instead of `db:5432`, which can cause
+health HTTP 503 and `ECONNREFUSED`. An inherited `AUTH_PASSWORD_HASH` overrides
+the owner password and disables first-run setup.
+
+For a **new installation**, use a shell without development exports. If these
+two variables are inherited development overrides rather than intentional
+installation settings, clear only those exports before running Compose:
+
+```sh
+unset DATABASE_URL AUTH_PASSWORD_HASH
+```
+
+This changes only the invoking shell; it doesn't delete or edit `.env`.
+Keep the selected `IRANG_IMAGE` and the generated database credentials.
+For an existing or legacy installation, preserve its intentional
+`DATABASE_URL`, `AUTH_PASSWORD_HASH`, original database passwords, and volume
+selection. Don't clear credentials or regenerate the operator file to solve
+a shell-precedence problem.
+
+Password hashes for `AUTH_PASSWORD_HASH` (recovery and pre-wizard deployments,
 see sections 10 and 11):
 
 | Target | Command | Put into file |
 | --- | --- | --- |
-| Local dev `.env.local` | `bun run hash-password` | `AUTH_PASSWORD_HASH=...` line exactly as printed (the script escapes each `$` as `\\$`; keep the backslashes) |
-| Compose `.env` | `bun scripts/hash-password.mjs` (raw hash) | Write `AUTH_PASSWORD_HASH=$$argon2id$$v=19$$...` — double every `$` yourself |
+| Local dev `.env.local` | `bun run hash-password` | Double-quoted `AUTH_PASSWORD_HASH="..."` line, including its `\$` escapes |
+| Compose `.env` | `docker compose exec app bun --no-env-file /app/scripts/hash-password.mjs --env` | Double-quoted `AUTH_PASSWORD_HASH="..."` line, including its `\$` escapes |
 
-Do **not** paste the `bun run hash-password` output (the `\\$`-escaped form) into
-the Compose `.env`: Compose does not understand that escaping and the hash arrives
-in the container corrupted (verified with Compose v5.5.1: raw, `\$`- and
-`\\$`-escaped values all arrive mangled; only `$$`-escaping resolves to the
-correct PHC string).
-Conversely, a raw hash in `.env.local` is expanded away by Next's env expansion.
-A hash passed to `docker run --env-file` (outside Compose) is taken verbatim and
-stays raw.
+Keep the surrounding double quotes and the generated `\$` escapes. Next and
+Bun expand unescaped dollars even in single quotes; Compose also reads this
+double-quoted escaped form correctly. Don't remove or add escapes or turn
+the dollar signs into `$$`. `docker compose config` may render the same literal
+dollars as `$$` so Compose can read its YAML output again. That rendering isn't
+an instruction to change your copied dotenv value.
+The hash script's prompt shows the entered password; use a private terminal.
 
-To change any variable in `.env`, edit the file and run `docker compose up -d` —
-env changes reach the app only by recreating the container. (Settings changed in
-the app UI take effect immediately without a restart; environment changes do not.)
-Compose explicitly forwards the supported app variables below; it does not load
+Without `--env`, the script prints the raw PHC hash alone. For a file passed to
+`docker run --env-file` outside Compose, use that raw value without dotenv
+quotes or escapes. Docker reads the value literally.
+
+To change any variable in `.env`, edit the file and run `docker compose up -d`.
+Environment changes reach the app only when the container is recreated.
+Settings changed in the app UI take effect immediately without a restart.
+Compose explicitly forwards the supported app variables below; it doesn't load
 the entire operator `.env` into the app, so the database admin password stays
 DB-only. Custom attachment or credential directories must remain under the
 mounted `/app/.data` directory, or use an additional persistent volume.
 
 Local development and legacy upgrade env reference:
 `DATABASE_URL` with a password containing special characters can be produced with
-`bun run database-url` (reads `POSTGRES_APP_PASSWORD`, percent-encodes, prints the
-URL — keep it out of logs). `bun run seed` adds demo notes to the dev database.
+`bun run database-url` during development. On an installation, use the selected
+image and let Bun read the operator file:
+
+```sh
+docker run --rm -v "$PWD/.env":/install/.env:ro "$IRANG_IMAGE" \
+  bun --env-file=/install/.env /app/scripts/build-database-url.mjs
+```
+
+Both commands read `POSTGRES_APP_PASSWORD`, percent-encode it, and print the URL.
+They require that variable, use `second_brain`, `db`, `5432`, and `second_brain`
+as the default user, host, port, and database, and accept optional host/port/database
+arguments. `POSTGRES_APP_USER` can override the user. The output contains a
+password; keep it out of shared logs. `bun run seed` adds demo notes to the dev database.
 
 ### Runtime environment reference
 
 | Variable | Read by | Default | Meaning |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | app (db layer) | Constructed from the app password | Explicit percent-encoded Postgres URL takes precedence over the constructed URL |
-| `SETUP_TOKEN` | first-run wizard | — (required by `compose.yml`) | Guards `/setup`; 32–256 chars accepted, generated value is 64 hex chars |
+| `SETUP_TOKEN` | first-run wizard | Required by `compose.yml` | Guards `/setup`; 32-256 chars accepted, generated value is 64 hex chars |
 | `AUTH_PASSWORD_HASH` | login + setup state | empty | Argon2id PHC hash; when set it wins over any wizard-created owner password and permanently disables the wizard |
 | `INSECURE_COOKIES` | login and provider Auth | `0` | `1` disables the cookie `Secure` flag (loopback HTTP only) |
 | `TRUSTED_PROXY_HOPS` | client-IP resolution | `1` | Trusted `X-Forwarded-For` depth (section 6) |
 | `SESSION_TTL_DAYS` | sessions | `30` | Session lifetime in days |
 | `ATTACHMENTS_DIR` | attachment storage | `.data/attachments` (relative to the app's working directory) | Attachment file location; in Docker this is inside the `app-data` volume |
 | `APP_PORT` | `compose.yml` | `3000` | Loopback host port |
-| `POSTGRES_PASSWORD` | `compose.yml` | — (required) | Current installs: application role password. Legacy installs with `POSTGRES_APP_PASSWORD`: original administrator password |
+| `IRANG_IMAGE` | `compose.yml` only | `ghcr.io/madrobotnet/irang:2.2.0` in source; verified digest in archive | Explicit app image selection; set `irang:local` for source builds; not forwarded to the app |
+| `POSTGRES_PASSWORD` | `compose.yml` | Required | Current installs: application role password. Legacy installs with `POSTGRES_APP_PASSWORD`: original administrator password |
 | `POSTGRES_ADMIN_PASSWORD` | `compose.yml` db service | Required for current installs | Explicit administrator password; legacy installs fall back to their original `POSTGRES_PASSWORD` |
 | `POSTGRES_APP_PASSWORD` | `compose.yml` db service | `POSTGRES_PASSWORD` | Legacy application password; requires an explicit volume choice and is never forwarded as a separate app environment variable |
 | `POSTGRES_DATA_VOLUME` | `compose.yml` db volume mount | `postgres-data` | Existing volume key: `postgres-data` for 2.1+, `second_brain_pg18` for 1.x; keep the original Compose project name |
@@ -264,9 +389,9 @@ URL — keep it out of logs). `bun run seed` adds demo notes to the dev database
 
 ## 8. AI configuration (optional, per provider)
 
-Everything below is optional. Capture, notes, editing, search, and the graph work
-fully without any AI connection. Configure via the setup wizard or later via
-**Settings → AI** in the app; both write the same stored configuration.
+Everything below is optional. Capture, notes, editing, search, and the graph
+work without an AI connection. Use the setup wizard or **Settings → AI** in the
+app to configure AI; both write the same stored configuration.
 Give each connection a name. Settings can store multiple connections and select
 one for chat and another for Jev. Adding a connection does not activate it.
 Switching usage off preserves the saved connections; deleting one removes its
@@ -277,7 +402,7 @@ stored credentials and disables it if it was active.
 | Provider | API-key mode | Account-login mode | Recommended new model |
 | --- | --- | --- | --- |
 | ChatGPT / OpenAI | yes | in-app ChatGPT device authorization | `gpt-6.1-sol` |
-| Claude (Anthropic) | yes | **no** — API key only | `claude-sonnet-5-5` |
+| Claude (Anthropic) | yes | **no**, API key only | `claude-sonnet-5-5` |
 | Gemini | yes | in-app Google browser authorization code | API: `gemini-3.8-flash`; Auth: `gemini-3.5-flash` |
 | GitHub Copilot | Copilot API token | GitHub device authorization | `gpt-6-luna` |
 | OpenRouter | yes | browser PKCE authorization | `openai/gpt-6.1-sol` |
@@ -317,13 +442,14 @@ owned by UID 1001, so they survive upgrades and container recreation.
 For a legacy CLI connection, the app's connection status shows "ready" when the CLI
 exists and a readable, non-empty official credential file is present. That file
 readiness does **not** prove the account is valid, entitled, or authorized for a
-model — validity and model permissions are only proven by the first real request,
+model. Validity and model permissions are only proven by the first real request,
 and they remain under the provider's control (account state, plan, billing).
 
 ### Browser account login
 
-For ChatGPT, Gemini, Copilot, OpenRouter or xAI, select Auth and start the connection in the form.
-On first setup, enter the installation code first. Open the provider's login
+For ChatGPT, Gemini, Copilot, OpenRouter or xAI, select Auth and start the
+connection in the form. During first-run setup, enter the installation code
+before starting the connection. Open the provider's login
 page; enter the displayed device code when requested. Return to the original
 Irang tab and save once it reports the authorization is ready.
 
@@ -386,7 +512,7 @@ The upstream server must listen on an interface reachable from the container.
 
 ### Jev (inbox triage suggestions)
 
-Jev is an independent, optional connection — it only powers capture classification,
+Jev is an independent, optional connection. It only powers capture classification,
 tag suggestions, and duplicate candidates on inbox items; it neither requires nor
 affects chat AI. Two providers are supported, reached via the TypeSafe SystemOne
 endpoint:
@@ -396,8 +522,8 @@ endpoint:
 | TypeSafe (official) | `https://api.typesafe.ai/v1/systemone` | `jev-latest` | `jev-1.13.0` |
 | OpenRouter | `https://openrouter.ai/api/v1/systemone` | `~typesafe/jev-latest` | router-managed; no pinned alternative recommended |
 
-Use a model that returns structured judgment, and the model IDs above — OpenRouter's
-separate "Jev Router" product is a different thing and is not what this app calls.
+Use a model that returns structured judgment and the model IDs above. OpenRouter's
+separate "Jev Router" product isn't the service this app calls.
 TypeSafe uses an API key. OpenRouter accepts either an API key or the browser
 account connection described above. Jev profiles, models and usage can be changed
 without changing the active chat connection.
@@ -407,7 +533,7 @@ without changing the active chat connection.
 - Connection profiles, API keys, extra header values and browser Auth credentials
   are stored in Postgres (`ai_connections`). `installation_settings.ai` contains
   only the per-purpose selection IDs.
-  This is private server-side storage, **not** end-to-end encrypted — protect the
+  This is private server-side storage, **not** end-to-end encrypted. Protect the
   database backups accordingly (section 9).
 - Keys and the setup token are never returned to the browser: the settings API
   exposes only redacted metadata such as credential-presence flags and header
@@ -438,12 +564,14 @@ everything: `postgres-data` (database) and `app-data` (attachment files + CLI
 credentials).
 
 ```sh
-# Run from the repository root. The backup stays outside the checkout.
+# Run from the existing installation directory. The backup stays outside it.
 (
   set -eu
   umask 077
   mkdir -p "$HOME/second-brain-backups"
   BACKUP_DIR=$(mktemp -d "$HOME/second-brain-backups/backup.XXXXXX")
+  cp .env "$BACKUP_DIR/operator.env"
+  chmod 600 "$BACKUP_DIR/operator.env"
   APP_DATA_VOLUME=$(docker inspect --format \
     '{{range .Mounts}}{{if eq .Destination "/app/.data"}}{{.Name}}{{end}}{{end}}' \
     "$(docker compose ps -aq app)")
@@ -459,29 +587,37 @@ credentials).
 )
 ```
 
-Both files are private (0600), and the app is stopped while the database and files
-are copied together. The app is restarted even if the backup command fails.
-The archive includes CLI credentials; protect it like a password.
-Settings > Export (Markdown zip of active and archived notes plus attachments) is not a backup: settings, sessions, chat and trash are not included.
+All three files are private (0600), and the app is stopped while the database and
+attachment/auth files are copied together. The app is restarted even if the
+backup command fails. `operator.env` preserves the installation secrets;
+`app-data.tar.gz` includes CLI credentials. Protect both like passwords.
+Also retain the installed `release.json`/Compose files, image reference, and
+project name so you can reproduce the deployment. Record any operator-added
+mounts separately; the commands above back up the stock `/app/.data` mount.
+Settings > Export produces a Markdown zip of active and archived notes plus
+attachments. It isn't a backup: settings, sessions, chat and trash aren't included.
 
 Restore into a **separate, empty installation**, not a running server with data
-you want to keep. Generate its `.env` first, set a different `APP_PORT`/Compose
-project name if the original is still running, and set `BACKUP_DIR` to the printed
-backup directory. The SQL contains cleanup statements and replaces matching
-objects. Start only the database until restoration is complete:
+you want to keep. Prepare its pulled image or explicit source build and generate
+its `.env` as in section 3, without starting the app. Set a different
+`APP_PORT`/Compose project name if the original is still running, and set
+`BACKUP_DIR` to the printed backup directory. Keep the appropriate cookie mode
+in its `.env`. The SQL contains cleanup statements and replaces matching
+objects. Pull the database image and start only the database until restoration
+is complete:
 
 ```sh
-docker compose build app
-docker compose up -d --wait db
+docker compose pull db
+docker compose up -d --no-build --pull never --wait --wait-timeout 180 db
 docker compose exec -T db psql -v ON_ERROR_STOP=1 --single-transaction \
   -U postgres second_brain < "$BACKUP_DIR/database.sql"
-docker compose create app
+docker compose create --no-build --pull never app
 APP_DATA_VOLUME=$(docker inspect --format \
   '{{range .Mounts}}{{if eq .Destination "/app/.data"}}{{.Name}}{{end}}{{end}}' \
   "$(docker compose ps -aq app)")
 docker run --rm -v "$APP_DATA_VOLUME:/data" -v "$BACKUP_DIR:/backup:ro" \
   alpine:3.23 tar xzf /backup/app-data.tar.gz -C /data
-docker compose up -d --wait
+docker compose up -d --no-build --pull never --wait --wait-timeout 180
 ```
 
 Restore as the database administrator, because extension metadata belongs to
@@ -493,16 +629,42 @@ if they should not remain valid after recovery.
 **Upgrading without losing data:**
 
 For installations already using the 2.1+ `postgres-data`/`app-data` volumes,
-keep the same project name and environment file:
+keep the same installation directory, project name, environment file, and
+physical volumes. If you used `-p`, `COMPOSE_PROJECT_NAME`, or
+`--project-directory`, use those same values on every upgrade command. For an
+archive install, verify the next archive's checksums in a separate download
+directory. Copy its distribution files into the existing installation directory,
+including the SQL directory and `release.json`, without replacing `.env`.
+Don't start a new nested `irang/` directory as a different Compose project.
+
+Then, from the existing installation directory:
 
 ```sh
-docker compose build app
-docker compose up -d
+IRANG_IMAGE=$(jq -r .image release.json)
+export IRANG_IMAGE
+# Remove or update any old IRANG_IMAGE override in .env to this same reference.
+# Keep INSECURE_COOKIES=1 for loopback HTTP, or 0 for HTTPS.
+docker pull "$IRANG_IMAGE"
+docker compose up -d --wait --wait-timeout 180
+```
+
+For a source installation, update the existing checkout to the intended version
+without replacing `.env` or changing its project. Use that checkout's package
+version for `VERSION`; this release is 2.2.0:
+
+```sh
+docker build --build-arg VERSION=2.2.0 \
+  --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
+IRANG_IMAGE=irang:local
+export IRANG_IMAGE
+# Keep IRANG_IMAGE=irang:local and the correct cookie mode in .env.
+docker compose pull db
+docker compose up -d --no-build --pull never --wait --wait-timeout 180
 ```
 
 `docker compose up -d` recreates changed containers and **keeps named volumes**.
 So does `docker compose down`. **Never** run `docker compose down -v` (or
-`--volumes`) on a server whose data you want to keep — that deletes both data
+`--volumes`) on a server whose data you want to keep: that deletes both data
 volumes. Schema migrations run automatically on the first database use after an
 upgrade and are recorded in `schema_migrations`; if you keep production data,
 verify the upgrade on a restored copy first.
@@ -512,8 +674,8 @@ verify the upgrade on a restored copy first.
 ### Upgrading from 1.x
 
 The old `docker-compose.yml` used the `second_brain_pg18` volume key and a
-different password naming scheme. Merely switching to `compose.yml` used to
-select a new empty `postgres-data` volume. The old volume was not erased, but
+different password naming scheme. Previously, switching to `compose.yml` alone
+could select a new empty `postgres-data` volume. The old volume wasn't erased, but
 the application could appear empty. The compatibility path now requires an
 explicit choice when `POSTGRES_APP_PASSWORD` is present and fails before
 creating resources if that choice is missing.
@@ -530,8 +692,11 @@ creating resources if that choice is missing.
    actually a 2.1+ installation that also defines the legacy app-password name,
    explicitly choose `postgres-data` instead. Confirm the chosen physical
    volume already exists with `docker volume inspect <recorded-volume-name>`.
-4. Add an installation code with `bun run setup-token` if `SETUP_TOKEN` is
-   absent. It remains unused when the existing login hash or owner is present.
+4. Select and pull the target release image, or build `irang:local` as in section 3.
+   If `SETUP_TOKEN` is absent, run
+   `docker run --rm "$IRANG_IMAGE" bun --no-env-file /app/scripts/setup-token.mjs`
+   and copy the printed line into the existing `.env`. It remains unused when the
+   existing login hash or owner is present.
    A new `POSTGRES_ADMIN_PASSWORD` is not required for a legacy installation:
    the original `POSTGRES_PASSWORD` remains the administrator password.
 5. Stop the old app before starting the new one; do not run both versions
@@ -540,7 +705,8 @@ creating resources if that choice is missing.
    out of the old app container **before** removing or recreating it.
    Restore it under the new `app-data` volume with UID/GID 1001, following
    section 9. Do not assume preserving the DB also preserves those files.
-6. Build and start using the same project name and the existing volume.
+6. Start the selected image using the section 9 release or source procedure,
+   with the same project name and the existing volume.
    Verify login, an existing note and an existing attachment before removing
    the backup. Never run `down -v` as part of the upgrade.
 
@@ -551,7 +717,11 @@ The compatibility path preserves both names and role semantics; it does not
 reset credentials or copy data into a different cluster.
 
 This path is for the PostgreSQL 18 layout. Older PostgreSQL 16 installations
-need a logical dump/restore, not mounting a PostgreSQL 16 data directory in18.
+need a logical dump/restore, not mounting a PostgreSQL 16 data directory in 18.
+Verification covered current and synthetic legacy PostgreSQL 18 configurations,
+including persistence across recreation. It didn't execute an upgrade from a
+historical 1.x binary, an old attachment migration, or a PostgreSQL major-version
+migration.
 
 ### Existing authentication and AI settings
 
@@ -561,13 +731,13 @@ Deployments that predate the first-run wizard retain these application rules:
   redirects to `/login`) and the env hash remains authoritative for login.
 - If any users or protected data already exist (notes, inbox items, chat threads,
   attachments, installation settings), public account adoption is disabled the
-  same way — the wizard cannot be claimed on an occupied server.
+  same way: the wizard cannot be claimed on an occupied server.
 - `SETUP_TOKEN` is still required by Compose even for env-auth deployments;
   it is unused after setup is complete. Database secrets follow the current
   or legacy scheme above.
 - Postgres entrypoint variables apply only when the data volume is first
   initialized. A deployment created with the earlier single-secret topology
-  therefore keeps its original database role and privileges unchanged — the new
+  therefore keeps its original database role and privileges unchanged. The new
   restricted-role init never retrofits onto an existing volume, and no action is
   required. Never wipe the data volume just to adopt the new role layout; on a
   **fresh** volume, `POSTGRES_PASSWORD` creates the restricted application role
@@ -595,17 +765,20 @@ docker compose exec app printenv SETUP_TOKEN   # from the running container
 
 If the whole `.env` is lost, restore it from your private backup. For an
 installation that has never started and has no database volume, rerun
-`setup-env` to create all three secrets. Once PostgreSQL has been initialized,
+the image's `/app/scripts/setup-env.mjs` command from section 3 to create all
+three secrets. Once PostgreSQL has been initialized,
 changing passwords in `.env` does not change the database roles' passwords.
 Recover the original values before recreating containers.
 
 **Forgotten password.** There is no public password reset by design (single-owner
-application). Recovery re-uses the existing hash tooling:
+application). Recovery uses the existing hash tool:
 
-1. Run `docker compose exec app bun scripts/hash-password.mjs` to generate a new
-   hash without installing Bun on the host. Its terminal prompt displays the
-   entered password. Put the resulting hash into the operator `.env`, doubling
-   every `$` (`$$argon2id$$v=19$$...`) on the `AUTH_PASSWORD_HASH=` line (section 7).
+1. Run
+   `docker compose exec app bun --no-env-file /app/scripts/hash-password.mjs --env`
+   to generate a new hash without installing Bun on the host. Its terminal prompt
+   displays the entered password. Copy the double-quoted
+   `AUTH_PASSWORD_HASH="..."` line, including its `\$` escapes, exactly into
+   the operator `.env` (section 7). Don't add escapes or double the dollar signs.
 2. Recreate the app: `docker compose up -d`.
 3. Log in with the new password. An `AUTH_PASSWORD_HASH` set in the environment
    wins over the wizard-created owner's stored password; on this login the owner
@@ -614,26 +787,27 @@ application). Recovery re-uses the existing hash tooling:
    the app again: login falls back to the updated stored owner password.
    Pre-wizard installations must keep the environment hash.
 
-For local development the same recovery uses `.env.local` and the escaped
+For local development the same recovery uses `.env.local` and the double-quoted
 `bun run hash-password` output; restart `bun run dev` afterwards. If the stored
 owner password is unknown *and* you prefer to keep the env hash permanently, step 4
 is simply skipped.
 
 ## 12. Development commands and test databases
 
-Use Bun 1.4.2 and Docker. The development database is a separate
-`second-brain-dev` Compose project on `127.0.0.1:55432`.
-Copy `.env.example` to `.env.local`, then use the output of
-`bun run hash-password` for `AUTH_PASSWORD_HASH`, keeping the backslashes.
+Use Bun 1.4.2 and Docker. Node 22 is required only for upstream account-login CLI
+subprocess fixtures; the application runs with Bun. The development database
+is a separate `second-brain-dev` Compose project on `127.0.0.1:55432`.
+Copy `.env.example` to `.env.local`, then copy the double-quoted output of
+`bun run hash-password` for `AUTH_PASSWORD_HASH` exactly as printed.
 
 | Command | Purpose |
 | --- | --- |
 | `bun run db:up` | Start the development database |
 | `bun run db:down` | Delete the development database container and volume; unrelated to production |
 | `bun run seed` | Add linked Korean demo notes and captures, preserving existing data |
-| `bun run hash-password` | Print a dotenv-ready `AUTH_PASSWORD_HASH=...` line interactively |
+| `bun run hash-password` | Print a double-quoted dotenv-ready `AUTH_PASSWORD_HASH="..."` line with `\$` escapes |
 | `bun scripts/hash-password.mjs` | Print a raw PHC hash for Docker `--env-file` |
-| `bun run setup-env` / `bun run setup-token` | Create the installation `.env` / print a fresh `SETUP_TOKEN` |
+| `bun run setup-env` / `bun run setup-token` | Source-checkout tools: create `.env` without overwriting / print a fresh `SETUP_TOKEN`; installed-image equivalents are in section 3 |
 | `bun run database-url` | Percent-encode a database password into a connection URL |
 | `bun run typecheck` / `bun run lint` / `bun test` / `bun run build` | Check types, lint, test and build |
 
@@ -650,4 +824,11 @@ without `-v`.
 
 ## 13. License
 
-Irang is released under the MIT License — see [LICENSE](../LICENSE).
+Irang's application code is licensed under [MIT](../LICENSE). That doesn't
+relicense dependencies, fonts, runtimes, official account-login CLIs, the
+operating-system image, or provider services.
+See [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). Images retain full
+collected license texts and inventories under `/app/licenses` and
+`/usr/share/irang/licenses`, plus upstream runtime and operating-system notices.
+A successful inventory or SBOM check doesn't replace review of redistribution
+obligations.

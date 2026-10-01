@@ -30,7 +30,7 @@ export const HOME_COPY = defineCopy({
     asideLabel: "고정한 노트와 다시 볼 노트",
     firstRun: {
       title: "아직 노트도 캡처도 없어요",
-      description: "떠오른 생각은 캡처해 두고 나중에 정리하세요. 바로 쓰고 싶다면 새 노트를 만드세요.",
+      description: "떠오른 생각은 캡처해 두고 나중에 정리하세요. 바로\u00a0쓰고\u00a0싶다면 새 노트를 만드세요.",
     },
     folded: {
       title: "고정한 노트와 다시 볼 노트가 여기에 모여요",
