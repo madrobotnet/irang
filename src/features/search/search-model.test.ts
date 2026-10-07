@@ -19,10 +19,11 @@ describe("search model", () => {
     expect(MATCH_SIGNAL_COPY.semantic).toBe("characterSimilarity");
     for (const locale of LOCALES) {
       const { signals } = SEARCH_COPY[locale];
-      expect(matchLabel({ matchedBy: ["keyword", "fuzzy", "semantic"] }, locale)).toEqual([
+      expect(matchLabel({ matchedBy: ["keyword", "fuzzy", "semantic", "learned"] }, locale)).toEqual([
         signals.keyword,
         signals.similarSpelling,
         signals.characterSimilarity,
+        signals.learnedMeaning,
       ]);
       expect(matchLabel({ matchedBy: ["semantic"] }, locale)).toEqual([signals.characterSimilarity]);
       expect(matchLabel({ matchedBy: [] }, locale)).toEqual([]);
@@ -31,8 +32,13 @@ describe("search model", () => {
 
   it("keeps signal badges distinct within each locale", () => {
     for (const locale of LOCALES) {
-      expect(new Set(matchLabel({ matchedBy: ["keyword", "fuzzy", "semantic"] }, locale)).size).toBe(3);
+      expect(new Set(matchLabel({ matchedBy: ["keyword", "fuzzy", "semantic", "learned"] }, locale)).size).toBe(4);
     }
+  });
+
+  it("maps learned retrieval to its own catalog key", () => {
+    expect(MATCH_SIGNAL_COPY.learned).toBe("learnedMeaning");
+    expect(MATCH_SIGNAL_COPY.learned).not.toBe(MATCH_SIGNAL_COPY.semantic);
   });
 });
 

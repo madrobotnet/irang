@@ -21,7 +21,18 @@ export const SEARCH_COPY = defineCopy({
     untitled: "제목 없는 노트",
     searchTag: (tag: string) => `${tag} 태그로 검색`,
     /** Keyed by what each signal measures; search-model maps server signal names onto these keys. */
-    signals: { keyword: "키워드", similarSpelling: "비슷한 철자", characterSimilarity: "문자 유사도" },
+    signals: { keyword: "키워드", similarSpelling: "비슷한 철자", characterSimilarity: "문자 유사도", learnedMeaning: "학습 모델 · 의미 유사도" },
+    index: {
+      states: {
+        disabled: "의미 검색이 꺼져 있어요.",
+        unavailable: "지금은 의미 검색을 사용할 수 없어요.",
+        indexing: "의미 검색 색인을 만드는 중이에요.",
+        ready: "의미 검색 색인이 준비됐어요.",
+      },
+      progress: (indexed: number, total: number) => `노트 ${total}개 중 ${indexed}개 색인됨`,
+      lexical: "제목, 키워드, 비슷한 철자로 계속 검색할 수 있어요.",
+    },
+    passage: (heading: string, start: number, end: number) => `${heading || "원문"} · ${start === end ? `${start}줄` : `${start}–${end}줄`}`,
   },
   en: {
     title: "Search",
@@ -41,6 +52,17 @@ export const SEARCH_COPY = defineCopy({
     resultCount: (count) => (count === 1 ? "1 note" : `${count} notes`),
     untitled: "Untitled note",
     searchTag: (tag) => `Search by tag ${tag}`,
-    signals: { keyword: "Keyword", similarSpelling: "Similar spelling", characterSimilarity: "Character similarity" },
+    signals: { keyword: "Keyword", similarSpelling: "Similar spelling", characterSimilarity: "Character similarity", learnedMeaning: "Learned model · Meaning similarity" },
+    index: {
+      states: {
+        disabled: "Meaning search is disabled.",
+        unavailable: "Meaning search is currently unavailable.",
+        indexing: "The meaning search index is being built.",
+        ready: "The meaning search index is ready.",
+      },
+      progress: (indexed, total) => `${indexed} of ${total} notes indexed`,
+      lexical: "Title, keyword, and similar-spelling search remain available.",
+    },
+    passage: (heading, start, end) => `${heading || "Source"} · ${start === end ? `line ${start}` : `lines ${start}–${end}`}`,
   },
 });

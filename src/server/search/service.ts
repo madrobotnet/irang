@@ -4,6 +4,7 @@ import { excerpt, markdownToText, normalizeTag } from "@/lib/wikilinks";
 import { query } from "@/server/db";
 import { ApiError } from "@/server/http";
 import { notesCopy, searchCopy } from "@/server/i18n/copy";
+import { indexStatus, relatedPassages, retrievePassages, type PassageCandidate } from "./passages";
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -39,6 +40,7 @@ type RankedCandidate = {
   row: NoteRow;
   score: number;
   ranks: Map<SearchMatch, number>;
+  passage?: PassageCandidate;
 };
 
 function validatedLimit(limit: number | undefined): number {
@@ -159,12 +161,13 @@ export async function searchNotes(
   );
   const fuzzyPromise = query<NoteRow>(
     `SELECT id::text, title, body, tags, updated_at,
-            CASE WHEN strpos(lower(title || E'\\n' || body), lower($1)) > 0 THEN 2 ELSE 0 END
+            CASE WHEN lower(title)=lower($1) OR EXISTS(SELECT 1 FROM unnest(aliases) a WHERE lower(a)=lower($1)) THEN 4
+                 WHEN strpos(lower(title || E'\\n' || body || E'\\n' || array_to_string(aliases,' ') || E'\\n' || array_to_string(tags,' ')), lower($1)) > 0 THEN 2 ELSE 0 END
             + greatest(similarity(lower(title), lower($1)),
                        word_similarity(lower($1), lower(left(body, 10000)))) AS rank_score
        FROM notes
       WHERE ${filter}
-        AND (strpos(lower(title || E'\\n' || body), lower($1)) > 0
+        AND (strpos(lower(title || E'\\n' || body || E'\\n' || array_to_string(aliases,' ') || E'\\n' || array_to_string(tags,' ')), lower($1)) > 0
              OR similarity(lower(title), lower($1)) >= 0.2
              OR word_similarity(lower($1), lower(left(body, 10000))) >= 0.3)
       ORDER BY rank_score DESC, updated_at DESC, id
@@ -188,7 +191,10 @@ export async function searchNotes(
     )
     : Promise.resolve([]);
 
-  const [keyword, fuzzy, ngram] = await Promise.all([keywordPromise, fuzzyPromise, ngramPromise]);
+  const [keyword, fuzzy, ngram, learned] = await Promise.all([
+    keywordPromise, fuzzyPromise, ngramPromise, retrievePassages(queryTextTrimmed, tag, shortlistLimit),
+  ]);
+  const semanticIndex = await indexStatus(learned.available);
   const candidates = new Map<string, RankedCandidate>();
   addRanking(candidates, keyword, "keyword");
   addRanking(candidates, fuzzy, "fuzzy");
@@ -208,34 +214,48 @@ export async function searchNotes(
   // Hash similarity needs actual text evidence. Latin bigrams are too common:
   // require at least half of distinct trigrams, retaining non-Latin overlap
   // and whole terms shorter than a gram within the existing bounded window.
-  addRanking(candidates, ngram.filter((row) => {
+  // A ready learned index replaces the approximate hash lane, not lexical search.
+  if (semanticIndex.state !== "ready") addRanking(candidates, ngram.filter((row) => {
     const text = `${row.title}\n${row.body.slice(0, 10000)}`.toLowerCase().normalize("NFKC");
     const matchedLatin = [...latinGrams].filter((gram) => text.includes(gram)).length;
     return [...otherGrams].some((gram) => text.includes(gram))
       || (latinGrams.size > 0 && matchedLatin * 2 >= latinGrams.size);
   }), "semantic");
+  addRanking(candidates, learned.rows, "learned");
+  for (const row of learned.rows) {
+    const candidate = candidates.get(row.id);
+    if (candidate) candidate.passage = row;
+  }
+  const exactIds = new Set(fuzzy.filter((row) => Number(row.rank_score) >= 4).map((row) => row.id));
 
   const hits: SearchHit[] = [...candidates.values()]
-    .sort((a, b) => b.score - a.score
+    .sort((a, b) => Number(exactIds.has(b.row.id)) - Number(exactIds.has(a.row.id)) || b.score - a.score
       || Number(b.row.rank_score) - Number(a.row.rank_score)
       || b.row.updated_at.toString().localeCompare(a.row.updated_at.toString())
       || a.row.id.localeCompare(b.row.id))
     .slice(0, limit)
-    .map(({ row, score, ranks }) => ({
+    .map(({ row, score, ranks, passage }) => ({
       noteId: row.id,
       title: row.title,
-      snippet: snippet(row.body, queryTextTrimmed),
+      snippet: snippet(passage?.body ?? row.body, queryTextTrimmed),
       tags: row.tags,
       updatedAt: iso(row.updated_at),
       score,
-      matchedBy: (["keyword", "fuzzy", "semantic"] as const).filter((signal) => ranks.has(signal)),
+      matchedBy: (["keyword", "fuzzy", "semantic", "learned"] as const).filter((signal) => ranks.has(signal)),
+      ...(passage ? { passage: { heading: passage.heading, startLine: passage.start_line, endLine: passage.end_line } } : {}),
     }));
 
-  return { query: queryText, hits, tookMs: Math.max(0, performance.now() - startedAt) };
+  return { query: queryText, hits, tookMs: Math.max(0, performance.now() - startedAt), semanticIndex };
 }
 
 export async function relatedNotes(noteId: string, limitValue?: number): Promise<RelatedNote[]> {
   const limit = validatedLimit(limitValue);
+  const learned = await relatedPassages(noteId, limit);
+  if (learned.length) return learned.map((row) => ({
+    id: row.id, title: row.title, excerpt: excerpt(row.body), score: Number(row.rank_score),
+    matchedBy: ["learned"], updatedAt: iso(row.updated_at),
+    passage: { heading: row.heading, startLine: row.start_line, endLine: row.end_line },
+  }));
   await backfillEmbeddings(noteId);
   const source = await query<{ embedding: string }>(
     `SELECT search_embedding::text AS embedding
@@ -268,5 +288,6 @@ export async function relatedNotes(noteId: string, limitValue?: number): Promise
     title: row.title,
     excerpt: excerpt(row.body),
     score: Number(row.score),
+    matchedBy: ["semantic"],
   }));
 }

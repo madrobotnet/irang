@@ -46,7 +46,19 @@ export type NoteLinks = {
   unlinkedMentions: LinkContext[];
 };
 
-export type RelatedNote = NoteRef & { excerpt: string; score: number };
+export type SourcePassage = { heading: string; startLine: number; endLine: number };
+export type SemanticIndexStatus = {
+  state: "disabled" | "unavailable" | "indexing" | "ready";
+  indexedNotes: number;
+  totalNotes: number;
+};
+export type RelatedNote = NoteRef & {
+  excerpt: string;
+  score: number;
+  matchedBy?: SearchMatch[];
+  passage?: SourcePassage;
+  updatedAt?: string;
+};
 
 export type TagCount = { tag: string; count: number };
 
@@ -71,7 +83,7 @@ export type InboxItem = {
   snoozedUntil: string | null;
 };
 
-export type SearchMatch = "keyword" | "fuzzy" | "semantic";
+export type SearchMatch = "keyword" | "fuzzy" | "semantic" | "learned";
 
 export type SearchHit = {
   noteId: string;
@@ -82,9 +94,10 @@ export type SearchHit = {
   updatedAt: string;
   score: number;
   matchedBy: SearchMatch[];
+  passage?: SourcePassage;
 };
 
-export type SearchResponse = { query: string; hits: SearchHit[]; tookMs: number };
+export type SearchResponse = { query: string; hits: SearchHit[]; tookMs: number; semanticIndex?: SemanticIndexStatus };
 
 export type GraphNodeKind = "note" | "tag" | "unresolved";
 

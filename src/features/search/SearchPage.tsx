@@ -14,6 +14,7 @@ import { DocumentTitle } from "@/components/i18n/DocumentTitle";
 import { Button, EmptyState, Input, SkeletonLines, TagBadge } from "@/components/ui";
 import { SEARCH_COPY } from "./search-copy";
 import { highlightSegments, matchLabel, searchApiUrl, searchUrl } from "./search-model";
+import { sourceNoteUrl } from "./source-passage";
 
 const PAGE = "mx-auto w-full max-w-6xl px-4 pb-12 pt-5 sm:px-6 lg:px-10 lg:pt-10";
 
@@ -69,6 +70,13 @@ export function SearchPage() {
             </div>
           </fieldset>
         </Form>
+        {data?.semanticIndex ? (
+          <p role="status" className="space-y-1 rounded-ctl bg-desk px-3 py-2 text-sm text-mute">
+            <span className="block text-ink">{copy.index.states[data.semanticIndex.state]}</span>
+            <span className="block tabular-nums">{copy.index.progress(data.semanticIndex.indexedNotes, data.semanticIndex.totalNotes)}</span>
+            {data.semanticIndex.state !== "ready" ? <span className="block">{copy.index.lexical}</span> : null}
+          </p>
+        ) : null}
         <div aria-live="polite" aria-busy={isLoading}>
           {!query ? (
             <EmptyState title={copy.idle.title} description={copy.idle.description} />
@@ -86,10 +94,11 @@ export function SearchPage() {
                 const signals = matchLabel(hit, locale);
                 return (
                   <article key={hit.noteId} className="rounded-card border border-line bg-card p-4 shadow-card">
-                    <Link className="block rounded-ctl focus-ring" href={`/notes/${encodeURIComponent(hit.noteId)}`}>
+                    <Link className="block rounded-ctl focus-ring" href={sourceNoteUrl(hit.noteId, hit.passage, hit.updatedAt)} scroll={hit.passage ? false : undefined}>
                       <h2 className="text-lg font-medium text-ink">
                         {hit.title ? <Highlighted text={hit.title} query={query} /> : copy.untitled}
                       </h2>
+                      {hit.passage ? <p className="mt-1 text-xs text-accent">{copy.passage(hit.passage.heading, hit.passage.startLine, hit.passage.endLine)}</p> : null}
                       <p className="mt-2 whitespace-pre-wrap text-sm text-mute">
                         <Highlighted text={hit.snippet} query={query} />
                       </p>

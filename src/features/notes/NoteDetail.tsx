@@ -2,11 +2,12 @@
 
 import { Archive, Check, History, LoaderCircle, Pin, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useCopy, useLocale } from "@/components/i18n";
 import { Button, cn, EmptyState, Input, SkeletonLines, useToast } from "@/components/ui";
+import { sourceEvidence } from "@/features/search/source-passage";
 import { api } from "@/lib/api-client";
 import { localizedApiError } from "@/lib/i18n/api-error";
 import { textInEveryLocale } from "@/lib/i18n/copy";
@@ -29,7 +30,7 @@ export function NoteDetail({ noteId }: { noteId: string }) {
   const detail = useSWR<{ note: Note }>(`/api/notes/${noteId}`, { revalidateOnFocus: true });
   if (detail.isLoading) return <section className="min-w-0 flex-1 p-5"><SkeletonLines lines={8} /></section>;
   if (detail.error || !detail.data) return <section className="min-w-0 flex-1 p-5"><EmptyState title={copy.detail.openFailedTitle} description={copy.detail.openFailedDescription} action={<Button onClick={() => void detail.mutate()}>{copy.retry}</Button>} /></section>;
-  return <LoadedNote note={detail.data.note} refresh={() => detail.mutate()} />;
+  return <LoadedNote note={detail.data.note} checking={detail.isValidating} refresh={() => detail.mutate()} />;
 }
 
 function useDraft(note: Note) {
@@ -60,13 +61,18 @@ function useDraft(note: Note) {
   return { controller, snapshot };
 }
 
-function LoadedNote({ note, refresh }: { note: Note; refresh: () => Promise<unknown> }) {
+function LoadedNote({ note, checking, refresh }: { note: Note; checking: boolean; refresh: () => Promise<unknown> }) {
   const router = useRouter();
+  const params = useSearchParams();
   const copy = useCopy(NOTES_COPY);
   const { mutate: mutateAll, cache } = useSWRConfig();
   const { toast } = useToast();
   const { controller, snapshot } = useDraft(note);
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const sourceKey = params.has("line") ? JSON.stringify([params.get("line"), params.get("at")]) : null;
+  const [view, setView] = useState<{ sourceKey: string | null; mode: "edit" | "preview" }>({ sourceKey, mode: sourceKey === null ? "edit" : "preview" });
+  // A new source link into an already open note must also open preview; an explicit mode choice wins for that link.
+  const mode = view.sourceKey === sourceKey ? view.mode : sourceKey === null ? "edit" : "preview";
+  const evidence = sourceEvidence(params.get("line"), params.get("at"), note.updatedAt, snapshot.state !== "saved" || snapshot.body !== note.body, checking);
   // Read when a task toggle settles, which may be after the preview has been left for the editor.
   const modeRef = useRef(mode);
   useEffect(() => { modeRef.current = mode; }, [mode]);
@@ -209,15 +215,18 @@ function LoadedNote({ note, refresh }: { note: Note; refresh: () => Promise<unkn
           <a href={note.sourceUrl} target="_blank" rel="noreferrer noopener" className="min-w-0 truncate text-accent underline underline-offset-2 focus-ring">{note.sourceUrl}</a>
         </p> : null}
         <div role="group" aria-label={copy.detail.modeLabel} className="mt-4 flex rounded-ctl bg-canvas p-1 ring-1 ring-inset ring-line sm:w-fit">{(["edit", "preview"] as const).map((value) => (
-          <button key={value} type="button" aria-pressed={mode === value} className={cn("min-h-touch flex-1 rounded-ctl px-4 py-1.5 text-sm transition-colors sm:min-h-0 sm:flex-none", mode === value ? "bg-card font-medium text-ink shadow-card ring-1 ring-line-strong" : "text-mute hover:text-ink")} onClick={() => setMode(value)}>{copy.detail[value]}</button>
+          <button key={value} type="button" aria-pressed={mode === value} className={cn("min-h-touch flex-1 rounded-ctl px-4 py-1.5 text-sm transition-colors sm:min-h-0 sm:flex-none", mode === value ? "bg-card font-medium text-ink shadow-card ring-1 ring-line-strong" : "text-mute hover:text-ink")} onClick={() => setView({ sourceKey, mode: value })}>{copy.detail[value]}</button>
         ))}</div>
+        {evidence.state !== "none" && evidence.state !== "ready" ? (
+          <p role="status" className={cn("mt-3 rounded-ctl px-3 py-2 text-sm", evidence.state === "checking" ? "bg-desk text-mute" : "bg-warn-soft text-warn")}>{copy.detail.sourceEvidence[evidence.state]}</p>
+        ) : null}
         <div className="mt-3">{mode === "edit" ? <MarkdownEditor key={restoreEpoch} noteId={note.id} value={snapshot.body} onChange={(body) => controller.update({ body })} onAppend={(markdown) => {
           const body = controller.getSnapshot().body;
           controller.update({ body: `${body}${body && !body.endsWith("\n") ? "\n" : ""}${markdown}` });
           void controller.flush().then((saved) => {
             if (!saved) toast(textInEveryLocale((locale) => NOTES_COPY[locale].detail.attachmentLinkFailed), { tone: "danger", durationMs: 0 });
           });
-        }} /> : <MarkdownPreview body={snapshot.body} tasks={note.archived ? undefined : {
+        }} /> : <MarkdownPreview body={snapshot.body} source={evidence.state === "ready" ? evidence : undefined} tasks={note.archived ? undefined : {
           noteId: note.id,
           // Line numbers are only the server's while the draft matches what it saved.
           editable: snapshot.state === "saved",

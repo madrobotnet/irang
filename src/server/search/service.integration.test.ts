@@ -142,6 +142,18 @@ describe("searchNotes", () => {
     expect(result.hits.map((hit) => hit.noteId)).toEqual([workId]);
   });
 
+  test("finds an exact alias without requiring it in the title or body", async () => {
+    const id = await insertNote({ title: "Project record", body: "Review notes" });
+    await query("UPDATE notes SET aliases=ARRAY['AUR-27'] WHERE id=$1", [id]);
+    await insertNote({ title: "Other record", body: "AUR-27 appears only incidentally" });
+    expect((await searchNotes("AUR-27")).hits[0]?.noteId).toBe(id);
+  });
+
+  test("finds tag metadata without requiring body overlap", async () => {
+    const id = await insertNote({ title: "Reference", body: "A short record", tags: ["metadata-only"] });
+    expect((await searchNotes("metadata-only")).hits[0]?.noteId).toBe(id);
+  });
+
   test("excludes archived and deleted notes from every retrieval signal", async () => {
     const archivedId = await insertNote({ title: "비밀문구", body: "보관됨", status: "archived" });
     const deletedId = await insertNote({ title: "비밀문구", body: "삭제됨", deleted: true });

@@ -290,4 +290,30 @@ CREATE UNIQUE INDEX note_templates_daily_default_uidx ON note_templates (is_dail
   WHERE is_daily_default;
 `,
   },
+  {
+    id: "0010_passage_embeddings",
+    sql: `
+CREATE TABLE note_semantic_index (
+  note_id uuid NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  model_id text NOT NULL,
+  source_hash text NOT NULL,
+  complete boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (note_id, model_id)
+);
+CREATE TABLE note_passages (
+  note_id uuid NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  model_id text NOT NULL,
+  source_hash text NOT NULL,
+  ordinal integer NOT NULL,
+  heading text NOT NULL,
+  start_line integer NOT NULL,
+  end_line integer NOT NULL,
+  content text NOT NULL,
+  embedding vector(768) NOT NULL,
+  PRIMARY KEY (note_id, model_id, ordinal)
+);
+CREATE INDEX note_passages_model_idx ON note_passages(model_id);
+`,
+  },
 ];

@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type HTMLAttributes } from "react";
 import ReactMarkdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useCopy } from "@/components/i18n";
 import { useToast } from "@/components/ui";
+import { sourceBlockAttributes, sourceBlockForLine, type SourceBlock } from "@/features/search/source-passage";
 import { api } from "@/lib/api-client";
 import { localizedApiError } from "@/lib/i18n/api-error";
 import { textInEveryLocale } from "@/lib/i18n/copy";
@@ -70,6 +72,31 @@ function TaskCheckbox(props: ComponentProps<"input"> & ExtraProps) {
 
 const TASK_COMPONENTS: Components = { li: TaskListItem, input: TaskCheckbox };
 
+function SourceBlockRenderer({ node, children, ...props }: HTMLAttributes<HTMLElement> & ExtraProps) {
+  return createElement(node?.tagName ?? "p", { ...props, ...sourceBlockAttributes(node) }, children);
+}
+
+function SourceTaskListItem(props: ComponentProps<"li"> & ExtraProps) {
+  return <TaskListItem {...props} {...sourceBlockAttributes(props.node)} />;
+}
+
+/** Shared with the renderer's neighbor tests; only a version-checked source view enables anchors. */
+export const SOURCE_COMPONENTS: Components = {
+  p: SourceBlockRenderer,
+  h1: SourceBlockRenderer,
+  h2: SourceBlockRenderer,
+  h3: SourceBlockRenderer,
+  h4: SourceBlockRenderer,
+  h5: SourceBlockRenderer,
+  h6: SourceBlockRenderer,
+  li: SourceBlockRenderer,
+  pre: SourceBlockRenderer,
+  blockquote: SourceBlockRenderer,
+  table: SourceBlockRenderer,
+  tr: SourceBlockRenderer,
+  hr: SourceBlockRenderer,
+};
+
 /** Toggles run one at a time, so each returned note already contains the toggles before it. */
 function useTaskControls(body: string, tasks: PreviewTasks | undefined): TaskControls | null {
   const { toast } = useToast();
@@ -110,12 +137,45 @@ function useTaskControls(body: string, tasks: PreviewTasks | undefined): TaskCon
   return useMemo(() => (enabled ? { tasks: parsed, pending, toggle } : null), [enabled, parsed, pending, toggle]);
 }
 
-export function MarkdownPreview({ body, tasks }: { body: string; tasks?: PreviewTasks }) {
+export function MarkdownPreview({ body, tasks, source }: {
+  body: string;
+  tasks?: PreviewTasks;
+  source?: { readonly line: number; readonly updatedAt: string };
+}) {
   const router = useRouter();
   const { toast } = useToast();
+  const copy = useCopy(NOTES_COPY);
   const taskControls = useTaskControls(body, tasks);
+  const preview = useRef<HTMLDivElement>(null);
+  const line = source?.line;
+  const updatedAt = source?.updatedAt;
+  const lastScroll = useRef<{ line: number; updatedAt: string; body: string } | null>(null);
+  const [located, setLocated] = useState<{ line: number; updatedAt: string; block: SourceBlock | null } | null>(null);
+  useEffect(() => {
+    if (line === undefined || updatedAt === undefined || !preview.current) return;
+    const blocks = Array.from(preview.current.querySelectorAll<HTMLElement>("[data-source-start]"), (element) => ({
+      element,
+      startLine: Number(element.dataset.sourceStart),
+      endLine: Number(element.dataset.sourceEnd),
+    }));
+    const block = sourceBlockForLine(blocks, line, body);
+    setLocated({ line, updatedAt, block: block ? { startLine: block.startLine, endLine: block.endLine } : null });
+    if (!block) return;
+    const element = block.element;
+    element.dataset.sourceTarget = "true";
+    if (lastScroll.current?.line !== line || lastScroll.current.updatedAt !== updatedAt || lastScroll.current.body !== body) {
+      element.scrollIntoView({ block: "center" });
+      element.focus({ preventScroll: true });
+      lastScroll.current = { line, updatedAt, body };
+    }
+    return () => { delete element.dataset.sourceTarget; };
+  }, [body, line, updatedAt]);
+  const location = located && located.line === line && located.updatedAt === updatedAt ? located : null;
   return (
-    <div className="prose-ko min-h-80 max-w-none overflow-x-auto rounded-card border border-line bg-card p-5 text-ink [&_a]:text-accent [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-line-strong [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-desk [&_code]:px-1 [&_h1]:mb-4 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-5 [&_h3]:text-lg [&_img]:max-w-full [&_li]:ml-5 [&_ol]:list-decimal [&_p]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-card [&_pre]:bg-desk [&_pre]:p-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_td]:p-2 [&_th]:border [&_th]:border-line [&_th]:p-2 [&_ul]:list-disc">
+    <div ref={preview} className="prose-ko min-h-80 max-w-none overflow-x-auto rounded-card border border-line bg-card p-5 text-ink [&_[data-source-start]]:scroll-mt-4 [&_[data-source-target]]:rounded-ctl [&_[data-source-target]]:bg-accent-soft [&_a]:text-accent [&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-line-strong [&_blockquote]:pl-4 [&_code]:rounded [&_code]:bg-desk [&_code]:px-1 [&_h1]:mb-4 [&_h1]:text-2xl [&_h1]:font-bold [&_h2]:mb-3 [&_h2]:mt-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h3]:mt-5 [&_h3]:text-lg [&_img]:max-w-full [&_li]:ml-5 [&_ol]:list-decimal [&_p]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-card [&_pre]:bg-desk [&_pre]:p-4 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-line [&_td]:p-2 [&_th]:border [&_th]:border-line [&_th]:p-2 [&_ul]:list-disc">
+      {source ? <p role="status" className="text-sm text-mute">{location
+        ? location.block ? copy.detail.sourceLocated(source.line, location.block.startLine, location.block.endLine) : copy.detail.sourceNotRendered
+        : copy.detail.sourceEvidence.checking}</p> : null}
       <TaskControlsContext.Provider value={taskControls}>
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
@@ -140,7 +200,9 @@ export function MarkdownPreview({ body, tasks }: { body: string; tasks?: Preview
               }
               return <a href={href} rel="noreferrer noopener" target={href?.startsWith("http") ? "_blank" : undefined} {...props}>{children}</a>;
             },
+            ...(source ? SOURCE_COMPONENTS : {}),
             ...(tasks ? TASK_COMPONENTS : {}),
+            ...(source && tasks ? { li: SourceTaskListItem } : {}),
           }}
         >
           {expandWikiLinks(body)}

@@ -25,6 +25,7 @@ export const MATCH_SIGNAL_COPY = {
   keyword: "keyword",
   fuzzy: "similarSpelling",
   semantic: "characterSimilarity",
+  learned: "learnedMeaning",
 } as const satisfies Record<SearchMatch, keyof (typeof SEARCH_COPY)["ko"]["signals"]>;
 
 export function matchLabel(hit: Pick<SearchHit, "matchedBy">, locale: Locale): string[] {

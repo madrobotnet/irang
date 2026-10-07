@@ -52,6 +52,7 @@ src/
 ## Data model (PostgreSQL, compatible with v1 production tables)
 
 - `notes(id, title, body markdown, status, tags text[], aliases text[], pinned, source_url, daily_date, created_at, updated_at, deleted_at, search_embedding vector(128), search_source_hash, search_tsv generated)`. Archived = `status = 'archived'`. Trash = `deleted_at IS NOT NULL`.
+- `note_passages(note_id, model_id, source_hash, ordinal, heading, start_line, end_line, content, embedding vector(768))` and `note_semantic_index(note_id, model_id, source_hash, complete)`: optional learned retrieval, separate from the legacy 128d hashes. Foreign keys cascade on permanent note deletion.
 - `links(from_note_id, to_note_id, relation='link')`: materialized from `[[wikilinks]]` on every note write.
 - `unresolved_links(from_note_id, target_title)`: `[[targets]]` with no matching note; resolved when a note with that title or alias is created or renamed.
 - `inbox_items(id, title, body, source web|url|share|api, url, promoted_note_id, discarded_at, suggestions jsonb, created_at)`.
@@ -83,7 +84,7 @@ src/
 | POST `/api/notes/:id/restore` | | `{note}` |
 | DELETE `/api/notes/:id?purge=1` | | permanent delete (only when in trash) |
 | GET `/api/notes/:id/links` | | `NoteLinks` |
-| GET `/api/notes/:id/related` | | `{notes: RelatedNote[]}` (character-similarity neighbors) |
+| GET `/api/notes/:id/related` | | `{notes: RelatedNote[]}` (fresh learned passage neighbors when indexed; otherwise character similarity, with explicit match signals) |
 | GET `/api/notes/titles` | `?q=&limit=10` | `{notes: NoteRef[]}`; title/alias lookup for the switcher and autocomplete |
 | POST `/api/notes/by-title` | `{title}` | `{note}` get-or-create (clicking an unresolved link) |
 | POST `/api/daily` | `{date?: YYYY-MM-DD}` | `{note}` get-or-create daily note |
@@ -153,5 +154,9 @@ remain supported there. Shortcut handling guards IME composition.
 - Note mutations invalidate individual list pages, SWR Infinite aggregates, title lookups, links, graph/search and time-zone-qualified home snapshots.
 - Draft writes are serialized. Failed flushes prevent destructive actions, and late attachment completion reads the current draft.
 - Hashed n-gram search candidates require literal query n-gram overlap; a hash collision alone is not a match.
+- Optional local learned retrieval is enabled with `EMBEDDING_BASE_URL` pointing to the pinned llama.cpp text embedding server. EmbeddingGemma 2 uses mean pooling, 768 dimensions, normalized vectors, `task: search result | query: ...` queries and `title: ... | text: ...` documents. The model identity includes the weight hash, prompts, pooling, dimensions and chunker revision; other model identities never contribute candidates.
+- Markdown passages preserve source lines and headings, including duplicate headings. Each passage is bounded by 512 UTF-8 bytes (a conservative token upper bound), with title and heading metadata limited to 64 UTF-16 characters each. Total inference input is limited to 1024 UTF-8 bytes, including query prompts. These bounds fit the measured 2-GiB ARM64 runtime envelope; oversized queries stay lexical-only. The startup worker processes one passage every three seconds, one run at a time, with a 15-second document deadline. Progress is durable and resumable. Inference occurs outside note transactions; publication locks and rechecks the current source hash and visibility after inference. Restored notes reuse only fresh passages.
+- Search fuses full-text/fuzzy and learned passage rankings with reciprocal rank fusion, prioritizing exact titles/aliases. A ready learned index replaces the approximate hash vote; incomplete or unavailable indexes retain the hash fallback. Learned matches do not need literal n-gram overlap. Tag filters and archive/trash exclusions apply to every lane. A learned query has a 1.5-second timeout; unavailable or malformed embeddings leave lexical search usable. Note writes never call the learned model. Related discovery can use cached fresh passage vectors without live inference.
+- Search responses expose index counts and disabled/unavailable/indexing/ready state. Dense results are discovery candidates, not an abstention guarantee for unrelated queries. Source passage links carry line locations and the note timestamp so changed evidence is not silently presented as the original source.
 - Chat without fresh matches reloads prior cited active notes for follow-up context. Deleted or archived notes are not revived as evidence.
 - `--workspace-h` reserves mobile header, navigation and safe-area space. Note/chat panes scroll internally instead of adding an extra document-height gap.

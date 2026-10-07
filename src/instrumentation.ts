@@ -4,5 +4,7 @@ export async function register(): Promise<void> {
     // Replay durable work and run trash and revision retention now and on a schedule, without
     // coupling server readiness to storage health.
     startNoteMaintenance();
+    const { startSemanticIndexing } = await import("@/server/search/indexer");
+    startSemanticIndexing();
   }
 }
