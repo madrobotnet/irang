@@ -14,7 +14,7 @@ process and publication status: [RELEASING.md](RELEASING.md).
 
 | Service | Image | Notes |
 | --- | --- | --- |
-| `app` | `${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.2.0}` | Image-only Compose service, running the Bun standalone Next.js server as `nextjs` (UID/GID 1001). Publishes `127.0.0.1:${APP_PORT:-3000}:3000`, loopback only. Docker healthcheck uses `/api/health`. |
+| `app` | `${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.3.0}` | Image-only Compose service, running the Bun standalone Next.js server as `nextjs` (UID/GID 1001). Publishes `127.0.0.1:${APP_PORT:-3000}:3000`, loopback only. Docker healthcheck uses `/api/health`. |
 | `db` | `pgvector/pgvector:0.8.6-pg18` | Internal only (no host port). Healthcheck `pg_isready -U postgres -d second_brain`; the app waits for it. On a **fresh** data volume the Postgres entrypoint runs `docker/postgres/production/01-app-role.sql`. It precreates the `pgcrypto`, `vector`, and `pg_trgm` extensions and the restricted application role (section 4). |
 
 Compose prefixes named volumes with the project name, which defaults to the
@@ -32,7 +32,7 @@ database volume is mounted. These are project-scoped logical keys, not fixed
 global volume names. Section 10 explains how to keep an existing physical volume.
 
 The release archive pins `app.image` to
-`ghcr.io/madrobotnet/irang:2.2.0@sha256:...`, recorded in `release.json`.
+`ghcr.io/madrobotnet/irang:2.3.0@sha256:...`, recorded in `release.json`.
 Its other parsed Compose fields match source. Keep the relative
 `docker/postgres/production` directory beside Compose; downloading only
 `compose.yml` omits the required database initialization script.
@@ -47,8 +47,9 @@ Its other parsed Compose fields match source. Keep the relative
 - The POSIX shell commands were verified on Linux. macOS and Windows are
   untested. For access beyond `127.0.0.1`, you need a TLS-terminating reverse
   proxy that you control (section 6).
-- The archive path uses `tar`, `sha256sum`, and `jq`. Authorized maintainers
-  also use `gh release download` while the repository is private.
+- The archive path uses `tar`, `sha256sum`, and `jq`; the examples use
+  `gh release download` for public release assets. Private image pulls need
+  separate registry authorization.
 - No host Node or Bun: operator scripts are bundled under `/app/scripts`
   in the application image (section 3). Bun 1.4.2 is required for development;
   Node 22 is only for upstream CLI subprocess fixtures.
@@ -65,17 +66,17 @@ by regenerating existing passwords or selecting a different data volume.
 
 ### Installation archive
 
-These archive commands require a completed `v2.2.0` release with the checks
-described in [RELEASING.md](RELEASING.md). While the repository and GHCR package
-are private, download and pull access is limited to authorized users. Download
+These archive commands require a completed `v2.3.0` release with the checks
+described in [RELEASING.md](RELEASING.md). Source and release assets are public;
+the GHCR package remains private and image pulls require authorization. Download
 all release assets into an empty directory, verify their checksums, then extract:
 
 ```sh
-mkdir irang-release-2.2.0
-cd irang-release-2.2.0
-gh release download v2.2.0 --repo madrobotnet/irang
+mkdir irang-release-2.3.0
+cd irang-release-2.3.0
+gh release download v2.3.0 --repo madrobotnet/irang
 sha256sum --check SHA256SUMS
-tar -xzf irang-2.2.0-install.tar.gz
+tar -xzf irang-2.3.0-install.tar.gz
 cd irang
 IRANG_IMAGE=$(jq -r .image release.json)
 export IRANG_IMAGE
@@ -85,23 +86,23 @@ docker pull "$IRANG_IMAGE"
 Use this same digest reference for bootstrap and the app. Archived Compose
 already uses it by default; remove or update any old `IRANG_IMAGE` override in
 `.env`. Source Compose uses the readable version tag
-`ghcr.io/madrobotnet/irang:2.2.0`, which release policy treats as immutable.
+`ghcr.io/madrobotnet/irang:2.3.0`, which release policy treats as immutable.
 
 Private pulls need a Docker registry credential with package read access.
-GitHub CLI access to a private repository doesn't itself provide that
+GitHub CLI access to the repository doesn't itself provide that
 credential. Native release jobs prove private pulls with their own job tokens;
-don't export those tokens to your host. Anonymous package access is pending
-the owner's separate repository and package visibility changes.
+don't export those tokens to your host. Public source and release assets do not
+grant anonymous private-package access.
 
 ### Explicit source build
 
-If GHCR access isn't available, build locally. Cloning still requires repository
-access while it's private. There is no fallback Compose file or build layer:
+If GHCR access isn't available, build the public source locally. Select the
+verified release tag before building; Compose has no build configuration:
 
 ```sh
-git clone https://github.com/madrobotnet/irang.git
+git clone --branch v2.3.0 --single-branch https://github.com/madrobotnet/irang.git
 cd irang
-docker build --build-arg VERSION=2.2.0 \
+docker build --build-arg VERSION=2.3.0 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
@@ -374,7 +375,7 @@ password; keep it out of shared logs. `bun run seed` adds demo notes to the dev 
 | `SESSION_TTL_DAYS` | sessions | `30` | Session lifetime in days |
 | `ATTACHMENTS_DIR` | attachment storage | `.data/attachments` (relative to the app's working directory) | Attachment file location; in Docker this is inside the `app-data` volume |
 | `APP_PORT` | `compose.yml` | `3000` | Loopback host port |
-| `IRANG_IMAGE` | `compose.yml` only | `ghcr.io/madrobotnet/irang:2.2.0` in source; verified digest in archive | Explicit app image selection; set `irang:local` for source builds; not forwarded to the app |
+| `IRANG_IMAGE` | `compose.yml` only | `ghcr.io/madrobotnet/irang:2.3.0` in source; verified digest in archive | Explicit app image selection; set `irang:local` for source builds; not forwarded to the app |
 | `POSTGRES_PASSWORD` | `compose.yml` | Required | Current installs: application role password. Legacy installs with `POSTGRES_APP_PASSWORD`: original administrator password |
 | `POSTGRES_ADMIN_PASSWORD` | `compose.yml` db service | Required for current installs | Explicit administrator password; legacy installs fall back to their original `POSTGRES_PASSWORD` |
 | `POSTGRES_APP_PASSWORD` | `compose.yml` db service | `POSTGRES_PASSWORD` | Legacy application password; requires an explicit volume choice and is never forwarded as a separate app environment variable |
@@ -386,8 +387,14 @@ password; keep it out of shared logs. `bun run seed` adds demo notes to the dev 
 | `CODEX_MODEL` | chat (env fallback / default) | `gpt-6.1-sol` | Chat model when using the Codex ChatGPT login |
 | `CODEX_CHATGPT_BASE_URL` | Codex ChatGPT transport | `https://chatgpt.com/backend-api/codex` | Operator-controlled Codex backend endpoint |
 | `GEMINI_CLI_HOME` | Gemini CLI auth | unset locally (Google CLI login unavailable); `/app/.data/auth/google` in Docker | Directory the Gemini CLI keeps its OAuth credentials in; must be an absolute path |
+| `EMBEDDING_BASE_URL` | Optional learned search | empty (disabled) | Private local embedding endpoint, forwarded by Compose; separate from chat/Jev consent |
 
 ## 8. AI configuration (optional, per provider)
+
+Learned passage search is a separate optional service, not a chat or Jev
+connection. See [SEMANTIC-SEARCH.md](SEMANTIC-SEARCH.md) for pinned materials,
+private networking, resource bounds and indexing/recovery. The app image contains
+neither its runtime nor model weights; an unset endpoint keeps search model-free.
 
 Everything below is optional. Capture, notes, editing, search, and the graph
 work without an AI connection. Use the setup wizard or **Settings → AI** in the
@@ -650,10 +657,10 @@ docker compose up -d --wait --wait-timeout 180
 
 For a source installation, update the existing checkout to the intended version
 without replacing `.env` or changing its project. Use that checkout's package
-version for `VERSION`; this release is 2.2.0:
+version for `VERSION`; this release is 2.3.0:
 
 ```sh
-docker build --build-arg VERSION=2.2.0 \
+docker build --build-arg VERSION=2.3.0 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE

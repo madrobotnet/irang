@@ -1,4 +1,4 @@
-name: Private native release
+name: Native package release
 
 on:
   push:
@@ -35,13 +35,14 @@ jobs:
         with:
           bun-version: 1.4.2
       - id: identity
-        name: Require real stable tag on main and private repository
+        name: Require real stable tag on main and the public source repository
         env:
           REF: ${{ github.ref }}
           PRIVATE: ${{ github.event.repository.private }}
         run: |
           set -euo pipefail
-          test "$PRIVATE" = true
+          test "$GITHUB_REPOSITORY" = madrobotnet/irang
+          test "$PRIVATE" = false
           [[ "$REF" =~ ^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           revision="$(git rev-parse "$REF^{commit}")"
           test "$revision" = "$(git rev-parse HEAD)"
@@ -129,6 +130,16 @@ jobs:
           [[ "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
           printf '%s\n' "$DIGEST" > build/digest.txt
           printf '%s\n' "$METADATA" > build/build-metadata.json
+      - name: Export architecture-qualified source assets
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: "{{defaultContext}}"
+          platforms: ${{ matrix.platform }}
+          target: source-assets
+          outputs: type=local,dest=build/sources
+          build-args: |
+            VERSION=${{ env.VERSION }}
+            REVISION=${{ env.REVISION }}
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: build-${{ matrix.arch }}
@@ -193,6 +204,12 @@ jobs:
           docker pull --platform "$PLATFORM" "$image"
           docker image inspect "$image" > receipt/inspect.json
           bun --no-env-file scripts/verify-release.mjs image --inspect receipt/inspect.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION" --platform "$PLATFORM"
+          docker run --rm --network none --entrypoint cat "$image" /usr/share/irang/licenses/materials.json > receipt/materials.json
+          cp -r build/sources receipt/sources
+          export SOURCE_INDEX="irang-$VERSION-sources-linux-$ARCH-index.json"
+          export MATERIAL_SEAL="$(sha256sum receipt/materials.json | cut -d ' ' -f 1)"
+          export SOURCE_INDEX_SHA="$(sha256sum "receipt/sources/$SOURCE_INDEX" | cut -d ' ' -f 1)"
+          bun --no-env-file -e 'const {verifySourceAssets}=await import("./distribution/release/restore.mjs"); await verifySourceAssets("receipt/sources",process.env.SOURCE_INDEX,process.env.SOURCE_INDEX_SHA,{version:process.env.VERSION,revision:process.env.REVISION,platform:process.env.PLATFORM,materialManifestSha256:process.env.MATERIAL_SEAL});'
           bun --no-env-file scripts/smoke-image.mjs --image "$image" --project "irang-package-qa-$ARCH-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" --port 3316 --evidence-dir receipt/smoke
           export BUILD_DIGEST="$digest"
           python3 - <<'PY'
@@ -219,7 +236,9 @@ jobs:
             runnableDigest=runnable[0]["digest"], image=os.environ["IMAGE"]+"@"+os.environ["BUILD_DIGEST"],
             native=True, pull="PASS", cleanup="PASS",
             checks=[dict(name=s["name"], status="PASS") for s in smoke["scenarios"]],
-            labels=json.loads((p/"inspect.json").read_text())[0]["Config"]["Labels"])
+            labels=json.loads((p/"inspect.json").read_text())[0]["Config"]["Labels"],
+            sources=dict(indexName=os.environ["SOURCE_INDEX"], indexSha256=os.environ["SOURCE_INDEX_SHA"],
+              materialManifestSha256=os.environ["MATERIAL_SEAL"]))
           (p/"native-receipt.json").write_text(json.dumps(receipt, indent=2)+"\n")
           PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -364,6 +383,20 @@ jobs:
           test "$(jq -r .indexDigest merged/metadata.json)" = "$DIGEST"
           bun --no-env-file scripts/verify-release.mjs verify --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
           bun --no-env-file scripts/verify-release.mjs assemble --root . --out assets --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
+          for arch in amd64 arm64; do
+            cp "tested/tested-$arch/sources/"* assets/
+          done
+          bun --no-env-file scripts/verify-release.mjs sources --root assets --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
+          python3 - <<'PY'
+          import hashlib, pathlib
+          root = pathlib.Path("assets")
+          sums = []
+          for p in sorted(root.iterdir()):
+            if p.name == "SHA256SUMS": continue
+            with p.open("rb") as asset:
+              sums.append(hashlib.file_digest(asset, "sha256").hexdigest()+"  "+p.name+"\n")
+          (root/"SHA256SUMS").write_text("".join(sums))
+          PY
           bun --no-env-file scripts/verify-release.mjs checksums --root assets
           mkdir extracted
           tar -xzf "assets/irang-$VERSION-install.tar.gz" -C extracted
@@ -418,15 +451,20 @@ jobs:
           shutil.copyfile("archive-smoke/smoke-receipt.json", root/"smoke-archive.json")
           (root/"release-receipt.json").write_text(json.dumps(dict(version=os.environ["VERSION"],
             revision=os.environ["REVISION"], indexDigest=os.environ["DIGEST"], receipts=metadata["receipts"]), indent=2)+"\n")
-          sums = "".join(hashlib.sha256(p.read_bytes()).hexdigest()+"  "+p.name+"\n"
-            for p in sorted(root.iterdir()) if p.name != "SHA256SUMS")
+          sums = []
+          for p in sorted(root.iterdir()):
+            if p.name == "SHA256SUMS": continue
+            with p.open("rb") as asset:
+              sums.append(hashlib.file_digest(asset, "sha256").hexdigest()+"  "+p.name+"\n")
+          sums = "".join(sums)
           (root/"SHA256SUMS").write_text(sums)
           PY
           bun --no-env-file scripts/verify-release.mjs checksums --root assets
-      - name: Create private draft, verify uploaded bytes, then publish stable release
+      - name: Create draft, verify uploaded bytes, then publish stable release
         run: |
           set -euo pipefail
-          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = true
+          test "$GITHUB_REPOSITORY" = madrobotnet/irang
+          test "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" = false
           tag="v$VERSION"
           # A rerun may resume its draft, but never overwrite a published release.
           gh api --paginate "repos/$GITHUB_REPOSITORY/releases" > releases.json
@@ -434,12 +472,13 @@ jobs:
           if test -n "$existing"; then
             test "$(gh api "repos/$GITHUB_REPOSITORY/releases/$existing" --jq .draft)" = true
           else
-            gh release create "$tag" --verify-tag --draft --title "Irang $VERSION" --notes "Private native Linux amd64/arm64 release."
+            gh release create "$tag" --verify-tag --draft --title "Irang $VERSION" --notes "Native Linux amd64/arm64 installation release. Optional local learned passage retrieval preserves lexical search and links results to supporting source passages. Model weights and the embedding runtime are configured separately. The GHCR package remains private and requires authorized registry access. See CHANGELOG.md and the installation guides for details."
           fi
           gh release upload "$tag" assets/* --clobber
           mkdir downloaded
           gh release download "$tag" --dir downloaded
           bun --no-env-file scripts/verify-release.mjs checksums --root downloaded
+          bun --no-env-file scripts/verify-release.mjs sources --root downloaded --metadata merged/metadata.json --version "$VERSION" --ref "$GITHUB_REF" --revision "$REVISION"
           diff -r assets downloaded
           gh release edit "$tag" --draft=false --prerelease=false
           gh release view "$tag" --json url --jq .url

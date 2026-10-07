@@ -35,7 +35,8 @@ obligations rather than assuming MIT or silently accepting missing texts.
 ## Runtimes, base image and official tools
 
 The Dockerfile uses Bun 1.4.2 from `oven/bun:1.4.2-slim` and Node 22 from
-`node:22-bookworm-slim`. Preserve their upstream license/notice files and Debian's
+`node:22.23.3-bookworm-slim`. Both base indexes are digest-pinned in the
+Dockerfile. Preserve their upstream license/notice files and Debian's
 `/usr/share/doc` copyright/license records in the final image. Locate and record
 the actual files and base-image digests for each architecture during image
 verification; package collection alone doesn't inventory binary runtimes or
@@ -43,6 +44,15 @@ system libraries. Consult [Bun's distribution license](https://github.com/oven-s
 [Node's license](https://github.com/nodejs/node/blob/main/LICENSE), and the
 copyright records for the exact installed Debian packages. Where their terms
 require source or an offer, provide the matching source or compliant offer.
+
+Versioned releases provide architecture-qualified corresponding-source pieces
+and an index separately from the installation archive. The freshly pulled image's
+`/usr/share/irang/licenses/materials.json` seals their selected-file associations.
+The native release receipt binds the source index hash and material seal to the
+tested runnable image digest. See the public tagged
+[reconstruction instructions](https://github.com/madrobotnet/irang/blob/v2.3.0/distribution/release/README.md).
+Full source acquisition, recipient access and applicable replacement rights
+must be verified before publication; a generated manifest alone is not proof.
 
 The pinned tools are `@openai/codex@0.158.0` and
 `@google/gemini-cli@0.61.0`; their installed dependency trees are collected

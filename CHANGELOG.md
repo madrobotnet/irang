@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.3.0 - 2026-10-07
+
+### Added
+
+- Optional local learned passage retrieval with EmbeddingGemma 2. Exact names,
+  aliases, metadata and lexical search remain usable without the model.
+- Bounded, resumable indexing with model identity and source freshness checks.
+  Note saves do not wait for learned inference.
+- Supporting passage locations in search and related notes, version-checked
+  navigation and honest indexing/unavailable status.
+
+### Changed
+
+- Release identity and installation examples target 2.3.0. Public source and
+  release assets are distinct from the access-controlled GHCR package.
+- The app image does not bundle embedding weights or a learned-model runtime;
+  operators configure the optional private endpoint separately.
+
 ## 2.2.0 - 2026-09-28
 
 ### Added

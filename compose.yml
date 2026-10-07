@@ -6,7 +6,7 @@ x-upgrade-checks:
 
 services:
   app:
-    image: ${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.2.0}
+    image: ${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.3.0}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://second_brain:${POSTGRES_APP_PASSWORD:-${POSTGRES_PASSWORD:?Use the Docker setup command in README.md first}}@db:5432/second_brain}
@@ -23,6 +23,7 @@ services:
       CODEX_MODEL: ${CODEX_MODEL:-gpt-6.1-sol}
       CODEX_CHATGPT_BASE_URL: ${CODEX_CHATGPT_BASE_URL:-https://chatgpt.com/backend-api/codex}
       GEMINI_CLI_HOME: ${GEMINI_CLI_HOME:-/app/.data/auth/google}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:

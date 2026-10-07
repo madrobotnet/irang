@@ -36,9 +36,9 @@
   있습니다.
 - **그래프**: 노트장 전체 또는 한 노트 주변의 연결을 살펴봅니다.
 - **검색**: PostgreSQL 전문 검색, 트라이그램, 문자 n-gram을 함께 써서 정확한
-  단어는 물론 오타가 섞인 검색어로도 노트를 찾습니다. 검색은 의미가 아닌
-  텍스트를 비교합니다. 임베딩도 로컬에서 만든 해시 기반 문자 n-gram이므로 학습된 의미
-  벡터나 외부 임베딩 API는 쓰지 않습니다.
+  단어는 물론 오타가 섞인 검색어로도 모델 없이 노트를 찾습니다. 별도의 비공개
+  로컬 런타임을 설정하면 학습형 본문 조각 검색과 근거 위치를 사용할 수 있습니다.
+  [로컬 의미 검색](docs/SEMANTIC-SEARCH.md)을 참고하세요. 가중치는 포함하지 않습니다.
 - **첨부파일**: 노트에 붙인 파일을 서버에 함께 보관합니다.
 - **Markdown 내보내기**: 설정에서 휴지통 밖의 모든 노트와 첨부파일을 zip
   하나로 내려받습니다. 보관한 노트도 포함됩니다. 각 노트는 YAML
@@ -65,22 +65,23 @@ Docker와 **Docker Compose 5.1.0 이상**이 필요합니다. 버전은
 
 ### 릴리스 설치 아카이브
 
-설치 묶음은 `irang-2.2.0-install.tar.gz`입니다. `compose.yml`, 필수 마운트
+설치 묶음은 `irang-2.3.0-install.tar.gz`입니다. `compose.yml`, 필수 마운트
 파일 `docker/postgres/production/01-app-role.sql`, 문서, 고지,
 `release.json`이 들어 있습니다. 아카이브의 Compose 파일은 이미지 다이제스트를
 고정합니다. 묶음의 디렉터리 구조를 그대로 유지하세요.
 
-**비공개 릴리스 접근:** 저장소와 GHCR 패키지가 비공개인 동안에는 파일과
-이미지를 내려받을 권한이 필요합니다. 아래 명령은 [릴리스 안내](docs/RELEASING.md)의
-검증을 마친 `v2.2.0` 릴리스가 있어야 사용할 수 있습니다. GitHub CLI로 릴리스
+**이미지 접근:** 소스 저장소와 GitHub 릴리스 파일은 공개되어 있지만 GHCR
+패키지는 비공개이며 이미지를 받으려면 패키지 접근 권한이 필요합니다.
+아래 명령은 [릴리스 안내](docs/RELEASING.md)의
+검증을 마친 `v2.3.0` 릴리스가 있어야 사용할 수 있습니다. GitHub CLI로 릴리스
 파일을 내려받고, `jq`로 이미지 참조를 읽습니다.
 
 ```sh
-mkdir irang-release-2.2.0
-cd irang-release-2.2.0
-gh release download v2.2.0 --repo madrobotnet/irang
+mkdir irang-release-2.3.0
+cd irang-release-2.3.0
+gh release download v2.3.0 --repo madrobotnet/irang
 sha256sum --check SHA256SUMS
-tar -xzf irang-2.2.0-install.tar.gz
+tar -xzf irang-2.3.0-install.tar.gz
 cd irang
 
 IRANG_IMAGE=$(jq -r .image release.json)
@@ -96,19 +97,19 @@ curl -i http://127.0.0.1:3000/api/health
 
 비공개 GHCR 이미지를 받으려면 별도의 패키지 읽기 권한이 필요합니다.
 GitHub CLI의 저장소 인증만으로 Docker 레지스트리 자격 증명이 생기지는 않습니다.
-소유자가 저장소와 GHCR 패키지를 각각 공개하기 전에는 익명 다운로드와 이미지
-받기가 불가능합니다. 레지스트리 접근 권한이 없다면 소스에서 빌드하세요.
+공개 릴리스 파일을 받는 것만으로 비공개 이미지 접근 권한이 생기지는 않습니다.
+레지스트리 접근 권한이 없다면 소스에서 빌드하세요.
 
 ### 소스에서 빌드
 
-저장소가 비공개인 동안에는 복제에 저장소 접근 권한이 필요합니다. 이 경로에는
-GHCR 접근 권한이 필요하지 않습니다. Compose에 빌드 설정이 없으므로 이미지를
+소스 저장소는 공개되어 있으며 이 경로에는 GHCR 접근 권한이 필요하지 않습니다.
+Compose에 빌드 설정이 없으므로 이미지를
 직접 빌드합니다.
 
 ```sh
-git clone https://github.com/madrobotnet/irang.git
+git clone --branch v2.3.0 --single-branch https://github.com/madrobotnet/irang.git
 cd irang
-docker build --build-arg VERSION=2.2.0 \
+docker build --build-arg VERSION=2.3.0 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
@@ -137,7 +138,7 @@ curl -i http://127.0.0.1:3000/api/health
    바꾸지 않고 종료합니다. 호스트에서 `bun install`을 실행해도 이 파일이나
    코드는 생기지 않습니다.
 2. Compose는 DB 상태 검사가 통과한 뒤 선택한 이미지를 시작합니다.
-   소스 Compose의 기본값은 `ghcr.io/madrobotnet/irang:2.2.0`입니다.
+   소스 Compose의 기본값은 `ghcr.io/madrobotnet/irang:2.3.0`입니다.
    릴리스 아카이브는 검증된 다이제스트를, 소스 빌드는
    `IRANG_IMAGE=irang:local`을 사용합니다.
 3. 앱은 `127.0.0.1`에만 바인딩됩니다. 루프백 HTTP에서만
@@ -255,9 +256,9 @@ bun run dev    # http://localhost:3000
 
 - [docs/SETUP.ko.md](docs/SETUP.ko.md): 한국어 설치, HTTPS, 업그레이드, 백업, 복구
 - [docs/SETUP.md](docs/SETUP.md): 같은 설치 안내의 영어 원문
-- [docs/RELEASING.md](docs/RELEASING.md): 네이티브 이미지 릴리스, 배포 파일 검증, 소유자의 공개 절차
+- [docs/RELEASING.md](docs/RELEASING.md): 네이티브 이미지 릴리스와 배포 파일 검증
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): 구조와 API 계약
-- [docs/REBUILD-AUDIT.md](docs/REBUILD-AUDIT.md): v2 재구축 당시 재현한 결함과 검증 결과
+- [docs/SEMANTIC-SEARCH.md](docs/SEMANTIC-SEARCH.md): 선택형 비공개 의미 검색, 인덱싱과 대체 검색
 
 ## 프로젝트 후원
 

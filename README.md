@@ -37,9 +37,9 @@ over time. None of these features needs an AI account.
 - **Graphs.** Browse how your notes connect, either across the whole notebook
   or around one note.
 - **Search.** PostgreSQL full-text, trigram and character n-gram matching find
-  exact words and tolerate typos. Search compares text, not meaning: its
-  embeddings are local hashed character n-grams rather than learned semantic
-  vectors, and no external embedding API is involved.
+  exact words and tolerate typos without a model. An optional private local
+  runtime adds learned passage retrieval and supporting source locations.
+  See [local learned search](docs/SEMANTIC-SEARCH.md); weights are not bundled.
 - **Attachments.** Files are stored on your server next to the notes that use
   them.
 - **Markdown export.** Download every note outside the trash, archived ones
@@ -70,22 +70,23 @@ The commands use a POSIX shell; macOS and Windows haven't been tested.
 
 ### Released installation archive
 
-The installation bundle is `irang-2.2.0-install.tar.gz`. It includes
+The installation bundle is `irang-2.3.0-install.tar.gz`. It includes
 `compose.yml`, its required `docker/postgres/production/01-app-role.sql` mount,
 the documentation, notices, and `release.json`. The archived Compose file pins
 the image by digest. Keep the bundle's directory structure intact.
 
-**Private release access:** while the repository and GHCR package are private,
-downloads and pulls require access permission. The commands below require a
-completed `v2.2.0` release with the checks in the [release guide](docs/RELEASING.md).
+**Image access:** the source repository and GitHub release assets are public;
+the GHCR package remains private and image pulls require package permission.
+The commands below require a
+completed `v2.3.0` release with the checks in the [release guide](docs/RELEASING.md).
 Use the GitHub CLI to download its assets and `jq` to read the image reference:
 
 ```sh
-mkdir irang-release-2.2.0
-cd irang-release-2.2.0
-gh release download v2.2.0 --repo madrobotnet/irang
+mkdir irang-release-2.3.0
+cd irang-release-2.3.0
+gh release download v2.3.0 --repo madrobotnet/irang
 sha256sum --check SHA256SUMS
-tar -xzf irang-2.2.0-install.tar.gz
+tar -xzf irang-2.3.0-install.tar.gz
 cd irang
 
 IRANG_IMAGE=$(jq -r .image release.json)
@@ -100,21 +101,20 @@ curl -i http://127.0.0.1:3000/api/health
 ```
 
 Private GHCR pulls require separate package read access. GitHub CLI repository
-authentication alone isn't a Docker registry credential. Anonymous downloads
-and pulls aren't available until the owner publishes the repository and,
-separately, the GHCR package. If you don't have registry access, build from
+authentication alone isn't a Docker registry credential. Public release asset
+downloads do not grant private image access. If you don't have registry access, build from
 source instead.
 
 ### Build from source
 
-While the repository is private, cloning requires authorized repository access.
-This path doesn't require GHCR access. Compose has no build configuration, so
+The source repository is public; this path doesn't require GHCR access.
+Compose has no build configuration, so
 build the image explicitly:
 
 ```sh
-git clone https://github.com/madrobotnet/irang.git
+git clone --branch v2.3.0 --single-branch https://github.com/madrobotnet/irang.git
 cd irang
-docker build --build-arg VERSION=2.2.0 \
+docker build --build-arg VERSION=2.3.0 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
@@ -143,7 +143,7 @@ What happens during setup:
    anything. Running `bun install` on your machine won't create this file or
    the code.
 2. Compose starts the selected image after the database passes its health check.
-   Source Compose defaults to `ghcr.io/madrobotnet/irang:2.2.0`; the release
+   Source Compose defaults to `ghcr.io/madrobotnet/irang:2.3.0`; the release
    archive uses its verified digest, and a source build uses `IRANG_IMAGE=irang:local`.
 3. The app listens on `127.0.0.1` only. Use `INSECURE_COOKIES=1` only for
    loopback HTTP; HTTPS requires `INSECURE_COOKIES=0`.
@@ -263,9 +263,9 @@ operations are in
 ## Docs
 
 - [docs/SETUP.md](docs/SETUP.md): installation, HTTPS, upgrades, backup, recovery
-- [docs/RELEASING.md](docs/RELEASING.md): native image releases, asset verification, owner publication steps
+- [docs/RELEASING.md](docs/RELEASING.md): native image releases and asset verification
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): structure and API contracts
-- [docs/REBUILD-AUDIT.md](docs/REBUILD-AUDIT.md): historical v2 rebuild defects and verification results
+- [docs/SEMANTIC-SEARCH.md](docs/SEMANTIC-SEARCH.md): optional private learned runtime, indexing and fallback
 
 ## Support the project
 

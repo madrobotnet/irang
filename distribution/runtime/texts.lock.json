@@ -1,0 +1,65 @@
+[
+  {
+    "component": "llvm-libcxxabi",
+    "version": "llvmorg-19.1.0",
+    "url": "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-19.1.0/libcxxabi/LICENSE.TXT",
+    "file": "texts/0-LICENSE.TXT.txt",
+    "bytes": 16706,
+    "sha256": "e2b35be49f7284a45b7baca8fc7b3ab7440e7902392b2528a457816b5bb2a15c",
+    "relation": "Bun src/jsc/bindings/workaround-missing-symbols.cpp explicitly identifies this original version; compiled by scripts/glob-sources.ts cxx"
+  },
+  {
+    "component": "llvm-libcxxabi",
+    "version": "llvmorg-19.1.0",
+    "url": "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-19.1.0/libcxxabi/CREDITS.TXT",
+    "file": "texts/1-CREDITS.TXT.txt",
+    "bytes": 1660,
+    "sha256": "a259fff28a51623f14917dd68f97f3af7804984087ddc1bfd8196d08ebb75b83",
+    "relation": "Bun src/jsc/bindings/workaround-missing-symbols.cpp explicitly identifies this original version; compiled by scripts/glob-sources.ts cxx"
+  },
+  {
+    "component": "llvm-libcxxabi",
+    "version": "llvmorg-19.1.0",
+    "url": "https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-19.1.0/libcxxabi/src/cxa_thread_atexit.cpp",
+    "file": "texts/2-cxa_thread_atexit.cpp.txt",
+    "bytes": 5067,
+    "sha256": "c7c563078dcaf2cd9a55052bac6eee82b511448f1590ce652962c4d7e39bfb81",
+    "relation": "Bun src/jsc/bindings/workaround-missing-symbols.cpp explicitly identifies this original version; compiled by scripts/glob-sources.ts cxx"
+  },
+  {
+    "component": "uucode-upstream-supplement",
+    "version": "9d55524551411b493cca41ca06363625d90aff1e",
+    "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/9d55524551411b493cca41ca06363625d90aff1e/licenses/LICENSE_Bjoern_Hoehrmann",
+    "file": "texts/3-LICENSE_Bjoern_Hoehrmann.txt",
+    "bytes": 1140,
+    "sha256": "de219cece932aad5a817bf763393d8d149d378a15d2ad5320e3331eac07626dd",
+    "relation": "Supplemental upstream notice for the project named in stringWidth.cpp and stringWidthTables.h; original imported revision not identified by Bun, not asserted identical to this upstream revision"
+  },
+  {
+    "component": "uucode-upstream-supplement",
+    "version": "9d55524551411b493cca41ca06363625d90aff1e",
+    "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/9d55524551411b493cca41ca06363625d90aff1e/licenses/LICENSE_unicode",
+    "file": "texts/4-LICENSE_unicode.txt",
+    "bytes": 2032,
+    "sha256": "1eda5a3b026870c737b22e8bcd4954338612c790db688242e003f41a4fa95175",
+    "relation": "Supplemental upstream notice for the project named in stringWidth.cpp and stringWidthTables.h; original imported revision not identified by Bun, not asserted identical to this upstream revision"
+  },
+  {
+    "component": "uucode-upstream-supplement",
+    "version": "9d55524551411b493cca41ca06363625d90aff1e",
+    "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/9d55524551411b493cca41ca06363625d90aff1e/LICENSE.md",
+    "file": "texts/5-LICENSE.md.txt",
+    "bytes": 1298,
+    "sha256": "312e901e142be2477b4ca859e9311f9e3f80d33372991759b7921c1893605f33",
+    "relation": "Supplemental upstream notice for the project named in stringWidth.cpp and stringWidthTables.h; original imported revision not identified by Bun, not asserted identical to this upstream revision"
+  },
+  {
+    "component": "uucode-vendored-ancestor",
+    "version": "0.1.0 at Bun b8ecc78b03c998c228be4520bb8d2f888624e4a1",
+    "url": "https://raw.githubusercontent.com/oven-sh/bun/b8ecc78b03c998c228be4520bb8d2f888624e4a1/src/unicode/uucode_lib/LICENSE.md",
+    "file": "texts/6-uucode-vendored-LICENSE.md.txt",
+    "bytes": 1298,
+    "sha256": "75b52b07e8f6ed6b1700ca6e4bcff93a59258624d4fd1ab7eae4c071c860b69b",
+    "relation": "Exact vendored license immediately before Bun Rust rewrite23427dbc12fdcff30c23a96a3d6a66d62fdc091d; later C++ port1c6597b8c46b5bf6694a35fb4b5478a98e90c9e8 explicitly carries uucode-derived grapheme tables/algorithm forward"
+  }
+]

@@ -9,3 +9,8 @@ node_modules
 coverage
 .omo
 .senpi
+scripts/retrieval-baseline.md
+scripts/retrieval-baseline.json
+scripts/retrieval-eval.ts
+scripts/embedding-passage-benchmark.ts
+scripts/indexing-responsiveness.ts

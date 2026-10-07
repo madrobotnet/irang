@@ -43,11 +43,10 @@ Keep secrets out of email as well as public reports.
   an existing env file or replace legacy database passwords and volume
   selections without following the setup guide.
 
-The repository and GHCR package remain private during release preparation.
-The owner controls their visibility separately; publishing the repository
-doesn't make its package public. A denied private image pull isn't by itself
+The source repository and release assets are public; the GHCR package remains
+private. Public source access doesn't grant package access. A denied private image pull isn't by itself
 an app defect. Don't send registry credentials or a broad access token to get
-help. Use a source build if you have source access.
+help. Use the documented source build if you don't have registry access.
 
 ## AI capability isn't provider entitlement
 

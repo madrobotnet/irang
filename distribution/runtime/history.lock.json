@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "archives": [
+    {
+      "id": "esbuild-history",
+      "version": "65a010fd2ed1ea5ff88b380196f246cbc638dcfd",
+      "url": "https://codeload.github.com/evanw/esbuild/tar.gz/65a010fd2ed1ea5ff88b380196f246cbc638dcfd",
+      "file": "history/archives/esbuild-history.tar.gz",
+      "bytes": 1342681,
+      "sha256": "2f69026cb19e0f11c5c8512f0cf5e21878ac436855ca221d0b0cecc74835cd71"
+    },
+    {
+      "id": "lightningcss-history",
+      "version": "eb49015cf887ae720b80a2856ccbdf61bf940ef1",
+      "url": "https://codeload.github.com/parcel-bundler/lightningcss/tar.gz/eb49015cf887ae720b80a2856ccbdf61bf940ef1",
+      "file": "history/archives/lightningcss-history.tar.gz",
+      "bytes": 7532447,
+      "sha256": "cfd61eee75a86bd38c8b356e16e962845111ee54204745f806698f55ffc3044d"
+    },
+    {
+      "id": "uucode-history",
+      "version": "90a5dfa34a1da9d59b96417d73843c3c658f4816",
+      "url": "https://codeload.github.com/jacobsandlund/uucode/tar.gz/90a5dfa34a1da9d59b96417d73843c3c658f4816",
+      "file": "history/archives/uucode-history.tar.gz",
+      "bytes": 762037,
+      "sha256": "0aea04fe0912a456ec012f008a29c726d73126c194cc9206bb71c4097eaa8986"
+    },
+    {
+      "id": "cssparser-history",
+      "version": "0.33.0",
+      "url": "https://static.crates.io/crates/cssparser/cssparser-0.33.0.crate",
+      "file": "history/archives/cssparser-history.tar.gz",
+      "bytes": 53115,
+      "sha256": "9be934d936a0fbed5bcdc01042b770de1398bf79d0e192f49fa7faea0e99281e"
+    }
+  ],
+  "texts": [
+    {
+      "id": "esbuild-mit",
+      "component": "esbuild",
+      "version": "23c40b1b6a76a8626f1d160f89677ed2c73b6090",
+      "url": "https://raw.githubusercontent.com/evanw/esbuild/23c40b1b6a76a8626f1d160f89677ed2c73b6090/LICENSE.md",
+      "file": "history/texts/esbuild-mit.txt",
+      "bytes": 1069,
+      "sha256": "b40ec5baec7bb34fa5b1c09521fa3cd52d5fad7adafed74932a2010d3612a681"
+    },
+    {
+      "id": "lightning-mit",
+      "component": "lightning",
+      "version": "6c5df3ed356f0e84a446dc23ac4bdd7f0e4f8baa",
+      "url": "https://raw.githubusercontent.com/parcel-bundler/lightningcss/6c5df3ed356f0e84a446dc23ac4bdd7f0e4f8baa/LICENSE",
+      "file": "history/texts/lightning-mit.txt",
+      "bytes": 1077,
+      "sha256": "dfe1a83fb595aba74d4fa759320a90db62625b15e294b4710b2c08790e38f227"
+    },
+    {
+      "id": "lightning-mpl",
+      "component": "lightning",
+      "version": "3e8f71ef3729879872e78f4cb2cc6f22cd2597ad",
+      "url": "https://raw.githubusercontent.com/parcel-bundler/lightningcss/3e8f71ef3729879872e78f4cb2cc6f22cd2597ad/LICENSE",
+      "file": "history/texts/lightning-mpl.txt",
+      "bytes": 15648,
+      "sha256": "5eba353fe5076ac3432177f8ab1cf75e3afcd0584251e37c3bfead5f447d040e"
+    },
+    {
+      "id": "servo-mpl",
+      "component": "servo",
+      "version": "f5ab95786f9cbbf5804d87f265812325fc80ad7b",
+      "url": "https://raw.githubusercontent.com/servo/servo/f5ab95786f9cbbf5804d87f265812325fc80ad7b/LICENSE",
+      "file": "history/texts/servo-mpl.txt",
+      "bytes": 15649,
+      "sha256": "1af2d2b02d9c86030d29ed77117ca7a1b0e4b6ff35bcf8eeb124867d0f5cb59e"
+    },
+    {
+      "id": "uucode-unicode",
+      "component": "uucode",
+      "version": "90a5dfa34a1da9d59b96417d73843c3c658f4816",
+      "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/90a5dfa34a1da9d59b96417d73843c3c658f4816/licenses/LICENSE_unicode",
+      "file": "history/texts/uucode-unicode.txt",
+      "bytes": 2032,
+      "sha256": "1eda5a3b026870c737b22e8bcd4954338612c790db688242e003f41a4fa95175"
+    },
+    {
+      "id": "uucode-hoehrmann",
+      "component": "uucode",
+      "version": "731c2c0da439e71b9125cae2315e621f1e61deb4",
+      "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/731c2c0da439e71b9125cae2315e621f1e61deb4/licenses/LICENSE_Bjoern_Hoehrmann",
+      "file": "history/texts/uucode-hoehrmann.txt",
+      "bytes": 1140,
+      "sha256": "de219cece932aad5a817bf763393d8d149d378a15d2ad5320e3331eac07626dd"
+    },
+    {
+      "id": "uucode-2025",
+      "component": "uucode",
+      "version": "90a5dfa34a1da9d59b96417d73843c3c658f4816",
+      "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/90a5dfa34a1da9d59b96417d73843c3c658f4816/LICENSE.md",
+      "file": "history/texts/uucode-2025.txt",
+      "bytes": 1298,
+      "sha256": "04de0e934432d28ec02715a632500878df804cbae5ecb1332d38ff858275bc78"
+    },
+    {
+      "id": "uucode-2026",
+      "component": "uucode",
+      "version": "84ceda8561a17ba4a9b96ac5c583f779660bbd4e",
+      "url": "https://raw.githubusercontent.com/jacobsandlund/uucode/84ceda8561a17ba4a9b96ac5c583f779660bbd4e/LICENSE.md",
+      "file": "history/texts/uucode-2026.txt",
+      "bytes": 1298,
+      "sha256": "312e901e142be2477b4ca859e9311f9e3f80d33372991759b7921c1893605f33"
+    },
+    {
+      "id": "servo-cssparser-original",
+      "component": "servo",
+      "version": "0bad1d50ce955bebbc845b5522f5a99d203a04f3",
+      "url": "https://raw.githubusercontent.com/servo/rust-cssparser/0bad1d50ce955bebbc845b5522f5a99d203a04f3/LICENSE",
+      "file": "history/texts/servo-cssparser-original.txt",
+      "bytes": 1490,
+      "sha256": "eee39deb7b58613a272d75ca77c9232b5f178b32248e14e888dea79d90089457"
+    },
+    {
+      "id": "servo-cssparser-mpl",
+      "component": "servo",
+      "version": "5327f91776673d9052ef6ce45004f9c878105344",
+      "url": "https://raw.githubusercontent.com/servo/rust-cssparser/5327f91776673d9052ef6ce45004f9c878105344/LICENSE",
+      "file": "history/texts/servo-cssparser-mpl.txt",
+      "bytes": 16726,
+      "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+    },
+    {
+      "id": "unicode-2024",
+      "component": "unicode",
+      "version": "5f579147a01f4eb4c5ea148de868dfe2aeab1bd1",
+      "url": "https://raw.githubusercontent.com/unicode-org/unicodetools/5f579147a01f4eb4c5ea148de868dfe2aeab1bd1/LICENSE",
+      "file": "history/texts/unicode-2024.txt",
+      "bytes": 2033,
+      "sha256": "fe5c62b543e287981db198f2acfa0ca732d12591a1024536dc8fd85dacd77104"
+    },
+    {
+      "id": "bun-first-parser",
+      "component": "bun-history",
+      "version": "7bc04fb5de8a197e985c83f5668451481ddc309a",
+      "url": "https://raw.githubusercontent.com/oven-sh/bun/7bc04fb5de8a197e985c83f5668451481ddc309a/src/js_parser.zig",
+      "file": "history/texts/bun-first-parser.txt",
+      "bytes": 22027,
+      "sha256": "e78422364752e5252fa0c49b69fd1ceac69cd8074c917b57c6bcde0394115f85"
+    },
+    {
+      "id": "bun-css-mpl-generator",
+      "component": "bun-history",
+      "version": "274e5a202223ae8b809b556565fae2979d59fcd5",
+      "url": "https://raw.githubusercontent.com/oven-sh/bun/274e5a202223ae8b809b556565fae2979d59fcd5/src/css/build-prefixes.js",
+      "file": "history/texts/bun-css-mpl-generator.txt",
+      "bytes": 23100,
+      "sha256": "f753bfd8cd51f0a4e933e28781bbfff70a003709aaebd55f42fab43692fe496f"
+    }
+  ]
+}

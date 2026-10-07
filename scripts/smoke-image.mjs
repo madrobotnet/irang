@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // Maintainer QA: synthetic data only. Never point this at an existing project.
-import { mkdtemp, mkdir, cp, readFile, writeFile, stat, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, cp, readFile, writeFile, stat, rm, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -205,6 +205,10 @@ async function fixture(project, legacy) {
   await mkdir(directory);
   await cp(path.join(source, "compose.yml"), path.join(directory, "compose.yml"));
   await cp(path.join(source, "docker/postgres/production"), path.join(directory, "docker/postgres/production"), { recursive: true });
+  // The producer checkout may be private (0700/0600). Only these public SQL
+  // fixture bytes must be readable by PostgreSQL's unprivileged container user.
+  await chmod(path.join(directory, "docker/postgres/production"), 0o755);
+  await chmod(path.join(directory, "docker/postgres/production/01-app-role.sql"), 0o644);
   const item = { project, directory, env: path.join(directory, ".env"), base: `http://127.0.0.1:${input.port}`, allocated: false };
   fixtures.push(item);
   const bootstrapArgs = ["--user", `${process.getuid()}:${process.getgid()}`, "-v", `${directory}:/install`,
@@ -376,6 +380,15 @@ try {
 } catch (error) {
   receipts.error = safe(error.message);
   console.error(receipts.error);
+  for (const item of fixtures.filter(item => item.allocated)) {
+    try {
+      await compose(item, ["logs", "--no-color", "--tail", "100", "db"], {
+        expect: null, capture: true, cleanup: true,
+      });
+    } catch (diagnosticError) {
+      record("database-diagnostic", { error: safe(diagnosticError.message) });
+    }
+  }
 } finally {
   try { await cleanup(); }
   catch (error) { receipts.status = "FAIL"; receipts.cleanup.push({ error: safe(error.message), success: false }); }

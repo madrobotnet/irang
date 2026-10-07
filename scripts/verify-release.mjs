@@ -1,14 +1,19 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { readFile, readdir, lstat, mkdir, writeFile, realpath } from "node:fs/promises";
 import { resolve, join, relative } from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { verifySourceAssets } from "../distribution/release/restore.mjs";
 
 const registry = "ghcr.io/madrobotnet/irang";
 const source = "https://github.com/madrobotnet/irang";
 const required = ["compose.yml", "docker/postgres/production/01-app-role.sql",
   "README.md", "README.ko.md", "docs/SETUP.md", "docs/SETUP.ko.md", "LICENSE",
-  "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "SUPPORT.md"];
+  "THIRD_PARTY_NOTICES.md", "SECURITY.md", "CONTRIBUTING.md", "SUPPORT.md",
+  "CHANGELOG.md", "docs/RELEASING.md", "docs/ARCHITECTURE.md",
+  "docs/SEMANTIC-SEARCH.md", "docs/images/irang-mark.svg",
+  "docs/images/irang-workbench.png", "docs/images/irang-workbench.ko.png"];
 const hash = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const json = (value) => Buffer.from(`${JSON.stringify(value, null, 2)}\n`);
 const fail = (message) => { throw new Error(message); };
@@ -139,16 +144,6 @@ async function assemble(root, out, input, version, ref, revision) {
   const compose = await validate(root, version, ref, revision);
   const verified = metadata(input, version, revision);
   const paths = [...required];
-  async function docs(dir) {
-    for (const entry of await readdir(join(root, dir), { withFileTypes: true })) {
-      const path = `${dir}/${entry.name}`;
-      safePath(path);
-      requireValue(!entry.isSymbolicLink(), "symlink docs asset");
-      if (entry.isDirectory()) await docs(path);
-      else if (!paths.includes(path)) paths.push(path);
-    }
-  }
-  await docs("docs");
   const files = {};
   for (const path of paths.sort()) files[`irang/${path}`] = await file(root, path);
   const immutable = `${registry}:${version}@${verified.indexDigest}`;
@@ -176,6 +171,13 @@ async function assemble(root, out, input, version, ref, revision) {
 }
 
 async function checksums(root) {
+  const largeSources = new Set();
+  const names = await readdir(root);
+  for (const name of names.filter((name) => /^irang-2\.3\.0-sources-linux-(amd64|arm64)-index\.json$/.test(name))) {
+    const bytes = await file(root, name);
+    const index = await verifySourceAssets(root, name, hash(bytes));
+    for (const asset of index.assets) largeSources.add(asset.name);
+  }
   const text = await readFile(join(root, "SHA256SUMS"), "utf8");
   const seen = new Set();
   for (const line of text.trimEnd().split("\n")) {
@@ -185,12 +187,34 @@ async function checksums(root) {
     safePath(path);
     requireValue(path !== "SHA256SUMS" && !seen.has(path), "duplicate/self checksum");
     seen.add(path);
-    requireValue(hash(await file(root, path)) === expected, "asset checksum changed");
+    let actualHash;
+    if (largeSources.has(path)) {
+      // The source verifier already checks regular paths, every selected byte,
+      // piece ownership and manifest association. Do not buffer multi-GB pieces.
+      const checksum = createHash("sha256");
+      for await (const chunk of createReadStream(join(root, path))) checksum.update(chunk);
+      actualHash = checksum.digest("hex");
+    } else actualHash = hash(await file(root, path));
+    requireValue(actualHash === expected, "asset checksum changed");
   }
   requireValue(seen.size > 0, "empty checksums");
   const actual = await readdir(root);
   requireValue(actual.every((path) => path === "SHA256SUMS" || seen.has(path)), "unchecked asset");
   return { assets: seen.size };
+}
+
+async function sources(root, input, version, revision) {
+  metadata(input, version, revision);
+  for (const receipt of input.receipts) {
+    const binding = receipt.sources;
+    requireValue(binding && /^[a-f0-9]{64}$/.test(binding.indexSha256) &&
+      /^[a-f0-9]{64}$/.test(binding.materialManifestSha256), "missing native source binding");
+    await verifySourceAssets(root, binding.indexName, binding.indexSha256, {
+      version, revision, platform: receipt.platform,
+      materialManifestSha256: binding.materialManifestSha256,
+    });
+  }
+  return { platforms: input.receipts.length };
 }
 
 try {
@@ -201,6 +225,7 @@ try {
     verify: ["metadata", "version", "ref", "revision"],
     assemble: ["root", "out", "metadata", "version", "ref", "revision"],
     checksums: ["root"],
+    sources: ["root", "metadata", "version", "ref", "revision"],
   }[command];
   requireValue(allowed, "usage: verify-release.mjs validate|image|verify|assemble|checksums --<required-option> <value>");
   const options = {};
@@ -226,6 +251,7 @@ try {
       result = { id: image.Id, platform: options.platform, version, revision };
     }
     if (command === "verify") result = metadata(await load(options.metadata), version, revision);
+    if (command === "sources") result = await sources(resolve(root), await load(options.metadata), version, revision);
     if (command === "assemble") result = await assemble(resolve(root), resolve(out), await load(options.metadata), version, ref, revision);
   }
   console.log(JSON.stringify({ status: "PASS", ...result }));

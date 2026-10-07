@@ -8,10 +8,10 @@ For ordinary bugs and installation questions, see [Support](SUPPORT.md).
 
 | Version | Security fixes |
 | --- | --- |
-| 2.2.x | Supported |
+| 2.3.x | Supported |
 | Earlier versions | Not supported |
 
-Use the latest available patch in the 2.2.x line. Reports about older
+Use the latest available patch in the 2.3.x line. Reports about older
 installations can still help identify a problem, but a fix may require an
 upgrade. This support policy doesn't mean a container release has been published.
 

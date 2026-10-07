@@ -127,7 +127,7 @@ bun run typecheck
 bun run lint -- --max-warnings=0
 TEST_DATABASE_URL=postgres://second_brain:second_brain@127.0.0.1:55432/second_brain_test \
   bun test
-docker build --build-arg VERSION=2.2.0 \
+docker build --build-arg VERSION=2.3.0 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 git diff --check
 ```

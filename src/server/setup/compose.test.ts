@@ -15,6 +15,7 @@ const defaults = {
   CODEX_MODEL: "gpt-6.1-sol",
   CODEX_CHATGPT_BASE_URL: "https://chatgpt.com/backend-api/codex",
   GEMINI_CLI_HOME: "/app/.data/auth/google",
+  EMBEDDING_BASE_URL: "",
 } as const;
 const overrides = {
   SESSION_TTL_DAYS: "7",
@@ -26,6 +27,7 @@ const overrides = {
   CODEX_MODEL: "fixture-chat-model",
   CODEX_CHATGPT_BASE_URL: "https://fixture.example/codex",
   GEMINI_CLI_HOME: "/app/.data/custom-google",
+  EMBEDDING_BASE_URL: "http://embedding:8080",
 } as const;
 
 afterEach(async () => {
@@ -33,7 +35,7 @@ afterEach(async () => {
 });
 
 for (const scenario of [
-  { name: "default", image: "ghcr.io/madrobotnet/irang:2.2.0", values: {}, expected: defaults },
+  { name: "default", image: "ghcr.io/madrobotnet/irang:2.3.0", values: {}, expected: defaults },
   {
     name: "operator-provided",
     image: "ghcr.io/example/irang:operator-test",
