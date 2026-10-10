@@ -70,7 +70,7 @@ The commands use a POSIX shell; macOS and Windows haven't been tested.
 
 ### Released installation archive
 
-The installation bundle is `irang-2.3.1-install.tar.gz`. It includes
+The installation bundle is `irang-2.3.2-install.tar.gz`. It includes
 `compose.yml`, its required `docker/postgres/production/01-app-role.sql` mount,
 the documentation, notices, and `release.json`. The archived Compose file pins
 the image by digest. Keep the bundle's directory structure intact.
@@ -78,15 +78,15 @@ the image by digest. Keep the bundle's directory structure intact.
 **Image access:** the source repository and GitHub release assets are public;
 the GHCR package remains private and image pulls require package permission.
 The commands below require a
-completed `v2.3.1` release with the checks in the [release guide](docs/RELEASING.md).
+completed `v2.3.2` release with the checks in the [release guide](docs/RELEASING.md).
 Use the GitHub CLI to download its assets and `jq` to read the image reference:
 
 ```sh
-mkdir irang-release-2.3.1
-cd irang-release-2.3.1
-gh release download v2.3.1 --repo madrobotnet/irang
+mkdir irang-release-2.3.2
+cd irang-release-2.3.2
+gh release download v2.3.2 --repo madrobotnet/irang
 sha256sum --check SHA256SUMS
-tar -xzf irang-2.3.1-install.tar.gz
+tar -xzf irang-2.3.2-install.tar.gz
 cd irang
 
 IRANG_IMAGE=$(jq -r .image release.json)
@@ -112,9 +112,9 @@ Compose has no build configuration, so
 build the image explicitly:
 
 ```sh
-git clone --branch v2.3.1 --single-branch https://github.com/madrobotnet/irang.git
+git clone --branch v2.3.2 --single-branch https://github.com/madrobotnet/irang.git
 cd irang
-docker build --build-arg VERSION=2.3.1 \
+docker build --build-arg VERSION=2.3.2 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
@@ -143,7 +143,7 @@ What happens during setup:
    anything. Running `bun install` on your machine won't create this file or
    the code.
 2. Compose starts the selected image after the database passes its health check.
-   Source Compose defaults to `ghcr.io/madrobotnet/irang:2.3.1`; the release
+   Source Compose defaults to `ghcr.io/madrobotnet/irang:2.3.2`; the release
    archive uses its verified digest, and a source build uses `IRANG_IMAGE=irang:local`.
 3. The app listens on `127.0.0.1` only. Use `INSECURE_COOKIES=1` only for
    loopback HTTP; HTTPS requires `INSECURE_COOKIES=0`.

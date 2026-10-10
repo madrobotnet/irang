@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.2 - 2026-10-10
+
+### Fixed
+
+- Release checksum discovery now finds source indexes independently of the
+  version. The old regex, pinned to escaped `2.3.0`, skipped newer indexes and
+  sent reviewed source archives through ordinary document screening. Discovery
+  now validates source structure and streams source-archive checksums while
+  preserving ordinary asset privacy checks.
+
 ## 2.3.1 - 2026-10-10
 
 ### Fixed

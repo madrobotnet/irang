@@ -124,8 +124,8 @@ The interface uses a warm parchment canvas, matte cards, charcoal rail and
 terracotta accent, with Korean and English copy. Pretendard Variable is
 self-hosted; code uses the system monospace stack.
 
-[DESIGN.md](https://github.com/madrobotnet/irang/blob/v2.3.1/DESIGN.md) defines the design guidance and interface contract.
-[src/app/globals.css](https://github.com/madrobotnet/irang/blob/v2.3.1/src/app/globals.css) is the executable source for
+[DESIGN.md](https://github.com/madrobotnet/irang/blob/v2.3.2/DESIGN.md) defines the design guidance and interface contract.
+[src/app/globals.css](https://github.com/madrobotnet/irang/blob/v2.3.2/src/app/globals.css) is the executable source for
 light/dark color, typography, spacing and focus token values, exposed to Tailwind 4
 through `@theme inline`. Use semantic utilities such as `bg-card`, `text-ink`
 and `border-line` rather than copying color values into components. Focus uses
@@ -137,7 +137,7 @@ collapsed below that width. Mobile has a top bar and bottom navigation:
 Home · Inbox · [capture] · Notes · More. Search stays in the top bar;
 the remaining destinations appear in More.
 
-[src/components/shell/nav.ts](https://github.com/madrobotnet/irang/blob/v2.3.1/src/components/shell/nav.ts) defines the shared
+[src/components/shell/nav.ts](https://github.com/madrobotnet/irang/blob/v2.3.2/src/components/shell/nav.ts) defines the shared
 route order: Home `/`, Inbox `/inbox`, Notes `/notes`, Tasks `/tasks`,
 Today `/daily`, Search `/search`, Graph `/graph`, Chat `/chat`, Settings
 `/settings`. Labels are localized, and Inbox shows the open-item count.
