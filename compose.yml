@@ -6,7 +6,7 @@ x-upgrade-checks:
 
 services:
   app:
-    image: ${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.3.0}
+    image: ${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.3.1}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgres://second_brain:${POSTGRES_APP_PASSWORD:-${POSTGRES_PASSWORD:?Use the Docker setup command in README.md first}}@db:5432/second_brain}

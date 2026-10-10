@@ -83,7 +83,7 @@ COPY scripts/prepare-release-materials.mjs scripts/prepare-redistribution-runtim
     scripts/collect-image-licenses.mjs ./scripts/
 COPY --from=filesystem / /target/
 ARG TARGETARCH
-ARG VERSION=2.3.0
+ARG VERSION=2.3.1
 ARG REVISION=local
 RUN bun --no-env-file scripts/prepare-release-materials.mjs \
     --root /target --out /materials --version "$VERSION" --revision "$REVISION" \
@@ -112,7 +112,7 @@ ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     CODEX_HOME=/app/.data/auth/codex \
     GEMINI_CLI_HOME=/app/.data/auth/google
 USER 1001:1001
-ARG VERSION=2.3.0
+ARG VERSION=2.3.1
 ARG REVISION=local
 LABEL org.opencontainers.image.title="Irang" \
       org.opencontainers.image.description="Irang application image. Third-party notices are in /app/licenses and /usr/share/irang/licenses." \

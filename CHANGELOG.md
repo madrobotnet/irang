@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.1 - 2026-10-10
+
+### Fixed
+
+- Maintainer smoke isolation preserves lookup of the pinned Docker Compose
+  5.5.1 CLI plugin without copying registry credentials. The isolated `HOME`
+  and `DOCKER_CONFIG` hid the user-installed plugin and selected system Compose
+  2.38.2, causing a false legacy-volume interpolation failure in the modern fixture.
+
 ## 2.3.0 - 2026-10-07
 
 ### Added

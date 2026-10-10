@@ -35,7 +35,7 @@ afterEach(async () => {
 });
 
 for (const scenario of [
-  { name: "default", image: "ghcr.io/madrobotnet/irang:2.3.0", values: {}, expected: defaults },
+  { name: "default", image: "ghcr.io/madrobotnet/irang:2.3.1", values: {}, expected: defaults },
   {
     name: "operator-provided",
     image: "ghcr.io/example/irang:operator-test",

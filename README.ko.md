@@ -65,7 +65,7 @@ Docker와 **Docker Compose 5.1.0 이상**이 필요합니다. 버전은
 
 ### 릴리스 설치 아카이브
 
-설치 묶음은 `irang-2.3.0-install.tar.gz`입니다. `compose.yml`, 필수 마운트
+설치 묶음은 `irang-2.3.1-install.tar.gz`입니다. `compose.yml`, 필수 마운트
 파일 `docker/postgres/production/01-app-role.sql`, 문서, 고지,
 `release.json`이 들어 있습니다. 아카이브의 Compose 파일은 이미지 다이제스트를
 고정합니다. 묶음의 디렉터리 구조를 그대로 유지하세요.
@@ -73,15 +73,15 @@ Docker와 **Docker Compose 5.1.0 이상**이 필요합니다. 버전은
 **이미지 접근:** 소스 저장소와 GitHub 릴리스 파일은 공개되어 있지만 GHCR
 패키지는 비공개이며 이미지를 받으려면 패키지 접근 권한이 필요합니다.
 아래 명령은 [릴리스 안내](docs/RELEASING.md)의
-검증을 마친 `v2.3.0` 릴리스가 있어야 사용할 수 있습니다. GitHub CLI로 릴리스
+검증을 마친 `v2.3.1` 릴리스가 있어야 사용할 수 있습니다. GitHub CLI로 릴리스
 파일을 내려받고, `jq`로 이미지 참조를 읽습니다.
 
 ```sh
-mkdir irang-release-2.3.0
-cd irang-release-2.3.0
-gh release download v2.3.0 --repo madrobotnet/irang
+mkdir irang-release-2.3.1
+cd irang-release-2.3.1
+gh release download v2.3.1 --repo madrobotnet/irang
 sha256sum --check SHA256SUMS
-tar -xzf irang-2.3.0-install.tar.gz
+tar -xzf irang-2.3.1-install.tar.gz
 cd irang
 
 IRANG_IMAGE=$(jq -r .image release.json)
@@ -107,9 +107,9 @@ Compose에 빌드 설정이 없으므로 이미지를
 직접 빌드합니다.
 
 ```sh
-git clone --branch v2.3.0 --single-branch https://github.com/madrobotnet/irang.git
+git clone --branch v2.3.1 --single-branch https://github.com/madrobotnet/irang.git
 cd irang
-docker build --build-arg VERSION=2.3.0 \
+docker build --build-arg VERSION=2.3.1 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
@@ -138,7 +138,7 @@ curl -i http://127.0.0.1:3000/api/health
    바꾸지 않고 종료합니다. 호스트에서 `bun install`을 실행해도 이 파일이나
    코드는 생기지 않습니다.
 2. Compose는 DB 상태 검사가 통과한 뒤 선택한 이미지를 시작합니다.
-   소스 Compose의 기본값은 `ghcr.io/madrobotnet/irang:2.3.0`입니다.
+   소스 Compose의 기본값은 `ghcr.io/madrobotnet/irang:2.3.1`입니다.
    릴리스 아카이브는 검증된 다이제스트를, 소스 빌드는
    `IRANG_IMAGE=irang:local`을 사용합니다.
 3. 앱은 `127.0.0.1`에만 바인딩됩니다. 루프백 HTTP에서만

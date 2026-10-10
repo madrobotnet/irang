@@ -40,7 +40,7 @@ function header(name, size) {
   return h;
 }
 export function assetPrefix(version, platform) {
-  assert.equal(version, "2.3.0", "Unsupported source version");
+  assert.equal(version, "2.3.1", "Unsupported source version");
   assert(["linux/amd64", "linux/arm64"].includes(platform), "Unsupported source platform");
   return `irang-${version}-sources-${platform.replace("/", "-")}`;
 }

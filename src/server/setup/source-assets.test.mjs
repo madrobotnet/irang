@@ -9,7 +9,7 @@ import { replacementFiles, replaceWidth, archiveTree } from "../../../scripts/pr
 
 async function fixture(platform = "linux/arm64") {
   const root = await mkdtemp(join(tmpdir(), "source-assets-"));
-  const options = { version: "2.3.0", revision: "a".repeat(40), platform, limit: 8192,
+  const options = { version: "2.3.1", revision: "a".repeat(40), platform, limit: 8192,
     materials: join(root, "materials"), out: join(root, "out") };
   const content = Buffer.alloc(10000, 65);
   const row = { path: "sources/input", sha256: sha(content), bytes: content.length, mode: 0o644 };
@@ -39,7 +39,7 @@ for (const platform of ["linux/amd64", "linux/arm64"]) {
       await prepareAssets({ ...options, out: join(root, "second") });
       expect(await readFile(join(root, "second", result.indexName), "utf8")).toBe(first);
       const index = await verifySourceAssets(options.out, result.indexName, sha(first), {
-        materialManifestSha256: options.seal, platform, version: "2.3.0", revision: options.revision,
+        materialManifestSha256: options.seal, platform, version: "2.3.1", revision: options.revision,
       });
       expect(index.assets.every(a => a.bytes < 8192 && a.name.includes(platform.replace("/", "-")))).toBe(true);
       expect(index.blobs[row.sha256].pieces.length).toBe(2);
@@ -150,7 +150,7 @@ test("rejects traversal and private raw containing archives", () => {
     expect(() => safe(path)).toThrow();
   }
   expect(safe("notices/history/esbuild-mit.txt")).toBe("notices/history/esbuild-mit.txt");
-  expect(assetPrefix("2.3.0", "linux/amd64")).not.toBe(assetPrefix("2.3.0", "linux/arm64"));
+  expect(assetPrefix("2.3.1", "linux/amd64")).not.toBe(assetPrefix("2.3.1", "linux/arm64"));
 });
 
 test("portable replacement regenerates pinned ranges without private producer paths", async () => {

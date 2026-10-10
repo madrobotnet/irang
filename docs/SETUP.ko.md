@@ -18,7 +18,7 @@ Docker Compose 서비스 두 개(Next.js 앱과 Postgres 데이터베이스)와 
 
 | 서비스 | 이미지 | 설명 |
 | --- | --- | --- |
-| `app` | `${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.3.0}` | 이미지만 선택하는 Compose 서비스입니다. Bun 기반 독립 실행형 Next.js 서버를 `nextjs`(UID/GID 1001)로 실행합니다. `127.0.0.1:${APP_PORT:-3000}:3000`을 통해 루프백에만 포트를 엽니다. Docker 상태 검사는 `/api/health`를 확인합니다. |
+| `app` | `${IRANG_IMAGE:-ghcr.io/madrobotnet/irang:2.3.1}` | 이미지만 선택하는 Compose 서비스입니다. Bun 기반 독립 실행형 Next.js 서버를 `nextjs`(UID/GID 1001)로 실행합니다. `127.0.0.1:${APP_PORT:-3000}:3000`을 통해 루프백에만 포트를 엽니다. Docker 상태 검사는 `/api/health`를 확인합니다. |
 | `db` | `pgvector/pgvector:0.8.6-pg18` | 내부 전용이며 호스트 포트를 열지 않습니다. 상태 검사 명령은 `pg_isready -U postgres -d second_brain`이고, 앱은 통과할 때까지 기다립니다. **새** 데이터 볼륨에서는 Postgres 진입점이 `docker/postgres/production/01-app-role.sql`을 실행해 `pgcrypto`, `vector`, `pg_trgm` 확장과 권한이 제한된 앱 역할을 미리 만듭니다(4절). |
 
 Compose는 이름이 지정된 볼륨에 프로젝트 이름을 접두사로 붙입니다. 기본 프로젝트
@@ -36,7 +36,7 @@ Compose에는 이전 버전의 키 `second_brain_pg18`도 선언되어 있지만
 방법은 10절에 있습니다.
 
 릴리스 아카이브의 `app.image`는 `release.json`에 기록된
-`ghcr.io/madrobotnet/irang:2.3.0@sha256:...`로 고정됩니다. 그 밖의 Compose
+`ghcr.io/madrobotnet/irang:2.3.1@sha256:...`로 고정됩니다. 그 밖의 Compose
 설정은 파싱한 값 기준으로 소스와 같습니다. Compose 옆에 상대 경로
 `docker/postgres/production` 디렉터리를 함께 두세요. `compose.yml`만 내려받으면
 필수 DB 초기화 스크립트가 빠집니다.
@@ -73,17 +73,17 @@ Compose에는 이전 버전의 키 `second_brain_pg18`도 선언되어 있지만
 
 ### 설치 아카이브
 
-아래 아카이브 명령은 [RELEASING.md](RELEASING.md)의 검증을 마친 `v2.3.0`
+아래 아카이브 명령은 [RELEASING.md](RELEASING.md)의 검증을 마친 `v2.3.1`
 릴리스가 있어야 사용할 수 있습니다. 소스와 릴리스 파일은 공개되어 있지만 GHCR
 패키지는 비공개이며 이미지를 받으려면 접근 권한이 필요합니다. 빈 디렉터리에
 모든 릴리스 파일을 내려받고, 체크섬을 확인한 다음 압축을 풉니다.
 
 ```sh
-mkdir irang-release-2.3.0
-cd irang-release-2.3.0
-gh release download v2.3.0 --repo madrobotnet/irang
+mkdir irang-release-2.3.1
+cd irang-release-2.3.1
+gh release download v2.3.1 --repo madrobotnet/irang
 sha256sum --check SHA256SUMS
-tar -xzf irang-2.3.0-install.tar.gz
+tar -xzf irang-2.3.1-install.tar.gz
 cd irang
 IRANG_IMAGE=$(jq -r .image release.json)
 export IRANG_IMAGE
@@ -93,7 +93,7 @@ docker pull "$IRANG_IMAGE"
 초기 설정 스크립트와 앱에는 이 다이제스트 참조를 똑같이 사용하세요. 아카이브의
 Compose는 이미 이를 기본값으로 사용합니다. `.env`에 이전 `IRANG_IMAGE`
 재정의가 있으면 지우거나 갱신하세요. 소스의 Compose는 읽기 쉬운 버전 태그
-`ghcr.io/madrobotnet/irang:2.3.0`을 사용하며, 릴리스 정책상 이 태그의 내용은
+`ghcr.io/madrobotnet/irang:2.3.1`을 사용하며, 릴리스 정책상 이 태그의 내용은
 바뀌지 않습니다.
 
 비공개 이미지를 받으려면 패키지 읽기 권한이 있는 Docker 레지스트리 자격 증명이
@@ -108,9 +108,9 @@ GHCR에 접근할 수 없다면 공개 소스를 로컬에서 빌드하세요. �
 태그를 선택하세요. Compose에는 빌드 설정이 없습니다.
 
 ```sh
-git clone --branch v2.3.0 --single-branch https://github.com/madrobotnet/irang.git
+git clone --branch v2.3.1 --single-branch https://github.com/madrobotnet/irang.git
 cd irang
-docker build --build-arg VERSION=2.3.0 \
+docker build --build-arg VERSION=2.3.1 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
@@ -388,7 +388,7 @@ docker run --rm -v "$PWD/.env":/install/.env:ro "$IRANG_IMAGE" \
 | `SESSION_TTL_DAYS` | 세션 | `30` | 세션 유지 기간(일) |
 | `ATTACHMENTS_DIR` | 첨부파일 저장 | `.data/attachments`(앱 작업 디렉터리 기준 상대 경로) | 첨부파일 위치. Docker에서는 `app-data` 볼륨 안에 있습니다. |
 | `APP_PORT` | `compose.yml` | `3000` | 루프백 호스트 포트 |
-| `IRANG_IMAGE` | `compose.yml`만 사용 | 소스는 `ghcr.io/madrobotnet/irang:2.3.0`, 아카이브는 검증된 다이제스트 | 앱 이미지의 명시적 선택. 소스 빌드는 `irang:local`로 설정합니다. 앱에는 전달하지 않습니다. |
+| `IRANG_IMAGE` | `compose.yml`만 사용 | 소스는 `ghcr.io/madrobotnet/irang:2.3.1`, 아카이브는 검증된 다이제스트 | 앱 이미지의 명시적 선택. 소스 빌드는 `irang:local`로 설정합니다. 앱에는 전달하지 않습니다. |
 | `POSTGRES_PASSWORD` | `compose.yml` | 필수 | 현재 설치에서는 앱 역할 비밀번호. `POSTGRES_APP_PASSWORD`가 있는 이전 설치에서는 원래 관리자 비밀번호입니다. |
 | `POSTGRES_ADMIN_PASSWORD` | `compose.yml`의 DB 서비스 | 현재 설치에서 필수 | 명시적 관리자 비밀번호. 이전 설치에서는 원래 `POSTGRES_PASSWORD`를 대신 사용합니다. |
 | `POSTGRES_APP_PASSWORD` | `compose.yml`의 DB 서비스 | `POSTGRES_PASSWORD` | 이전 설치의 앱 비밀번호. 볼륨을 명시적으로 선택해야 하며 별도 앱 환경변수로 전달하지 않습니다. |
@@ -670,10 +670,10 @@ docker compose up -d --wait --wait-timeout 180
 
 소스 설치에서는 `.env`를 바꾸거나 프로젝트를 변경하지 않고 기존 체크아웃을
 목표 버전으로 업데이트합니다. `VERSION`에는 그 체크아웃의 패키지 버전을
-사용하세요. 이번 릴리스는 2.3.0입니다.
+사용하세요. 이번 릴리스는 2.3.1입니다.
 
 ```sh
-docker build --build-arg VERSION=2.3.0 \
+docker build --build-arg VERSION=2.3.1 \
   --build-arg REVISION="$(git rev-parse HEAD)" -t irang:local .
 IRANG_IMAGE=irang:local
 export IRANG_IMAGE
