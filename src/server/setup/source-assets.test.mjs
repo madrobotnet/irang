@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, readFile, rm, access, symlink, chmod } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, access, symlink, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { assetPrefix, prepareAssets, sha, safe, digest } from "../../../distribution/release/assets.mjs";
@@ -57,6 +57,33 @@ for (const platform of ["linux/amd64", "linux/arm64"]) {
     } finally { await rm(root, { recursive: true, force: true }); }
   });
 }
+
+test("release checksums validates current source indexes beyond outer file hashes", async () => {
+  const { root, options } = await fixture();
+  try {
+    const result = await prepareAssets(options);
+    const check = async () => {
+      const names = (await readdir(options.out)).filter(name => name !== "SHA256SUMS");
+      const sums = await Promise.all(names.map(async name =>
+        `${sha(await readFile(join(options.out, name)))}  ${name}\n`));
+      await writeFile(join(options.out, "SHA256SUMS"), sums.join(""));
+      const child = Bun.spawn(["bun", "--no-env-file",
+        join(import.meta.dir, "../../../scripts/verify-release.mjs"),
+        "checksums", "--root", options.out], { stdout: "pipe", stderr: "pipe" });
+      const [code, output, errors] = await Promise.all([
+        child.exited, new Response(child.stdout).text(), new Response(child.stderr).text(),
+      ]);
+      return { code, output, errors };
+    };
+    expect((await check()).code).toBe(0);
+    const indexPath = join(options.out, result.indexName);
+    const index = JSON.parse(await readFile(indexPath));
+    index.associations[0].path = "../escape";
+    await chmod(indexPath, 0o644);
+    await writeFile(indexPath, JSON.stringify(index));
+    expect((await check()).code).not.toBe(0);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test("rejects corrupted selected input before creating output", async () => {
   const { root, options } = await fixture();

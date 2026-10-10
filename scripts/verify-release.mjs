@@ -173,7 +173,7 @@ async function assemble(root, out, input, version, ref, revision) {
 async function checksums(root) {
   const largeSources = new Set();
   const names = await readdir(root);
-  for (const name of names.filter((name) => /^irang-2\.3\.0-sources-linux-(amd64|arm64)-index\.json$/.test(name))) {
+  for (const name of names.filter((name) => /^irang-\d+\.\d+\.\d+-sources-linux-(amd64|arm64)-index\.json$/.test(name))) {
     const bytes = await file(root, name);
     const index = await verifySourceAssets(root, name, hash(bytes));
     for (const asset of index.assets) largeSources.add(asset.name);
