@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 
 const directories: string[] = [];
@@ -91,4 +91,59 @@ test("keeps an explicitly configured database URL on a current installation", as
   expect(result.exitCode).toBe(0);
   const config: unknown = JSON.parse(result.stdout);
   expect(config).toHaveProperty("services.app.environment.DATABASE_URL", url);
+});
+
+test("smoke isolation keeps the caller's Compose plugin without registry credentials", async () => {
+  const callerConfig = process.env.DOCKER_CONFIG ?? path.join(homedir(), ".docker");
+  const directory = await mkdtemp(path.join(tmpdir(), "irang-smoke-plugin-"));
+  directories.push(directory);
+  const ownerConfig = path.join(directory, "owner-docker");
+  await mkdir(path.join(ownerConfig, "cli-plugins"), { recursive: true });
+  const invoked = path.join(directory, "compose-invoked");
+  await writeFile(path.join(ownerConfig, "config.json"), JSON.stringify({
+    auths: { "fixture.invalid": { auth: "synthetic-must-not-be-inherited" } },
+  }));
+  await writeFile(path.join(ownerConfig, "cli-plugins/docker-compose"), `#!/bin/sh
+if [ "$1" = docker-cli-plugin-metadata ]; then
+  printf '%s\\n' '{"SchemaVersion":"0.1.0","Vendor":"Smoke fixture","Version":"v5.5.1","ShortDescription":"Compose"}'
+  exit 0
+fi
+printf selected > '${invoked}'
+shift
+exec docker --config '${callerConfig}' compose "$@"
+`, { mode: 0o700 });
+  const envFile = path.join(directory, ".env");
+  await writeFile(envFile, Object.entries(modern).map(([key, value]) => `${key}='${value}'`).join("\n"));
+  const source = await readFile(path.join(root, "scripts/smoke-image.mjs"), "utf8");
+  // Run the harness's actual environment setup, stopping before image/container work.
+  const setup = [
+    source.slice(source.indexOf("const environment ="), source.indexOf("async function command(")),
+    source.slice(source.indexOf("  temporary = await mkdtemp("), source.indexOf("  const ready =")),
+  ].join("\n");
+  const child = Bun.spawn([Bun.which("bun") ?? "bun", "--no-env-file", "-e", `
+    import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+    import { homedir } from "node:os";
+    import path from "node:path";
+    const tmpdir = () => ${JSON.stringify(directory)};
+    let temporary;
+    ${setup}
+    const config = await Bun.file(path.join(environment.DOCKER_CONFIG, "config.json")).json().catch(error => {
+      if (error.code !== "ENOENT") throw error;
+      return {};
+    });
+    console.error(JSON.stringify(config));
+    const compose = Bun.spawn(["docker", "compose", "--env-file", ${JSON.stringify(envFile)},
+      "-f", "compose.yml", "config", "--format", "json"], { env: environment, stdout: "inherit", stderr: "inherit" });
+    process.exitCode = await compose.exited;
+  `], {
+    cwd: root, env: { PATH: process.env.PATH, HOME: directory, DOCKER_CONFIG: ownerConfig },
+    stdout: "pipe", stderr: "pipe",
+  });
+  const [exitCode, stdout, stderr] = await Promise.all([
+    child.exited, new Response(child.stdout).text(), new Response(child.stderr).text(),
+  ]);
+  expect(exitCode, stderr).toBe(0);
+  expect(await Bun.file(invoked).exists()).toBe(true);
+  expect(JSON.parse(stderr)).toEqual({ cliPluginsExtraDirs: [path.join(ownerConfig, "cli-plugins")] });
+  expect(JSON.parse(stdout)).toHaveProperty("services.db.volumes.0.source", "postgres-data");
 });

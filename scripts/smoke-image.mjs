@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // Maintainer QA: synthetic data only. Never point this at an existing project.
 import { mkdtemp, mkdir, cp, readFile, writeFile, stat, rm, chmod } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 
@@ -368,6 +368,12 @@ try {
   await collisions(`${input.project}-legacy`);
   temporary = await mkdtemp(path.join(tmpdir(), "irang-image-smoke-"));
   environment.HOME = temporary;
+  // Keep the caller's pinned CLI plugins, never its registry credentials.
+  environment.DOCKER_CONFIG = path.join(temporary, "docker-config");
+  await mkdir(environment.DOCKER_CONFIG, { mode: 0o700 });
+  await writeFile(path.join(environment.DOCKER_CONFIG, "config.json"), JSON.stringify({
+    cliPluginsExtraDirs: [path.resolve(process.env.DOCKER_CONFIG ?? path.join(homedir(), ".docker"), "cli-plugins")],
+  }), { mode: 0o600 });
   const ready = await dockerRun(input.project, "cli", [input.image, "sh", "-ec",
     "id -u; bun --version; node --version; codex --version; gemini --version"]);
   const lines = ready.stdout.trim().split("\n");
